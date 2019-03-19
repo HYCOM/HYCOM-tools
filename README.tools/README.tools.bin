@@ -1,0 +1,191 @@
+HYCOM-tools/bin/README.bin:
+
+                              HYCOM UTILITIES
+
+	---  bin directory should be included in user's primary PATH ---
+
+C			used as a "comment" line indicator in model scripts
+
+clim_stat 		lists contents of NRL "native" climatology file
+clim_stat.1		man page for clim_stat
+clim_stat.f		source code for clim_stat_machinetype
+
+echo2			echo arguments to stderr (softlink)
+echo2.c			source code for echo2_machinetype
+
+hycom2raw 		Outputs a raw copy of a HYCOM ".a" file (softlink)
+hycom2raw.F		source code for hycom2raw_machinetype
+
+hycom_bandmask		Masks fields that are between bl and bh (softlink)
+hycom_bandmask.F	source code for hycom_bandmask_machinetype
+
+hycom_binning		prints the min, max and mean of lon/lat bins (softlink)
+hycom_binning.F		source code for hycom_binning_machinetype
+
+hycom_alat		HYCOM grid statistics (softlink)
+hycom_alat.f		source code for hycom_alat_machinetype
+
+hycom_archv_dates	prints a list of archive days (softlink)
+hycom_archv_dates.f	source code for hycom_archv_dates_machinetype
+
+hycom_count		prints the count of sea points of all fields (softlink)
+hycom_count.F		source code for hycom_count_machinetype
+
+hycom_depth		HYCOM z-depth statistics (softlink)
+hycom_depth.f		source code for hycom_depth_machinetype
+
+hycom_expr 		arithmetic expression of fields (softlink)
+hycom_expr.F		source code for hycom_expr_machinetype
+
+hycom_extract		extracts selected fields (softlink)
+hycom_extract.F		source code for hycom_extract_machinetype
+
+hycom_halfsm		outputs a 1/2x as fine grid (softlink)
+hycom_halfsm.F		source code for hycom_halfsm_machinetype
+
+hycom_ij2lonlat 	lon,lat of an ip,jp point on the p-grid (softlink)
+hycom_ij2lonlat.F	source code for hycom_ij2lonlat_machinetype
+
+hycom_larger		outputs a larger array (softlink)
+hycom_larger.F		source code for hycom_larger_machinetype
+
+hycom_lonlat2ij 	nearest p-grid point to lon,lat (softlink)
+hycom_lonlat2ij.F	source code for hycom_lonlat2ij_machinetype
+
+hycom_mask		masks the fields (softlink)
+hycom_mask.F		source code for hycom_mask_machinetype
+
+hycom_mass		prints the min, mean and max of all fields (softlink)
+hycom_mass.F		source code for hycom_mass_machinetype
+
+hycom_mean		average a sequence of fields (softlink)
+hycom_mean.F		source code for hycom_mean_machinetype
+
+hycom_meridional	prints the mean,rms of meridional extents (softlink)
+hycom_meridional.F	source code for hycom_meridional_machinetype
+
+hycom_meridional_lon	prints the mean,rms of longitudinal extents (softlink)
+hycom_meridional_lon.F	source code for hycom_meridional_lon_machinetype
+
+hycom_mixlay		generates a mixed layer from an archive file (softlink)
+hycom_mixlay.F		source code for hycom_mixlay_machinetype
+
+hycom_mxthrd		HYCOM OpenMP mxthrd statistics (softlink)
+hycom_mxthrd.F		source code for hycom_mxthrd_machinetype
+
+hycom_nest_dates 	list archive dates needed for nesting (softlink)
+hycom_nest_dates.f	source code for hycom_nest_dates_machinetype
+
+hycom_print 		prints a sub-array (softlink)
+hycom_print.F		source code for hycom_print_machinetype
+
+hycom_profile 		vertical profile from an archive (softlink)
+hycom_profile.F		source code for hycom_profile_machinetype
+
+hycom_profile_all 	vertical profile grid from an archive (softlink)
+hycom_profile_all.F	source code for hycom_profile_all_machinetype
+
+hycom_profile_list	vertical profiles from an archive (softlink)
+hycom_profile_list.F	source code for hycom_profile_list_machinetype
+
+hycom_profile2z 	z-space profile from isopycnal profile (softlink)
+hycom_profile2z.f	source code for hycom_profile2z_machinetype
+
+hycom_profile2zi 	finite volume profile from isopycnal profile (softlink)
+hycom_profile2zi.f	source code for hycom_profile2z_machinetype
+
+hycom_profile_remap	remap a profile to a new set of layers (softlink)
+hycom_profile_remap.f	source code for hycom_profile_remap_machinetype
+
+hycom_range		HYCOM ".a" file statistics (softlink)
+hycom_range.F		source code for hycom_range_machinetype
+
+hycom_range_ij 		hycom_range with location info (softlink)
+hycom_range_ij.F	source code for hycom_range_ij_machinetype
+
+hycom_rivers 		rivers within a lon/lat box (softlink)
+hycom_rivers.F		source code for hycom_rivers_machinetype
+hycom_rivers.d		global data base of rivers
+
+hycom_sea_ok 		same sea points as a bathymetry (softlink)
+hycom_sea_ok.F		source code for hycom_sea_ok_machinetype
+
+hycom_shift 		identical after a shift? (softlink)
+hycom_shift.F		source code for hycom_shift_machinetype
+
+hycom_sigma		illustrate HYCOM Z-Sigma-Z
+hycom_sigma.f		source code for hycom_sigma_machinetype
+hycom_sigma.gnu		gnuplot script used in hycom_sigma
+
+hycom_skill		error statistics between two field sequences (softlink)
+hycom_skill.F		source code for hycom_skill_machinetype
+
+hycom_smooth		smooth the fields (softlink)
+hycom_smooth.F		source code for hycom_smooth_machinetype
+
+hycom_ts		prints a table of T and S at density (softlink)
+hycom_ts.f		ource code for hycom_ts_machinetype
+
+hycom_wind_date 	model day to yyyy_ddd_hh (softlink)
+hycom_wind_date.f	source code for hycom_wind_date_machinetype
+
+hycom_wind_ymdh		model day to yyyy_mm_dd_hh (softlink)
+hycom_wind_ymdh.f	source code for hycom_wind_ymdh_machinetype
+
+hycom_ymdh_wind		yyyy mm dd hh to model day (softlink)
+hycom_ymdh_wind.f	source code for hycom_ymdh_wind_machinetype
+
+hycom_yoflat 		HYCOM mercator grid latitudes (softlink)
+hycom_yoflat.f		source code for hycom_yoflat_machinetype
+
+hycom_zonal 		mean,rms of zonal extents (softlink)
+hycom_zonal.F		source code for hycom_zonal_machinetype
+
+hycom_zonal_lat		prints mean,rms of latitudinal extents (softlink)
+hycom_zonal_lat.F	source code for hycom_zonal_lat_machinetype
+
+mdel			delete a sequence of nqs jobs
+mlist			create a list of model runs in ./LIST
+msub			submit a sequence of jobs (softlink to default version)
+msub_codine		submit a CODINE batch job (softlink to msub_grd)
+msub_csh		submit a background csh job
+msub_grd		submit a GRD batch job
+msub_ll			submit a LoadLeveler batch job
+msub_lsf		submit a LSF batch job
+msub_nqs		submit a NQS batch job
+msub_pbs		submit a PBS batch job
+
+pget			get one file (softlink to default version)
+pget_rcp		get one file using rcp
+pput			put one file (softlink to default version)
+pput_rcp		put one file using rcp
+
+sigma0_to_sigma2	dens and saln to temp and dens2 (softlink)
+sigma0_to_sigma2.f	source code for sigma0_to_sigma2_machinetype
+
+ts_to_sigma		prints density from T&S (softlink)
+ts_to_sigma.f		source code for ts_to_sigma_machinetype
+
+wind_stat 		lists contents of NRL "native" wind file
+wind_stat.1		man page for wind_stat
+wind_stat.f		source code for wind_stat_machinetype
+wind_stat_t3e.f		source code for wind_stat_t3e
+
+For commands without man pages, the header of the script or the source 
+code contains usage information.  Also, invoking the command with no
+arguments will print a single line usage message.
+
+On a new machine type, Make_all.csh sould be run to recompile all the 
+*.[Ffc] source codes to create executables ending in _machinetype, 
+where "machinetype" is typically the output of uname perhaps with a compiler
+type appended, which are softlinked to the standard executable name.  
+The C-shell scripts clim_stat, wind_stat and hycom_sigma invoke 
+*_machinetype using a hardwired path.  The path, and possibly the 
+machinetype definition may need modifing for your particular setup.  
+The gnuplot plot package is also used by hycom_sigma and its location 
+must be specified.  This can all be achieved by invoking the command  
+csh Make_all.csh.  It will warn you if the C-shell scripts need modifying.
+
+Make_clean.csh will remove all machine specific executables, but 
+should only typically be required when updating to a new compiler 
+version.

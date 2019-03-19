@@ -1,0 +1,22 @@
+HYCOM-tools/subregion/src/README.subregion.src:
+
+Domain-independent source code for extraction of a subregion from an 
+archive file or from a bathymetry or any hycom p-grid ".a" file.  
+The mapping is via bilinear interpolation and the location of the source 
+grid on the target grid is pre-calculated and stored in a "gmap" file.
+
+Earlier versions of these programs were limited to target grids with
+the same grid resolution as the original, or which were finer than the 
+original by an integer multiplier.  These are replaced by the isubx_gmap
+program for setting up the gmap file for such cases.
+
+All programs read regional.grid.b at run-time to get idm and jdm for the 
+particular region being processed.
+
+The Makefile is configured to key on ../../config/$(ARCH)_setup for
+machine-dependent definitions, see ../../config/README.config.  When 
+running on (say) a Linux PC, ARCH is "intel*" and an individual make 
+command for gfortran might be:  make map ARCH=intelGF >& Make_map.log
+
+Typically all executables are created just once by editing Make_all.src 
+for the correct ARCH and then issuing the command csh Make_all.csh.

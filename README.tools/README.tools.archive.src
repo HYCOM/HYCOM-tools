@@ -1,0 +1,75 @@
+HYCOM-tools/archive/src/README.tools.archive.src:
+
+Domain-independent source code for modifying HYCOM archive files, and 
+for converting them to other file formats.
+
+Some common source files are hardlinked to those in HYCOM-tools/libsrc.  
+Replicating these files in all source directories avoids issues with 
+compiler-dependent module processing.
+
+mod_plot.F and several other source routines are identical to those
+in ../../plot/src, because both sets of programs are doing similar 
+archive "processing".  These are not hardlinked together, so any
+modifications in one directory must be manually propagated to the other.
+
+All programs read regional.grid.b at run-time to get idm and jdm for the 
+particular region being processed.
+
+The Makefile is configured to key on ../../config/$(ARCH)_setup for
+machine-dependent definitions, see ../../config/README.tools.config.  When 
+running on (say) a Linux PC, ARCH is "intel" and an individual make 
+command might be:  make hycomproc ARCH=intel >& Make_hycomproc
+
+Typically all (non-netCDF) executables are created just once by editing 
+Make_all.src for the correct ARCH and then issuing the command 
+csh Make_all.csh.
+
+Executables that use the netCDF library (version 3.5) are created just 
+once by editing HYCOM-tools/Make_ncdf.src for the correct root directory and then 
+issuing the command  csh Make_ncdf.csh.  The netCDF library is at:
+    http://www.unidata.ucar.edu/packages/netcdf/
+These are optional, ignore Make_ncdf.csh if you don't want to use NetCDF.
+
+The program hycomarchv will convert a MICOM or HYCOM 1.0 archive file 
+to HYCOM 2.0.  Note that hycomarchv can also be used to create a correct 
+".b" file for a HYCOM 2.0 archive file (e.g. if the original .b file has 
+been deleted).
+
+The program trim_archv will modify the number of layers in a HYCOM 2.0 
+archive file.  It is primarily used in the process of generating 
+sub-region archive files for nested boundary conditions, e.g. when the 
+nested (sub-region) domain has a subset of the layers used by the 
+enclosing domain.  Layers can only be added at the top of the water 
+column (e.g. for converting isopycnal cases to a hybrid vertical
+coordinate), or removed at the bottom of the water column (e.g. to
+remove dense layers that don't exist in the sub-region).  See also,
+HYCOM-tools/subregion.
+
+The program mrgl_archv also modifies the number of layers in a 
+HYCOM 2.0 archive file, by combining several layers into one layer.
+It is primarily used diagnostically, e.g. to plot a water mass that
+consists of several layers.
+
+The program archv2data2d extracts 2-d diagnostic fields from an
+archive file.  All the horizontal (x-y) fields that can be plotted
+with hycomproc can be written out by archv2data2d and like hycomproc
+the output can be for a sub-region.  Output can be formatted, 
+unformatted (BINARY), or .[ab] (HYCOM).  Note that HYCOM .a files can 
+be converted to "raw" files with an arbitrary data void value using
+HYCOM-tools/bin/hycom2raw.
+
+The program archv2data3z interpolates hybrid layers from an archive 
+file to fixed depths.  Like hycomproc, the output can be for a 
+sub-region.  Output can be formatted, unformatted (BINARY), or 
+.[ab] (HYCOM).  Note that HYCOM .a files can be converted to "raw" 
+files with an arbitrary data void value using HYCOM-tools/bin/hycom2raw.
+
+The programs archv2ncdf2d and archv2ncdf3z are identical to archv2data2d
+and archv2data3z, except that they also allows netCDF output.  The
+source code is identical except horout.f vs horout_nc.f.  They are 
+separate executables because some sites might not have netCDF.
+
+One application of archv2*2d and archv2*3z is to allow the use of
+alternatives to NCAR Graphics (and hycomproc).  Just create diagnostic
+files in the data format of your choice and inport them into your
+favorite graphics package.

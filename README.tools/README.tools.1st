@@ -1,0 +1,71 @@
+HYCOM-tools/README.ALL.1st:
+
+Domain-independent source code for HYCOM pre/post processing.
+
+HYCOM-tools is equivalent to the old hycom/ALL (or ALLcnl on Crays),
+HYCOM-tools/MPI is equivalent to the old hycom/ALLmpi.
+HYCOM-tools/ALT is available to use a different Make_all.src for bin 
+and/or plot.  On Crays, ALT/bin is equivalent to the old ALL/bin.  
+If you use ifort for most processing but use gfortran for NCAR graphics, 
+ALT/plot is equivalent to the old ALLgnu/plot.
+
+Since HYCOM-tools will always be backward compatible, you won't typically need 
+multiple versions.  It can go where ever you like, but one option is to
+clone directly into ~/HYCOM-tools:
+
+git clone --recursive https://github.com/HYCOM/HYCOM-tools.git ~/HYCOM-tools
+
+and then (optionally) softlink to ALL:
+ln -s ~/HYCOM-tools     ~/hycom/ALL
+ln -s ~/HYCOM-tools/MPI ~/hycom/ALLmpi
+
+or on a Crays:
+ln -s ~/HYCOM-tools     ~/hycom/ALLcnl
+ln -s ~/HYCOM-tools/MPI ~/hycom/ALLmpi
+ln -s ~/HYCOM-tools/ALT ~/hycom/ALL
+ln -s ~/HYCOM-tools/ALT ~/hycom/ALLgnu
+
+Many programs read regional.grid.b at run-time to get idm and jdm for the 
+particular region being processed.  They may also read regional.grid.a to
+find the grid location.
+
+The */src/Makefiles are configured to key on ../../config/$(ARCH)_setup 
+for machine-dependent definitions, see config/README.tools.config.  When 
+running on (say) a Linux PC, ARCH is "intel*" and an individual make 
+command for gfortran might be:  make zero ARCH=intelGF >& Make_zero.log
+
+Typically almost all serial executables are created just once by editing 
+Make_all.src in the HYCOM-tools root directory for the correct ARCH and 
+then issuing the command csh Make_all.csh.  This creates all executables 
+in all source directories, except plot and those that depend on the NetCDF 
+library (see below).  
+
+Programs in plot/src depend on NCAR graphics and link using the ncargf90 
+wrapper script that is distributed with the NCAR graphics package.
+It is often simplest to use gfortran for NCAR graphics, and ALT/plot is 
+available for cases where the primary compiler for everything else is not 
+gfortran.  The plot programs are optional if you instead use your favorate 
+graphics package, and so the plot directory is not included in Make_all.csh.
+See HYCOM-tools/plot/src/README.tools.plot.src for details.
+
+Make_all.csh in HYCOM-tools/bin does not use Make_all.src, and it may
+need editing to select the correct compiler.  Running Make_all.csh in 
+the HYCOM-tools root directory invokes HYCOM-tools/bin/Make_all.csh.
+
+The executables that depend on the NetCDF library are optional.  If you
+want to use netCDF, then edit HYCOM-tools/Make_ncdf.src for the correct 
+location of the netCDF version 4.X library and then issuing the command 
+csh Make_ncdf.csh.  Running Make_ncdf.csh in the HYCOM-tools root 
+directory creates all netCDF executables in all source directories, 
+including HYCOM-tools/bin.
+
+The multi-processor executables that depend on MPI are optional, and are
+in the MPI directory.  Use them when the serial versions run out of
+memory, or run too slowely, or to make use of all cores on a single node.
+
+For a complete make from source in a source directory, first issue 
+the command make clean.  This deletes all executables, .o and .mod files.
+A subsequent csh Make_all.csh (or make all) and csh Make_ncdf.csh (if
+necessary) builds all executables from scratch.  Issuing the command 
+csh Make_clean.csh in the HYCOM-tools root directory runs Make clean in 
+each */src directory.

@@ -1,0 +1,9 @@
+REAL4 must be used in HYCOM-tools/config/$(ARCH)_setup
+
+REAL4		REAL is REAL*4
+
+Other macros that may be used in HYCOM-tools/config/$(ARCH)_setup
+
+AIX		IBM AIX
+IA32		Intel Linux, typically now targets x64_64
+ENDIAN_IO	Swap endian-ness as part of array I/O

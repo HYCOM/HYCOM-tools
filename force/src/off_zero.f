@@ -1,0 +1,76 @@
+      PROGRAM OFFZERO
+      USE MOD_ZA  ! HYCOM array I/O interface
+      IMPLICIT NONE
+C
+C     FLUX ARRAYS.
+C
+      INTEGER, ALLOCATABLE :: MSK(:,:)
+      REAL*4,  ALLOCATABLE :: TXM(:,:)
+C
+      REAL*4    TXMIN,TXMAX
+      CHARACTER PREAMBL(5)*79
+C
+C**********
+C*
+C 1)  CREATE MODEL GRID ZERO WIND STRESS FILES SUITABLE FOR INPUT
+C      TO THE HYCOM OCEAN MODEL OVER THE GIVEN REGION.
+C*
+C**********
+C
+      INTEGER I,J
+C
+      CALL XCSPMD
+      ALLOCATE( MSK(IDM,JDM) )
+      ALLOCATE( TXM(IDM,JDM) )
+C
+C     INITIALIZE HYCOM OUTPUT.
+C
+      CALL ZHOPEN(10, 'FORMATTED', 'NEW', 0)
+      CALL ZHOPEN(11, 'FORMATTED', 'NEW', 0)
+C
+      PREAMBL(1) = 'Zero Stress'
+      PREAMBL(2) = ' '
+      PREAMBL(3) = ' '
+      PREAMBL(4) = ' '
+      WRITE(PREAMBL(5),'(A,2I5,I3,F9.3,F9.2,2F6.3)')
+     +        'i/jdm =',
+     +       IDM,JDM
+      WRITE(10,4101) PREAMBL
+      WRITE(11,4101) PREAMBL
+      WRITE(6,*)
+      WRITE(6, 4101) PREAMBL
+      WRITE(6,*)
+C
+C     ZERO FIELD.
+C
+      DO J= 1,JDM
+        DO I= 1,IDM
+          TXM(I,J) = 0.0
+        ENDDO
+      ENDDO
+C
+C     OUTPUT.
+C
+      CALL ZAIOST
+C
+      CALL ZAIOPN('NEW', 10)
+      CALL ZAIOWR(TXM,MSK,.FALSE., TXMIN,TXMAX, 10, .FALSE.)
+      WRITE(10,4102) ' tau_ewd',1,TXMIN,TXMAX
+      WRITE( 6,4102) ' tau_ewd',1,TXMIN,TXMAX
+      CALL ZAIOCL(10)
+      CLOSE(UNIT=10)
+C
+      CALL ZAIOPN('NEW', 11)
+      CALL ZAIOWR(TXM,MSK,.FALSE., TXMIN,TXMAX, 11, .FALSE.)
+      WRITE(11,4102) ' tau_nwd',1,TXMIN,TXMAX
+      WRITE( 6,4102) ' tau_nwd',1,TXMIN,TXMAX
+      CALL ZAIOCL(11)
+      CLOSE(UNIT=11)
+C
+      WRITE(6,*)
+      STOP
+C
+ 4101 FORMAT(A79)
+ 4102 FORMAT(A,': month,range = ',I2.2,1P2E16.7)
+C     END OF PROGRAM OFFZERO.
+      END

@@ -1,0 +1,32 @@
+#! /bin/csh -f
+#
+# hycom_colors: prints the hycomproc color palette options
+#
+# Usage:   hycom_colors
+#
+# Alan J. Wallcraft, NRL, March 2016
+#
+cat <<'E-o-D'
+# no. colors description  (hycomproc, fieldproc, fieldcell)
+   0    16   !no color
+   1    16   !alternate pastel or one-sign (-ve ot +ve) gray
+   2    64   !canonical sst
+   3   100   !rainer's gaudy
+   4    64   !two-tone shades
+   5   100   !NRL's    false color
+   6   100   !NRL's    false color, inverted
+   7    20   !MATLAB's JET   BlCyYeRe
+   8    20   !MATLAB's JETw  BlCyWhYeRe
+   9    20   !MATLAB's JETww BlCyWhWhYeRe
+  10   100   !MATLAB's JETw  BlCyWhYeRe
+  11   100   !NCL's    WhViBlGrYeOrRe
+  12   100   !NCL's    ReOrYeGrBlViWh
+  13   100   !NCL's    +WhViBlGrYeOrRe
+  14   100   !NCL's    ReOrYeGrBlViWh+
+  15    20   !MATLAB's HOT
+  16    20   !MATLAB's HOT, inverted
+  17   100   !NCL's    BlAqGrYeOrRe
+  18   100   !NCL's    ReOrYeGrAqBl
+  19    20   !NRL's    Bl/lt-Bl/Ye/Re
+  20   ???   !input from filename $PALETTE (up to 200 colors)
+'E-o-D'

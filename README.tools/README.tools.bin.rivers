@@ -1,0 +1,63 @@
+
+Notes on reading hycom_rivers.d file
+
+Written by:  Lucy F. Smedstad and Charlie N. Barron
+             Naval Research Laboratory
+             Code 7323
+             Bldg. 1009
+             Stennis Space Center, MS  39529
+             Office Phone: (228) 688-5365/5423
+             Fax: (228) 688-4759
+             Email: lsmedstad@nrlssc.navy.mil/barron@nrlssc.navy.mil
+
+
+Date:  7 November 2002
+---------------------------------------------------------------
+
+
+To read the river file 99
+          read(99,'(f10.1,2f10.4,2x,a24,a16,a10,a10,a10)',end=930)
+     &      qriv_m,elonr,alatr,rivname,country,dbase1,dbase2,dbase3
+          read(99,'(12f10.1)') (qriv2(irv,mon),mon=1,12)
+          read(99,'(12f10.1)') (rriv2(irv,mon),mon=1,12)
+
+where
+qriv_m  is the annual mean transport in cubic m / sec
+elonr   is the longitude of the river mouth in degrees east
+alatr   is the latitude of the river mouth in degrees north
+rivname is a text string naming the river
+country is a text string naming the primary country where the
+        river is located
+dbase1  is the identifier for the source* of transports
+dbase2  is an extra word available to describe source of transports
+dbase3  is the identifier for the source of temperatures
+qriv2(n,1-12) is an array of monthly mean transports   for river n
+rriv2(n,1-12) is an array of monthly mean temperatures for river n
+
+*Our sources are:
+Perry_96 - used mean from Perry, 1996 (Journal of Geophysical 
+           Research, Vol.101, No. D16, pp. 21339-21349
+           September 27, 1996) for monthly values (smaller rivers)
+USGS     - http://waterdata.usgs.gov/nwis/sw
+RIVDIS   - http://www.RivDis.sr.unh.edu or
+           http://www.daac.ornl.gov/daacpages/rivdis.html
+RIVDISP  - http://www.RivDis.sr.unh.edu or
+           http://www.daac.ornl.gov/daacpages/rivdis.html
+           & scaled up to Perry
+Arctic   - http://www.r-arcticnet.sr.unh.edu
+ArcticP  - http://www.r-arcticnet.sr.unh.edu & scaled up to Perry
+DervdRD  - annual mean values from Perry 96, monthly cycle from RIVDIS
+           rivers with nearby location, scaled to Perry again
+DervdRDP - annual mean values from Perry 96, monthly cycle from RIVDIS
+           rivers with nearby location
+SummRD   - summation of multiple RIVDIS rivers
+SummRDP  - summation of multiple RIVDIS rivers and then scaled to Perry 96
+SummArc  - summation of multiple Arctic rivers and then scaled to Perry 96
+RVDArc   - summation of Arctic and RIVDIS rivers.
+RVDArcP  - summation of Arctic and RIVDIS rivers, scaled to Perry 96.
+ArcRD    - Arctic rivers scaled to RIVDIS
+ArcRDP   - Arctic rivers scaled to RIVDIS and then scaled to Perry 96
+DervUSGS - annual mean values from Perry 96, monthly cycle from USGS
+           rivers with nearby location
+DervdArc - annual mean values from Perry 96, monthly cycle from Arcticnet
+           rivers with nearby location

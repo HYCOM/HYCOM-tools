@@ -1,0 +1,381 @@
+      PROGRAM EXTEND
+      USE MOD_ZA  ! HYCOM array I/O interface
+      IMPLICIT NONE
+C
+C     FLUX ARRAYS.
+C
+      INTEGER, ALLOCATABLE :: MSK(:,:)
+      REAL*4,  ALLOCATABLE :: FOUT(:,:),FIN(:,:,:),FMN(:,:,:)
+C
+      CHARACTER PREAMBL(5)*79,CNAME*8
+C
+C     NAMELIST.
+C
+      REAL*8           FINC,FSTART,WSTART,TSTART,TMAX
+      NAMELIST/AFTIME/ FINC,FSTART,WSTART,TSTART,TMAX
+C
+C**********
+C*
+C 1)  FROM DAILY (SAY) AND MONTHLY FLUX FIELDS ON THE MODEL GRID,
+C      CREATE A TIME-INTERPOLATED MODEL GRID FLUX FILE
+C      SUITABLE FOR INPUT TO THE HYCOM OCEAN MODEL OVER THE GIVEN
+C      REGION.  LINEAR INTERPOLATION IN TIME IS USED BETWEEN
+C      HIGH FREQUENCY FIELDS.  IF THEY END BEFORE TMAX, THE FIELDS
+C      ARE EXTENDED USING PERSISTANCE PLUS A CLIMATOLOGICAL 
+C      CORRECTION BASED ON THE MONTHLY FIELDS.
+C
+C 2)  NO 2.
+C
+C 3)  NAMELIST INPUT:
+C
+C     /AFTIME/
+C        FINC   - TIME INCREMENT BETWEEN OUTPUT FLUXES     (DAYS)
+C        FSTART - TIME OF HEAT FLUX START                  (DAYS)
+C        WSTART - TIME OF WIND START, IGNORED HERE         (DAYS)
+C        TMAX   - TIME OF END   OF CURRENT INTEGRATION     (DAYS)
+C        TSTART - TIME OF START OF CURRENT INTEGRATION     (DAYS)
+C
+C     NAMELIST /AFTIME/ IS PATTERNED AFTER /XXTIME/ SO THAT THE
+C      MODEL''S STANDARD AWK-BASED RUN SCRIPT CUSTOMIZER CAN ALSO
+C      WORK FOR THE FLUX GENERATION SCRIPT.  IN PARTICULAR, 'WSTART'
+C      IS READ IN, BUT NOT USED.
+C
+C 4)  INPUT:
+C        ON UNIT  5:    NAMELIST /AFTITL/, /AFTIME/
+C        ON UNIT 20:    UNFORMATTED HIGH-FREQ MODEL FIELD FILE
+C        ON UNIT 30:    UNFORMATTED MONTHLY   MODEL FIELD FILE
+C     OUTPUT:
+C        ON UNIT 10:    UNFORMATTED HIGH-FREQ MODEL FIELD FILE
+C
+C 5)  NO 5.
+C
+C 6)  THE INPUT AND OUTPUT FIELDS ARE AT EVERY GRID POINT OF THE MODEL'S
+C     'P' GRID.  ARRAY SIZE IS 'IDM' BY 'JDM'.
+C
+C 7)  MIN, MAX, MEAN AND RMS OF THE ENTIRE BASIN ARE OUTPUT FOR EACH 
+C      RECORD.  NOTE HOWEVER THAT THESE VALUES MAY NOT REPRESENT THE
+C      STATISTICS OF THE FLUXS AS SEEN BY THE MODEL, IF THE INPUT FLUX 
+C      DATA HAS NON-REALISTIC VALUES OVER LAND.  IT IS UP TO THE USER 
+C      TO CHECK THE LOG FILES FOR CONSISTENCY BETWEEN MACHINES.
+C
+C 8)  ALAN J. WALLCRAFT,  NRL,  MARCH 2003.
+C*
+C**********
+C
+      EXTERNAL AVERMS,MINMAX
+C
+      INTEGER    MAXREC
+      PARAMETER (MAXREC=90000)
+C
+      INTEGER NREC
+      REAL*8  WDAY(MAXREC+1),WDAYIN(2),WSTRT,WEND
+C
+      LOGICAL LEND,LFIRST
+      INTEGER I,J,KREC
+      REAL*4  FMON,FDY,WYR,
+     +        XMIN,XMAX,XAVE,XRMS
+      INTEGER K0,K1,K2,K3
+      REAL*4  W0,W1,W2,W3
+C
+C --- MODEL ARRAYS.
+C
+      CALL XCSPMD  !define idm,jdm
+      ALLOCATE(  MSK(IDM,JDM) )
+      ALLOCATE( FOUT(IDM,JDM) )
+      ALLOCATE(  FIN(IDM,JDM,2) )
+      ALLOCATE(  FMN(IDM,JDM,12) )
+C
+C     NAMELIST INPUT.
+C
+      CALL ZHOPEN(6, 'FORMATTED', 'UNKNOWN', 0)
+C
+      FSTART = 0.0
+      WSTART = 0.0
+      TSTART = 0.0
+      TMAX   = 0.0
+      WRITE(6,*) 'READING /AFTIME/'
+      CALL ZHFLSH(6)
+      READ( 5,AFTIME)
+      WRITE(6,AFTIME)
+      WRITE(6,*) 
+      CALL ZHFLSH(6)
+      IF     (FINC.EQ.0.0) THEN
+        WRITE(6,*) 'ERROR - FINC MUST BE POSITIVE'
+        WRITE(6,*) 
+        CALL ZHFLSH(6)
+        STOP
+      ENDIF
+C
+      CALL ZAIOST
+C
+C     INITIALIZE INPUT AND OUTPUT.
+C
+      CALL ZAIOPN('NEW', 10)
+      CALL ZAIOPN('OLD', 20)
+      CALL ZHOPEN(10, 'FORMATTED', 'NEW', 0)
+      CALL ZHOPEN(20, 'FORMATTED', 'OLD', 0)
+C
+      READ( 20,4101) PREAMBL
+      WRITE(PREAMBL(4),'(a,f9.4)') 'aphf_extend: finc =',FINC
+      WRITE(10,4101) PREAMBL
+      WRITE(6,*)
+      WRITE(6, 4101) PREAMBL
+      WRITE(6,*)
+C
+C     READ IN THE MONTHLY FLUXES.
+C     NOTE NO .b FILE.
+C
+      CALL ZAIOPN('OLD', 30)
+      DO KREC= 1,12
+        CALL ZAIORD(FMN(1,1,KREC),MSK,.FALSE., XMIN,XMAX, 30)
+      ENDDO
+      CALL ZAIOCL(30)
+C
+C     PROCESS ALL THE FLUX RECORDS.
+C
+      LEND       = .FALSE.
+      WDAYIN( 2) = 0.0
+      FIN(:,:,2) = 0.0
+      CALL INSWAP(FIN(1,1,1),WDAYIN(1),
+     +            FIN(1,1,2),WDAYIN(2),MSK,CNAME,LEND)
+      CALL INSWAP(FIN(1,1,1),WDAYIN(1),
+     +            FIN(1,1,2),WDAYIN(2),MSK,CNAME,LEND)
+      IF     (LEND) THEN
+        WRITE(6,*) 
+        WRITE(6,*) 'ERROR - SHORT INPUT FILE'
+        WRITE(6,*) 
+        STOP
+      ENDIF
+      LFIRST=.TRUE.
+C
+      NREC = NINT( (TMAX - TSTART) / FINC ) + 1
+C
+      WDAY(1) = FSTART
+      DO 810 KREC= 1,NREC
+C
+C       SPECIFY THE FLUX DAY.
+C
+        WDAY(KREC+1) = FSTART + KREC*FINC
+C
+        IF     (.NOT.LEND) THEN
+C
+C         LINEAR INTERPOLATION IN TIME.
+C
+          W2 = (WDAY(KREC)-WDAYIN(1))/(WDAYIN(2)-WDAYIN(1))
+          W1 = 1.0-W2
+          DO J= 1,JDM
+            DO I= 1,IDM
+              FOUT(I,J) = W1*FIN(I,J,1) + W2*FIN(I,J,2)
+            ENDDO
+          ENDDO
+            write(6,'(a,f12.3,2f8.5)') 
+     &        'linear: wday,w1,w2 = ',wday(krec),w1,w2
+          IF     (WDAY(KREC).GT.WDAYIN(2)-0.01) THEN
+            CALL INSWAP(FIN(1,1,1),WDAYIN(1),
+     +                  FIN(1,1,2),WDAYIN(2),MSK,CNAME,LEND)
+          ENDIF
+        ELSE
+C
+C         PERSISTANCE PLUS A CLIMATOLOGICAL CORRECTION.
+C
+          CALL FCOEFS(K0,K1,K2,K3,W0,W1,W2,W3, WDAY(KREC))
+C
+          IF     (LFIRST) THEN  !FIND MONTHY CLIM AT END
+            DO J= 1,JDM
+              DO I= 1,IDM
+                FIN(I,J,2) = W0*FMN(I,J,K0) + W1*FMN(I,J,K1) +
+     +                       W2*FMN(I,J,K2) + W3*FMN(I,J,K3)
+              ENDDO
+            ENDDO
+            LFIRST = .FALSE.
+          ENDIF
+C
+          DO J= 1,JDM
+            DO I= 1,IDM
+              FMON      = W0*FMN(I,J,K0) + W1*FMN(I,J,K1) +
+     +                    W2*FMN(I,J,K2) + W3*FMN(I,J,K3)
+              FOUT(I,J) = FIN(I,J,1) + (FMON - FIN(I,J,2))
+            ENDDO
+          ENDDO
+        ENDIF
+C
+C       WRITE OUT STATISTICS.
+C
+        CALL MINMAX(FOUT,IDM,JDM, XMIN,XMAX)
+        CALL AVERMS(FOUT,IDM,JDM, XAVE,XRMS)
+        WRITE(6,8100) 'FOUT', XMIN,XMAX,XAVE,XRMS
+C
+C       WRITE OUT HYCOM FLUXS.
+C
+        CALL ZAIOWR(FOUT,MSK,.FALSE., XMIN,XMAX, 10, .FALSE.)
+        WRITE(10,4112) CNAME,WDAY(KREC),WDAY(KREC+1)-WDAY(KREC),
+     +                 XMIN,XMAX
+        CALL ZHFLSH(10)
+C
+        CALL WNDAY(WDAY(KREC), WYR,FDY)
+        WRITE(6,6300) KREC,WDAY(KREC),FDY,NINT(WYR)
+        CALL ZHFLSH(6)
+  810 CONTINUE
+C
+      CALL ZAIOCL(10)
+      CLOSE( UNIT=10)
+C
+C     SUMMARY.
+C
+      CALL WNDAY(WDAY(1), WYR,FDY)
+      WRITE(6,6400) NREC,FDY,NINT(WYR),WDAY(NREC+1)-WDAY(1)
+      CALL ZHFLSH(6)
+      STOP
+C
+ 4101 FORMAT(A79)
+ 4112 FORMAT(2X,A,': day,span,range =',F12.5,F10.6,1P2E16.7)
+ 6000 FORMAT(1X,A,2X,A40 //)
+ 6300 FORMAT(10X,'WRITING FLUX RECORD',I5,
+     +           '    FDAY =',F10.3,
+     +            '  FDATE =',F8.3,'/',I4 /)
+ 6400 FORMAT(I5,' RECORD DATA SET STARTING ON',F8.3,'/',I4,
+     +   ' COVERING',F9.2,' DAYS')
+ 8100 FORMAT(1X,A,': MIN=',F13.8,' MAX=',F13.8,
+     +             ' AVE=',F13.8,' RMS=',F13.8)
+C     END OF PROGRAM MONTHLY.
+      END
+      SUBROUTINE WNDAY(WDAY, YEAR,DAY)
+      IMPLICIT NONE
+      REAL*8 WDAY
+      REAL*4 YEAR,DAY
+C
+C**********
+C*
+C  1) CONVERT 'FLUX DAY' INTO JULIAN DAY AND YEAR.
+C
+C  2) THE 'FLUX DAY' IS THE NUMBER OF DAYS SINCE 001/1901 (WHICH IS 
+C      FLUX DAY 1.0).
+C     FOR EXAMPLE:
+C      A) YEAR=1901.0 AND DAY=1.0, REPRESENTS 0000Z HRS ON 001/1901
+C         SO WDAY WOULD BE 1.0.
+C      B) YEAR=1901.0 AND DAY=2.5, REPRESENTS 1200Z HRS ON 002/1901
+C         SO WDAY WOULD BE 2.5.
+C     YEAR MUST BE NO LESS THAN 1901.0, AND NO GREATER THAN 2099.0.
+C     NOTE THAT YEAR 2000 IS A LEAP YEAR (BUT 1900 AND 2100 ARE NOT).
+C
+C  3) ALAN J. WALLCRAFT, PLANNING SYSTEMS INC., FEBRUARY 1993.
+C*
+C**********
+C
+      INTEGER IYR,NLEAP
+      REAL*8  WDAY1
+C
+C     FIND THE RIGHT YEAR.
+C
+      IYR   = (WDAY-1.0)/365.25
+      NLEAP = IYR/4
+      WDAY1 = 365.0*IYR + NLEAP + 1.0
+      DAY   = WDAY - WDAY1 + 1.0
+      IF     (WDAY1.GT.WDAY) THEN
+        IYR   = IYR - 1
+      ELSEIF (DAY.GE.367.0) THEN
+        IYR   = IYR + 1
+      ELSEIF (DAY.GE.366.0 .AND. MOD(IYR,4).NE.3) THEN
+        IYR   = IYR + 1
+      ENDIF
+      NLEAP = IYR/4
+      WDAY1 = 365.0*IYR + NLEAP + 1.0
+C
+C     RETURN YEAR AND JULIAN DAY.
+C
+      YEAR = 1901 + IYR
+      DAY  = WDAY - WDAY1 + 1.0
+      RETURN
+C     END OF WNDAY.
+      END
+      SUBROUTINE FCOEFS(K0,K1,K2,K3,W0,W1,W2,W3, FDAY)
+      IMPLICIT NONE
+C
+      INTEGER K0,K1,K2,K3
+      REAL*4  W0,W1,W2,W3
+      REAL*8  FDAY
+C
+C     FIND THE MONTHLY INTERPOLATION COEFFICENTS FOR A GIVEN
+C     FLUX DAY.
+C
+      REAL*4     ONE,TWELVE,FIFTEEN
+      PARAMETER (ONE=1.0, TWELVE=12.0, FIFTEEN=15.0)
+C
+      REAL*4 FYR,FDY,YEAR,X,X1
+C
+      CALL WNDAY(FDAY, FYR,FDY)
+      IF     (MOD(NINT(FYR),4).EQ.0) THEN
+        YEAR = 366.0
+      ELSE
+        YEAR = 365.0
+      ENDIF
+C
+      X  = 1.0+MOD(FDY+YEAR-FIFTEEN,YEAR)/(YEAR/TWELVE)
+      K1 = X
+      K0 = MOD(K1+10,12)+1
+      K2 = MOD(K1,   12)+1
+      K3 = MOD(K2,   12)+1
+C
+      X  = MOD(X,ONE)
+      X1 = 1.-X
+      W1 = X1*(1.+X *(1.-1.5*X ))
+      W2 = X *(1.+X1*(1.-1.5*X1))
+      W0 = -.5*X *X1*X1
+      W3 = -.5*X1*X *X
+C
+*     WRITE(6,6000) FDAY,FDY,K0,K1,K2,K3,W0,W1,W2,W3
+*     CALL ZHFLSH(6)
+      RETURN
+ 6000 FORMAT('FCOEFS:',F9.2,F7.2,4I3,4F7.3)
+      END
+      SUBROUTINE INSWAP(FIN1,WDAYIN1,
+     &                  FIN2,WDAYIN2,MSK,CNAME,LEND)
+      USE MOD_ZA  ! HYCOM array I/O interface
+      IMPLICIT NONE
+C
+      CHARACTER CNAME*8
+      LOGICAL   LEND
+      INTEGER   MSK( IDM,JDM)
+      REAL*4    FIN1(IDM,JDM),
+     &          FIN2(IDM,JDM)
+      REAL*8    WDAYIN1,WDAYIN2,WINC
+C
+C     READ A NEW FLUX RECORD
+C
+      INTEGER   IOS,I
+      REAL*4    HMINA,HMAXA,HMINB,HMAXB
+      CHARACTER CLINE*80
+C
+      IF     (.NOT.LEND) THEN
+        FIN1(:,:) = FIN2(:,:)
+        WDAYIN1   = WDAYIN2
+C
+        READ(20,'(A)',IOSTAT=IOS) CLINE
+        IF     (IOS.NE.0) THEN
+          LEND = .TRUE.
+        ELSE
+          I = INDEX(CLINE,':')
+          CNAME = ' '
+          CNAME(MAX(1,10-I):8) = CLINE(MAX(1,10-I):I-1)
+          I = INDEX(CLINE,'=')
+          READ(CLINE(I+1:),*) WDAYIN2,WINC,HMINB,HMAXB
+          IF     (HMINB.EQ.HMAXB) THEN  !constant field
+            FIN2(:,:) = HMINB
+            CALL ZAIOSK(20)
+          ELSE
+            CALL ZAIORD(FIN2,MSK,.FALSE., HMINA,HMAXA, 20)
+            IF     (ABS(HMINA-HMINB).GT.ABS(HMINB)*1.E-4 .OR.
+     &              ABS(HMAXA-HMAXB).GT.ABS(HMAXB)*1.E-4     ) THEN
+              WRITE(6,'(/ a / a,1p3e14.6 / a,1p3e14.6 /)')
+     &          'error - .a and .b grid files not consistent (frm):',
+     &          '.a,.b min = ',HMINA,HMINB,HMINA-HMINB,
+     &          '.a,.b max = ',HMAXA,HMAXB,HMAXA-HMAXB
+              CALL ZHFLSH(6)
+              STOP
+            ENDIF
+          ENDIF  !const.field:else
+        ENDIF  !ios.ne.0:else
+      ENDIF  !.not.lend
+        write(6,'(a,2f12.2)') 'inswap: wdayin = ',wdayin1,wdayin2
+      RETURN
+      END

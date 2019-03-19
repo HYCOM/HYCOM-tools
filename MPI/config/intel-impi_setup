@@ -1,0 +1,46 @@
+#
+# ---------------------------------------------------------------------------
+# common definitions for Intel Fortran and MPI, real*4
+# -fp-model source to maintain bit for bit equality for all NMPI values
+# ---------------------------------------------------------------------------
+#
+# MACROS      DESCRIPTIONS:
+#
+# FC:         Fortran 90 compiler.
+# FCFFLAGS:   Fortran 90 compilation flags.
+# CC:         C compiler.
+# CCFLAGS:    C compilation flags.
+# CPP:        cpp preprocessor (may be implied by FC).
+# CPPFLAGS:   cpp -D macro flags.
+# LD:         Loader.
+# LDFLAGS:    Loader flags.
+# EXTRALIBS:  Extra local libraries (if any).
+#
+FC            =	mpiifort
+FCFFLAGS      =	-traceback -O3 -fp-model source -warn nogeneral -assume byterecl -fPIC
+CC            =	mpiicc
+CCFLAGS       =	-traceback -O -fPIC
+CPP           =	cpp -P
+CPPFLAGS      =	-DIA32 -DREAL4 -DMPI -DENDIAN_IO -DTIMER
+LD            =	$(FC)
+LDFLAGS       =	-V $(FCFFLAGS)
+EXTRALIBS     = 
+
+#
+# --- generic make definitions
+#
+SHELL         = /bin/sh
+RM            = \rm -f
+
+#
+# rules.
+#
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CCFLAGS)  -c $*.c
+
+.f.o:
+	$(FC)             $(FCFFLAGS) -c $*.f
+
+.F.o:
+	$(FC) $(CPPFLAGS) $(FCFFLAGS) -c $*.F

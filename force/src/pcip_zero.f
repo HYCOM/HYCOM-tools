@@ -1,0 +1,75 @@
+      PROGRAM PCZERO
+      USE MOD_ZA  ! HYCOM array I/O interface
+      IMPLICIT NONE
+C
+C     FLUX ARRAYS.
+C
+      INTEGER, ALLOCATABLE :: IPC(:,:)
+      REAL*4,  ALLOCATABLE :: PCM(:,:)
+C
+      REAL*4    PCMIN,PCMAX
+      CHARACTER PREAMBL(5)*79
+C
+C**********
+C*
+C 1)  CREATE A MODEL GRID ZERO PCIP FILE SUITABLE FOR INPUT
+C      TO THE HYCOM OCEAN MODEL OVER THE GIVEN REGION.
+C*
+C**********
+C
+      INTEGER I,J,KREC
+C
+      CALL XCSPMD
+      ALLOCATE( IPC(IDM,JDM) )
+      ALLOCATE( PCM(IDM,JDM) )
+C
+C     INITIALIZE HYCOM OUTPUT.
+C
+      CALL ZHOPEN(13, 'FORMATTED', 'NEW', 0)
+C
+      PREAMBL(1) = 'Zero Precipitation'
+      PREAMBL(2) = ' '
+      PREAMBL(3) = ' '
+      PREAMBL(4) = ' '
+      WRITE(PREAMBL(5),'(A,2I5,I3,F9.3,F9.2,2F6.3)')
+     +        'i/jdm =',
+     +       IDM,JDM
+      WRITE(13,4101) PREAMBL
+      WRITE(6,*)
+      WRITE(6, 4101) PREAMBL
+      WRITE(6,*)
+C
+C     ZERO FIELD.
+C
+      DO J= 1,JDM
+        DO I= 1,IDM
+          PCM(I,J) = 0.0
+        ENDDO
+      ENDDO
+C
+C     12 MONTHS.
+C
+      CALL ZAIOST
+      CALL ZAIOPN('NEW', 13)
+      DO 810 KREC= 1,12
+        WRITE(6,8100) 'PCIP', 0.0,0.0,0.0,0.0
+C
+C       WRITE OUT HYCOM PCIP.
+C
+        CALL ZAIOWR(PCM,IPC,.FALSE., PCMIN,PCMAX, 13, .FALSE.)
+        WRITE(13,4102) '  precip',KREC,PCMIN,PCMAX
+C
+        WRITE(6,6300) KREC,30.5
+        CALL ZHFLSH(6)
+  810 CONTINUE
+      CALL ZAIOCL(13)
+      CLOSE(UNIT=13)
+      STOP
+C
+ 4101 FORMAT(A79)
+ 4102 FORMAT(A,': month,range = ',I2.2,1P2E16.7)
+ 6300 FORMAT(10X,'WRITING FLUX RECORD',I3,'     FDAY =',F9.2 /)
+ 8100 FORMAT(1X,A,': MIN=',F13.8,' MAX=',F13.8,
+     +             ' AVE=',F13.8,' RMS=',F13.8)
+C     END OF PROGRAM PCZERO.
+      END

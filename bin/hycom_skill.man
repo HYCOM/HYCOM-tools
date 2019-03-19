@@ -1,0 +1,35 @@
+  
+ SYNOPSIS
+  
+     hycom_skill -i1 <chdfi1> -i2 <chdfi2> -o <chdfo> -l <clabel>
+                 -size "<idm>,<jdm>"
+                 -sds1 "<itlsds1>,<lstsds1>,<incsds1>"
+                 -sds2 "<itlsds2>,<incsds2>" -rmse <rmse> -power <p>
+  
+ OPTIONS
+      
+       <chdfi1>  is the 1st input hycom .a file
+       <chdfi2>  is the 2nd input hycom .a file
+       <chdfo>   is the    output hycom .a file
+       <clabel>  is the title
+       <idm>     is the 1st array dimension
+       <jdm>     is the 2nd array dimension
+       <rmse>    is the target rmse value
+       <p>       is the power to raise fields to
+                  =-1.0 -> take -1/      of the fields
+                  =-0.5 -> take -1/sqrt  of the fields
+                  = 0.0 -> take the log  of the fields
+                  = 0.5 -> take the sqrt of the fields
+                  = 1.0 -> use fields as is (default)
+       <itlsds1> is the first field to use from chdfi1
+       <lstsds1> is the last  field to use from chdfi1
+       <incsds1> is the increment between field 's
+                  >0 -> must have itlsds1<=lstsds1
+                  <0 -> must have itlsds1>=lstsds1
+       <itlsds2> is the first field to use from chdfi2
+       <incsds2> is the increment between field's
+                  =0 -> always use itlsds2
+      
+      
+     @(#)AUTHOR A. J. Wallcraft, NRL
+      

@@ -1,0 +1,49 @@
+#
+# ---------------------------------------------------------------------
+# common definitions for IBM SMP Power6, MPI, real*4, 64-bit
+# ---------------------------------------------------------------------
+#
+# MACROS      DESCRIPTIONS:
+#
+# FC:         Fortran 90 compiler.
+# FCFFLAGS:   Fortran 90 compilation flags.
+# CC:         C compiler.
+# CCFLAGS:    C compilation flags.
+# CPP:        cpp preprocessor (may be implied by FC).
+# CPPFLAGS:   cpp -D macro flags.
+# LD:         Loader.
+# LDFLAGS:    Loader flags.
+# EXTRALIBS:  Extra local libraries (if any).
+#
+FC            =	mpxlf95
+FCFFLAGS      =	-qfixed -O3 -qstrict -qarch=pwr6 -qtune=pwr6 -qcache=auto -qspillsize=32000 -qrealsize=4 -qintsize=4 -q64 -qwarn64
+CC            =	mpcc
+CCFLAGS       =	-q64
+CPP           =	/usr/lib/cpp -P
+CPPFLAGS      =	-DAIX -DAIX_NOFL -DREAL4 -DMPI -DTIMER
+LD            =	$(FC)
+LDFLAGS       =	$(FCFFLAGS) -b64
+EXTRALIBS     = -lmass
+
+#
+# --- generic make definitions
+#
+SHELL         = /bin/sh
+RM            = \rm -f
+
+#
+# rules.
+#
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CCFLAGS)  -c $*.c
+
+.f.o:
+	$(FC)             $(FCFFLAGS) -c $*.f
+
+.F.o:
+	$(RM) $<.f
+	$(CPP) $(CPPFLAGS) $< | sed -e '/^ *$$/d' > $<.f
+	$(FC) $(FCFFLAGS) -c $<.f
+	-\mv $<.o $*.o
+	$(RM) $<.f

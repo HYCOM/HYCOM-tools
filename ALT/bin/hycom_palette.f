@@ -1,0 +1,20 @@
+      PROGRAM HYCOM_PALETTE
+      IMPLICIT NONE
+C
+C      INPUT: ONE SET OF RGB VALUES PER LINE AS REALS    [0.0,1.0]
+C     OUTPUT: ONE SET OF RGB VALUES PER LINE AS INTEGERS   [0,255]
+C
+      REAL     APAL(3)
+      INTEGER  IPAL(3),IOS
+C
+      DO
+        READ(5,*,IOSTAT=IOS) APAL
+        IF     (IOS.NE.0) THEN
+          EXIT
+        ENDIF
+        IPAL(1) = MAX(0, MIN(255, NINT(APAL(1)*255.0) ) )
+        IPAL(2) = MAX(0, MIN(255, NINT(APAL(2)*255.0) ) )
+        IPAL(3) = MAX(0, MIN(255, NINT(APAL(3)*255.0) ) )
+        WRITE(6,'(3I4.3)') IPAL
+      ENDDO
+      END

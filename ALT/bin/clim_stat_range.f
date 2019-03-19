@@ -1,0 +1,100 @@
+      PROGRAM CLIM_STAT_RANGE
+      IMPLICIT NONE
+C
+      CHARACTER*40         CTITLE
+      INTEGER              IWI,JWI,KWI,KREC,NREC
+      REAL                 XFIN,YFIN,DXIN,DYIN,ZLEV(99)
+      REAL, ALLOCATABLE :: T(:,:)
+C
+      INTEGER          IOS,K
+      CHARACTER*240     CFILE
+C
+C**********
+C*
+C 1)  PRINT NATIVE CLIMATOLOGY FILE STATISTICS.
+C
+C 2)  CLIM FILE ON UNIT 55, OR USE THE ENVIRONEMENT VARIABLE FOR055.
+C
+C 3)  THE INPUT CLIM FIELDS ARE ON THE 'NATIVE' LAT-LON
+C      GRID, STARTING AT THE POINT 'XFIN' EAST AND 'YFIN' NORTH WITH 
+C      'YFIN' NORTH WITH GRIDSIZE 'DXIN' BY 'DYIN' DEGREES.  THE
+C      INPUT ARRAY SIZE IS 'IWI' BY 'JWI', AND THERE ARE NO REPEATED
+C      NODES (EVEN FOR GLOBAL DATA SETS).  
+C      THE CONTENTS OF THE FILE IS AS FOLLOWS:
+C       RECORD 1:   A 40-CHARACTER TITLE
+C       RECORD 2:   IWI,JWI,KWI,XFIN,YFIN,DXIN,DYIN,ZLEV
+C       RECORD 2+N: CLIM Z-LEVEL N, N=1...KWI.
+C
+C     ALL CLIMATOLOGY FIELDS ARE DEFINED AT EVERY GRID POINT,
+C      INCLUDING LAND AND BELOW THE OCEAN FLOOR.
+C
+C 4)  ALAN J. WALLCRAFT,  FEBRUARY 1993 AND MARCH 2011.
+C*
+C**********
+C
+C     OPEN THE FILE.
+C
+      CFILE = ' '
+      CALL GETENV('FOR055',CFILE)
+      IF     (CFILE.EQ.' ') THEN
+        CFILE = 'fort.55'
+      ENDIF
+      OPEN(UNIT=55, FILE=CFILE, FORM='UNFORMATTED', STATUS='OLD',
+     +     IOSTAT=IOS)
+      IF     (IOS.NE.0) THEN
+        WRITE(0,*) 'clim_stat: cannot open ',TRIM(CFILE)
+        CALL EXIT(1)
+        STOP
+      ENDIF
+C
+C     READ THE FIRST TWO RECORDS.
+C
+      READ(UNIT=55,IOSTAT=IOS) CTITLE
+      IF     (IOS.NE.0) THEN
+        WRITE(0,*) 'clim_stat: cannot read ',TRIM(CFILE)
+        CALL EXIT(2)
+        STOP
+      ENDIF
+      READ( 55)     IWI,JWI,KWI,XFIN,YFIN,DXIN,DYIN,
+     +              (ZLEV(K),K=1,KWI)
+C
+C     READ KWI CLIM RECORDS, AND PRINT RANGES.
+C
+      ALLOCATE( T(IWI,JWI), STAT=IOS )
+      IF     (IOS.NE.0) THEN
+        WRITE(6,*) 'Error in clim_stat_range: could not allocate ',
+     +             IWI*JWI,' 4-byte words'
+        CALL EXIT(2)
+      ENDIF
+C
+      DO KREC= 1,KWI
+        READ( 55,IOSTAT=IOS) T
+        IF     (IOS.NE.0) THEN
+          WRITE(6,6300) NREC,KREC-1
+          CALL EXIT(1)
+          STOP
+        ENDIF
+        WRITE(6,'(f10.3,3x,1p2e16.8)') ZLEV(KREC),
+     &                                 MINVAL(T(:,:)),
+     &                                 MAXVAL(T(:,:))
+      ENDDO
+      CLOSE(UNIT=55)
+C
+C     STATISTICS.
+C
+      WRITE(6,6000) CTITLE
+      WRITE(6,6100) IWI,JWI,KWI,XFIN,YFIN,DXIN,DYIN,
+     +              (ZLEV(K),K=1,KWI)
+*     CALL FLUSH(6)
+      CALL EXIT(0)
+      STOP
+C
+ 6000 FORMAT(A40)
+ 6100 FORMAT(
+     +      'IWI,JWI,KWI =',I4,',',I4,',',I2,
+     +   3X,'XFIN,YFIN =',F8.3,',',F7.3,
+     +   3X,'DXIN,DYIN =',F5.2,',',F4.2 /
+     +      'ZLEV = ',10F7.1 / (7X,10F7.1) )
+ 6300 FORMAT('ERROR - NREC =',I5,' BUT ONLY',I5,' CLIM RECORDS IN FILE')
+C     END OF CLMSTAT.
+      END

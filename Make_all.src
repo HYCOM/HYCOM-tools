@@ -1,0 +1,10 @@
+#
+# --- set ARCH to the correct value for this machine.
+#
+#setenv ARCH intelGF
+#setenv ARCH intelIF
+#setenv ARCH intelPGF
+#setenv ARCH sp4XIF
+#setenv ARCH xc30IF
+#
+setenv ARCH intelIF

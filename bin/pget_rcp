@@ -1,0 +1,69 @@
+#!/bin/csh -f
+#
+# pget:   get exactly one file from newton at navo.
+#
+# Usage:  pget f1 f2
+#
+#         f1   is a file on newton
+#         f2   is where to copy it to
+#
+#         f1 may use a local unix path 
+#            (~user/file or /p/work[12]/user/file for /u/home/user/file)
+#         f2 may be a directory
+#
+# Uses rcp to newton.
+# Finally uses rsh to release the newton file back to tape.
+# Note that rcp and rsh require an appropriate .rhosts on newton.
+#
+# Alan J. Wallcraft,  NRL,  June 1997.
+#
+#set echo
+
+if ($#argv != 2) then
+    echo "Usage:  pget f1 f2"
+    exit 1
+endif
+
+#
+# f1 can use a unix path
+#
+set f1b=`basename $1`
+set f1d=`dirname $1`
+if (-d $f1d) then
+  set f1u=`cd $f1d ; pwd`/$f1b
+else
+  set f1u=$1
+endif
+set f1=`echo $f1u | sed -e 's?^/p/home/?/u/home/?'  -e 's?^/p/work[12]/?/u/home/?'`
+
+#
+# f2 can be a directory
+#
+if (-d $2) then
+  set f2=${2}/$f1b
+else
+  set f2=$2
+endif
+
+#
+# --- try newton.
+#
+###/usr/bin/rsh newton -n /usr/bin/stage ${f1}
+#
+echo rcp newton:${f1} ${f2}
+/usr/bin/rcp newton:${f1} ${f2}
+#
+if ($status == 0) then
+####
+#### --- force the newton file back to tape.
+####
+###   nohup /usr/bin/rsh newton -n /usr/bin/release -a ${f1} >& /dev/null &
+else
+#
+# --- newton failed, no alternative on IBM SP.
+# --- return a zero length file.
+#
+   /bin/rm ${f2}
+   touch   ${f2}
+   echo FAILED: rcp newton:${f1} ${f2}
+endif

@@ -1,0 +1,22 @@
+#
+# --- set NCDFC to the root directory for netCDF version 4.3.
+# --- set NCDF  to the root directory for netCDF version 4.3 Fortran.
+# ---   available from: http://www.unidata.ucar.edu/packages/netcdf/
+#
+# --- Use EXTRANCDF for the libraries needed for NCDF v4.3 or later
+# --- This almost always includes netcdf and netcdff
+#
+# --- Note that the Fortran 90 routines and module files are required.
+#
+# --- DoD HPC systems with gfortran:
+unset echo
+module   load costinit
+module unload netcdf-c
+module   load netcdf-c/gnu/4.3.3.1
+module unload netcdf-fortran
+module   load netcdf-fortran/gnu/4.4.2
+modile list
+set echo
+setenv NCDFC	 ${NETCDFC_HOME}
+setenv NCDF	 ${NETCDFFORTRAN_HOME}
+setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -lnetcdf -lnetcdff"

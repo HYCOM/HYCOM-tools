@@ -1,0 +1,25 @@
+HYCOM-tools/meanstd/src/README.tools.meanstd.src:
+
+Domain-independent source code for forming the mean or mean-squared or 
+standard deviation of a sequence of archive files.
+
+All programs read regional.grid.b at run-time to get idm and jdm for the 
+particular region being processed.
+
+The Makefile is configured to key on ../../config/$(ARCH)_setup for
+machine-dependent definitions, see ../../config/README.tools.config.  When 
+running on (say) a Linux PC, ARCH is "intel*" and an individual make 
+command for gfortran might be:  make hycom_mean ARCH=intelGF >& Make_hycom_mean.log
+
+Typically all executables are created just once by editing Make_all.src 
+for the correct ARCH and then issuing the command csh Make_all.csh.
+
+The program hycom_mean will form the mean or mean-squared of a
+sequence of archive files.  It can be used incrementally, i.e. a
+previously calculated mean or mean-squared can be part of the input.
+
+The program hycom_std will form the standard deviation of a sequence of 
+archive files, from their mean and mean-squared files.
+
+The layered means are weighted by the layer thickness, but the mixed layer
+means and all non-layered means are simple means.

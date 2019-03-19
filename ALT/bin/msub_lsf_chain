@@ -1,0 +1,83 @@
+#! /bin/csh -f
+#
+# msub:   Submit a sequence of identical LSF jobs, each chained to
+#         the one before it.
+#
+# Usage:   msub cfile fjob [njob]
+#
+#          cfile is the basic LSF script
+#          fjob is the number (00-99) used to identify the first job
+#          njob is the number of jobs to chain
+#
+#          msub cfile fjob  is treated as  msub cfile fjob 1
+#
+# Use msub_csh on machines without LSF.
+#
+
+if ($#argv != 3 && $#argv != 2) then
+    echo2 "Usage:  msub cfile fjob [njob]"
+    exit 1
+endif
+
+if (! -f $1) then
+    echo2 "msub:  '$1' does not exist"
+    exit 1
+endif
+
+if ($#argv == 2) then
+@ fj = $2
+@ lj = 1
+else
+@ fj = $2
+@ lj = $3
+endif
+
+if ( $fj < 1 || $lj < 1 ) then
+    echo2 "msub:  fjob or njob < 1  (msub cfile fjob [njob])"
+    exit 1
+endif
+
+if ( $fj > 99 ) then
+    echo2 "msub:  fjob > 99  (msub cfile fjob [njob])"
+    exit 1
+endif
+
+#
+# --- awk script for next job name
+#
+cat - > /tmp/$$.awk <<'E-o-A'
+BEGIN { for ( i=65;i <= 89; i++)
+		c[sprintf("%c",i)] = sprintf("%c",i+1)
+}
+/[0-9]$/  { printf("%s%s\n",$0,"A")}
+/[A-Y]$/  { printf("%s%s\n",substr($0,1,length($0)-1),c[substr($0,length($0))])}
+/[1-9]Z$/ { printf("%s%s%s\n",substr($0,1,length($0)-2),substr($0,length($0)-1,1)+1,"A")}
+/0Z$/     { next }
+'E-o-A'
+
+#
+# --- first job (no wait).
+#
+set file = $1:r
+set nj = `echo $fj | awk '{printf("%02d", $1)}'`
+set newname = ${file}${nj}
+set echo
+bsub -J ${newname} \
+     -o ${newname}.log < $1
+unset echo
+
+#
+# --- rest of jobs, chained together
+#
+@ i = 1
+while ($i < $lj)
+  set reqname = ${newname}
+  set newname = `echo ${reqname} | awk -f /tmp/$$.awk`
+#
+  set echo
+  bsub -J ${newname} -w "ended(${reqname})" \
+       -o ${newname}.log < $1
+  unset echo
+#
+  @ i = $i + 1
+end

@@ -1,0 +1,114 @@
+#! /bin/csh -f
+#
+# msub:   Submit a sequence of identical CODINE/GRD/SGE jobs with a specified
+#         number of waiting hours between each.
+#
+# Usage:   msub cfile fjob [ljob whrs]
+#
+#          cfile is the basic CODINE or GRD or SGE script
+#          fjob is the number (00-99) used to identify the first job
+#          ljob is the number (00-99) used to identify the last  job
+#          whrs is the number of hours to wait between jobs
+#
+#          msub cfile fjob  is treated as  msub cfile fjob fjob 1
+#
+# Use msub_csh on machines without CODINE or GRD or SGE.
+#
+
+
+if ($#argv != 4 && $#argv != 2) then
+    echo2 "Usage:  msub cfile fjob [ljob whrs]"
+    exit 1
+endif
+
+if (! -f $1) then
+    echo2 "msub:  '$1' does not exist"
+    exit 1
+endif
+
+if ($#argv == 2) then
+@ fj = $2
+@ lj = $2
+@ wh = 1
+else
+@ fj = $2
+@ lj = $3
+@ wh = $4
+endif
+
+if ( $fj > $lj ) then
+    echo2 "msub:  fjob > ljob  (msub cfile fjob [ljob whrs])"
+    exit 1
+endif
+
+if ( $fj < 1 || $lj < 1 ) then
+    echo2 "msub:  fjob or ljob < 1  (msub cfile fjob [ljob whrs])"
+    exit 1
+endif
+
+if ( $fj > 99 || $lj > 99 ) then
+    echo2 "msub:  fjob or ljob > 99  (msub cfile fjob [ljob whrs])"
+    exit 1
+endif
+
+if ( $wh < 1 ) then
+    echo2 "msub:  whrs < 1  (msub cfile fjob [ljob whrs])"
+    exit 1
+endif
+
+#
+# --- first job (no wait).
+#
+set file = $1:r
+
+set nj = `echo $fj | awk '{printf("%02d", $1)}'`
+set echo
+qsub -N     R${file}${nj} \
+     -o $cwd/${file}${nj}.log -j y $1
+unset echo
+
+#
+# --- rest of jobs (wait increasing by whrs between each).
+#
+set dinc = `echo $wh | awk '{printf("%2d", int(($1+0.1)/24))}'`
+set hinc = `echo $wh $dinc | awk '{printf("%2d", $1-24*$2)}'`
+#
+set mon = `date '+%m'`
+set day = `date '+%d'`
+set hrs = `date '+%H'`
+set min = `date '+%M'`
+#
+@ i = $fj + 1
+while ($i <= $lj)
+  set hrs = `echo $hrs $hinc | awk '{printf("%2d", $1+$2)}'`
+  if ($hrs > 23) then
+    set hrs = `echo $hrs | awk '{printf("%2d", $1-24)}'`
+    set day = `echo $day | awk '{printf("%2d", $1+ 1)}'`
+  endif
+  set day = `echo $day $dinc | awk '{printf("%2d", $1+$2)}'`
+  if ($mon == "2") then
+    if ($day > "28") then
+      set mon = "3"
+      set day = `echo $day | awk '{printf("%2d", $1-28)}'`
+    endif
+  elseif ($mon == "4" || $mon == "6" || $mon == "9" || $mon == "11") then
+    if ($day > "30") then
+      set mon = `echo $mon | awk '{printf("%2d", $1+ 1)}'`
+      set day = `echo $day | awk '{printf("%2d", $1-30)}'`
+    endif
+  else
+    if ($day > "31") then
+      set mon = `echo $mon | awk '{printf("%2d", $1%12+1)}'`
+      set day = `echo $day | awk '{printf("%2d", $1-31)}'`
+    endif
+  endif
+#
+  set nj = `echo $i | awk '{printf("%02d", $1)}'`
+  set nw = `echo $mon $day $hrs $min | awk '{printf("%02d/%02d %02d:%02d",$1,$2,$3,$4)}'`
+  set echo
+  qsub -a "${nw}" -N      R${file}${nj} \
+                  -o  $cwd/${file}${nj}.log -j y $1
+  unset echo
+#
+  @ i = $i + 1
+end

@@ -1,0 +1,34 @@
+HYCOM-tools/force/src/README.tools.force.src:
+
+Domain-independent source code for interpolation of NRL (Naval Research 
+Laboratory) format wind/flux files on "native" grid to HYCOM model grid.
+
+All programs read regional.grid.b at run-time to get idm and jdm for the 
+particular region being processed.  They may also read regional.grid.a to
+find the grid location.
+
+The Makefile is configured to key on ../../config/$(ARCH)_setup for
+machine-dependent definitions, see ../../config/README.tools.config.  When 
+running on (say) a Linux PC, ARCH is "intel*" and an individual make 
+command for gfortran might be:  make zero ARCH=intelGF >& Make_zero.log
+
+Typically all executables are created just once by editing Make_all.src 
+for the correct ARCH and then issuing the command csh Make_all.csh.
+
+Executables that use the netCDF library (version 4.X) are created just 
+once by editing HYCOM-tools/Make_ncdf.src for the correct root directory and 
+then issuing the command  csh Make_ncdf.csh.  The netCDF library is at:
+    http://www.unidata.ucar.edu/packages/netcdf/
+These are optional, ignore Make_ncdf.csh if you don't want to use NetCDF.
+
+The wind/flux data sets are input on their native grid, from standard NRL
+format wind/flux files (a Fortran unformatted sequential file with a 
+single header record identifying wind dates, followed by the wind/flux
+data).  There is also a wind "offset" input file, that is often zero
+but allows the annual mean wind to be from a different wind data set.
+The offset can also be a different field for each sample time.  This 
+allows combining a climatology with an anomaly field.
+
+The output data sets are atmospheric forcing in MKS (except temperature
+is in degrees C), with heat flux positive into the ocean.  They also 
+include any bias or minimum wind speed constraints.  

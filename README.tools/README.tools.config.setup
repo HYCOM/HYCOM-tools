@@ -1,0 +1,42 @@
+Makefiles under the HYCOM-tools directory source HYCOM-tools/config/$(ARCH)_setup, 
+where ARCH defines exactly what machine architecture to target.
+
+The specified HYCOM-tools/config/$(ARCH)_setup file must already exist.  So far
+the following are available:
+
+intelGF_setup  - Intel Linux/gfortran
+intelIF_setup  - Intel Linux/ifort
+intelPGF_setup - Intel Linux/pgf90
+sp4XLF_setup   - POWER4 AIX/xlf90
+xc30IF_setup   - Command Node Linux/ftn (ifort)
+
+The following environment variables must be defined in each config file:
+
+# FC:         Fortran 90 compiler.
+# FCFFLAGS:   Fortran 90 compilation flags.
+# CC:         C compiler.
+# CCFLAGS:    C compilation flags.
+# CPP:        cpp preprocessor (may be implied by FC).
+# CPPFLAGS:   cpp -D macro flags (see README.macros).
+# LD:         Loader.
+# LDFLAGS:    Loader flags.
+# EXTRALIBS:  Extra local libraries (if any).
+
+In addition, make suffix rules are required for .c.o, .f.o, and .F.o 
+(i.e. how to create .o files from .c, .f and .F files).  In the 
+simplest case these are:
+
+#
+# rules.
+#
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CCFLAGS)  -c $*.c
+
+.f.o:
+	$(FC)             $(FCFFLAGS) -c $*.f
+
+.F.o:
+	$(FC) $(CPPFLAGS) $(FCFFLAGS) -c $*.F
+
+Note that the rule command lines start with a tab character.

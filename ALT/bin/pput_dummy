@@ -1,0 +1,71 @@
+#!/bin/csh -f
+#
+# pput:   put exactly one file onto vincent at navo.
+#
+#         This version tries to be safe and to return quickly.
+#         It first makes a local link from f1 to PPUT/`basename f2`
+#         (or PPUT/`basename f2`_$$) and then submits a background job
+#         to periodically attempt a pput_rmv to vincent-hip0 or vincent.
+#         Note that a successfull pput_rmv will delete PPUT/`basename f2`.
+#         This command may not work in a NQS $TMPDIR, because NQS 
+#         deletes such directories at the end of each NQS job.
+#
+#         THIS VERSION DOES NOT COPY THE FILE, I.E. SKIPS pput_rmv.
+#
+# Usage:  pput f1 f2
+#
+#         f1   is a file to be copied to the vincent
+#         f2   is where on the vincent to copy it to
+#
+#         f2 may use a local unix path 
+#            (~user/file or /workspace/$user/file for /hafs1/$user/file)
+#         f2 may be a directory ON THE LOCAL UNIX SYSTEM
+#         f2, after translation, must be a valid filename on vincent and 
+#             the vincent subdirectory it will be in must already exist.
+#
+#set echo
+
+if ($#argv != 2) then
+    echo "Usage:  pput f1 f2"
+    exit 1
+endif
+
+#
+# f1 must be a plain file.
+#
+if (! -f $1) then
+    echo "pput: '$1' does not exist"
+    exit 2
+endif
+
+#
+# f2 can use a unix path, and can be a unix directory.
+#
+set f1b=`basename $1`
+set f2b=`basename $2`
+set f2d=`dirname  $2`
+if (-d $2) then
+  set f2u=`cd $2   ; pwd`/$f1b
+else if (-d $f2d) then
+  set f2u=`cd $f2d ; pwd`/$f2b
+else
+  set f2u=$2
+endif
+set f2=`echo $f2u | sed -e 's?/hafs1/?/hafs1/?' -e 's?/workspace/?/hafs1/?'`
+
+set f1d=`dirname  $1`
+set f2b=`basename $f2u`
+if (! -e ${f1d}/PPUT) then
+  mkdir ${f1d}/PPUT
+endif
+if (-e ${f1d}/PPUT/${f2b}) then
+  set f1t=${f1d}/PPUT/${f2b}_$$
+else
+  set f1t=${f1d}/PPUT/${f2b}
+endif
+
+#
+# link to temporary local file, exit.
+#
+ln $1 $f1t
+exit 0

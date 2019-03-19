@@ -1,0 +1,72 @@
+#!/bin/csh -f
+#
+# pput:   put exactly one file onto msas1 at navo.
+#
+# Usage:  pput f1 f2
+#
+#         f1   is a file to be copied to the msas1
+#         f2   is where on the msas1 to copy it to
+#
+#         f2 may use a local unix path 
+#            (~user/file or /scr/user/file for /u/b/user/file)
+#         f2 may be a directory ON THE LOCAL UNIX SYSTEM
+#         f2, after translation, must be a valid filename on msas1 and 
+#             the msas1 subdirectory it will be in must already exist.
+#
+# Uses rcp to msas1-hip0.
+# Finally uses rsh to dmput the new msas1 file to tape.
+# Note that rcp and rsh require an appropriate .rhosts on msas1.
+#
+# Alan J. Wallcraft,  NRL,  June 1997.
+#
+#set echo
+
+if ($#argv != 2) then
+    echo "Usage:  pput f1 f2"
+    exit 1
+endif
+
+#
+# f1 must be a plain file.
+#
+if (! -f $1) then
+    echo "pput: '$1' does not exist"
+    exit 2
+endif
+
+chmod g+r $1
+
+#
+# f2 can use a unix path, and can be a unix directory.
+#
+set f1b=`basename $1`
+set f2b=`basename $2`
+set f2d=`dirname  $2`
+if (-d $2) then
+  set f2u=`cd $2   ; pwd`/$f1b
+else if (-d $f2d) then
+  set f2u=`cd $f2d ; pwd`/$f2b
+else
+  set f2u=$2
+endif
+set f2=`echo $f2u | sed -e 's?/u/home?/u/b?' -e 's?/scr?/u/b?'`
+
+#
+# --- try msas1-hip0.
+#
+echo rcp $1 msas1-hip0:${f2}
+/usr/bin/rcp $1 msas1-hip0:${f2}
+#
+if ($status == 0) then
+#
+# --- force the msas1 file back to tape.
+#
+   nohup /usr/bin/rsh msas1-hip0 -n /usr/bin/dmput -r ${f2} >& /dev/null &
+else
+#
+# --- msas1-hip0 failed, try msas1.
+#
+   echo rcp $1 msas1:${f2}
+   /usr/bin/rcp $1 msas1:${f2}
+   nohup /usr/bin/rsh msas1 -n /usr/bin/dmput -r ${f2} >& /dev/null &
+endif

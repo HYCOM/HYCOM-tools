@@ -1,0 +1,355 @@
+
+-------------------------- /opt/cray/ari/modulefiles ---------------------------
+alps/5.2.0-2.0502.8594.12.4.ari
+alps/5.2.1-2.0502.9041.11.6.ari
+alps/5.2.1-2.0502.9072.13.1.ari
+alps/5.2.4-2.0502.9774.31.11.ari
+alps/5.2.5-2.0502.9955.44.1.ari(default)
+configuration/1.0-1.0502.49604.2.1.ari
+configuration/1.0-1.0502.53348.1.16.ari
+configuration/1.0-1.0502.60535.1.2.ari(default)
+crash/7.1.0-1.0502.61934.1.1.ari
+crash_utility/1.0-1.0502.62977.3.1.ari
+dmapp/7.0.1-1.0502.11080.8.76.ari(default)
+dmapp/7.0.1-1.0502.8638.9.93.ari
+dmapp/7.0.1-1.0502.9501.5.219.ari
+dvs/2.4_0.9.0-1.0502.1696.2.39.ari
+dvs/2.5_0.9.0-1.0502.1873.1.145.ari
+dvs/2.5_0.9.0-1.0502.2188.1.116.ari(default)
+gni-headers/3.0-1.0502.8554.6.6.ari
+gni-headers/3.0-1.0502.9684.5.2.ari
+gni-headers/4.0-1.0502.10859.7.8.ari(default)
+hosts/1.0-1.0502.49607.2.44.ari
+hosts/1.0-1.0502.53297.1.142.ari
+hosts/1.0-1.0502.60484.1.61.ari(default)
+krca/1.0.0-2.0502.50273.6.28.ari
+krca/1.0.0-2.0502.53880.4.104.ari
+krca/1.0.0-2.0502.63139.4.31.ari(default)
+lbcd/2.1-1.0502.49611.2.1.ari
+lbcd/2.1-1.0502.53290.1.15.ari
+lbcd/2.1-1.0502.60476.1.1.ari(default)
+logcb/1.0-1.0502.48706.2.2.ari
+logcb/1.0-1.0502.53286.1.1.ari
+logcb/1.0-1.0502.60472.1.1.ari(default)
+nodehealth/5.1-1.0502.50886.9.4.ari
+nodehealth/5.1-1.0502.56494.9.2.ari
+nodehealth/5.1-1.0502.64995.8.11.ari(default)
+nodestat/2.2-1.0502.49618.2.32.ari
+nodestat/2.2-1.0502.53712.3.109.ari
+nodestat/2.2-1.0502.60539.1.31.ari(default)
+pdsh/2.26-1.0502.48761.1.2.ari
+pdsh/2.26-1.0502.53339.1.1.ari
+pdsh/2.26-1.0502.60659.2.1.ari(default)
+pmi/5.0.10-1.0000.11050.0.0.ari(default)
+pmi/5.0.11
+pmi/5.0.3-1.0000.9981.128.2.ari
+pmi/5.0.5-1.0000.10300.134.8.ari
+pmi/5.0.8-1.0000.10843.170.1.ari
+pmi-lib/5.0.11
+rca/1.0.0-2.0502.49765.5.41.ari
+rca/1.0.0-2.0502.53711.3.127.ari
+rca/1.0.0-2.0502.60530.1.62.ari(default)
+sdb/1.0-1.0502.50558.6.21.ari
+sdb/1.0-1.0502.55976.5.27.ari
+sdb/1.1-1.0502.63652.4.25.ari(default)
+shared-root/1.0-1.0502.50723.4.11.ari
+shared-root/1.0-1.0502.53337.1.119.ari
+shared-root/1.0-1.0502.60523.1.31.ari(default)
+switch/1.0-1.0502.50885.3.4.ari
+switch/1.0-1.0502.54233.2.96.ari
+switch/1.0-1.0502.60522.1.61.ari(default)
+sysutils/1.0-1.0502.49002.2.2.ari
+sysutils/1.0-1.0502.53306.1.1.ari
+sysutils/1.0-1.0502.60492.1.1.ari(default)
+udreg/2.3.2-1.0502.10518.2.17.ari(default)
+udreg/2.3.2-1.0502.8413.2.9.ari
+udreg/2.3.2-1.0502.9275.1.12.ari
+ugni/5.0-1.0502.8670.4.22.ari
+ugni/5.0-1.0502.9685.4.24.ari
+ugni/6.0-1.0502.10863.8.29.ari(default)
+wlm_detect/1.0-1.0502.48996.3.2.ari
+wlm_detect/1.0-1.0502.53341.1.1.ari
+wlm_detect/1.0-1.0502.64649.2.1.ari(default)
+wlm_trans/1.0-1.0502.48960.3.67.ari
+wlm_trans/1.0-1.0502.55978.2.29.ari
+wlm_trans/1.0-1.0502.64650.3.9.ari(default)
+xpmem/0.1-2.0502.50559.4.2.ari
+xpmem/0.1-2.0502.55507.3.2.ari
+xpmem/0.1-2.0502.64982.5.3.ari(default)
+
+---------------------- /opt/cray/craype/2.4.1/modulefiles ----------------------
+craype-abudhabi            craype-hugepages8M
+craype-abudhabi-cu         craype-intel-knc
+craype-accel-host          craype-interlagos
+craype-accel-nvidia20      craype-interlagos-cu
+craype-accel-nvidia35      craype-istanbul
+craype-arm-thunderx        craype-ivybridge
+craype-barcelona           craype-mc12
+craype-haswell             craype-mc8
+craype-hugepages128K       craype-network-aries
+craype-hugepages128M       craype-network-gemini
+craype-hugepages16M        craype-network-infiniband
+craype-hugepages256M       craype-network-none
+craype-hugepages2M         craype-sandybridge
+craype-hugepages32M        craype-shanghai
+craype-hugepages4M         craype-target-compute_node
+craype-hugepages512K       craype-target-local_host
+craype-hugepages512M       craype-target-native
+craype-hugepages64M
+
+---------------------------- /opt/cray/modulefiles -----------------------------
+atp/1.7.5
+atp/1.8.3(default)
+atp/2.0.0
+atp/2.1.0
+atp/2.1.0_debug
+capmc/1.0-1.0702.37257.16.1(default)
+ccm/2.2.0-1.0502.50075.4.85
+ccm/2.2.0-1.0502.55200.8.95
+ccm/2.2.1-1.0502.62540.4.51(default)
+cdt/17.03
+cray-ccdb/1.0.6(default)
+cray-ccdb/1.0.7
+cray-ccdb/2.0.0
+cray-ccdb/2.0.3
+cray-cti/1.0.4(default)
+cray-ga/5.3.0.2(default)
+cray-ga/5.3.0.4
+cray-ga/5.3.0.5
+cray-ga/5.3.0.7
+cray-hdf5/1.10.0.1
+cray-hdf5/1.8.13(default)
+cray-hdf5/1.8.14
+cray-hdf5/1.8.16
+cray-hdf5-parallel/1.10.0.1
+cray-hdf5-parallel/1.8.13(default)
+cray-hdf5-parallel/1.8.14
+cray-hdf5-parallel/1.8.16
+cray-lgdb/2.4.4(default)
+cray-lgdb/2.4.5
+cray-lgdb/3.0.0
+cray-lgdb/3.0.5
+cray-libsci/13.0.0
+cray-libsci/13.1.0(default)
+cray-libsci/13.3.0
+cray-libsci/16.03.1
+cray-libsci/16.11.1
+cray-libsci_acc/3.0.2(default)
+cray-mpich/7.0.0
+cray-mpich/7.0.3
+cray-mpich/7.2.4(default)
+cray-mpich/7.3.0
+cray-mpich/7.3.2
+cray-mpich/7.5.3
+cray-mpich-abi/7.0.3
+cray-mpich-abi/7.2.4(default)
+cray-mpich-abi/7.3.0
+cray-mpich-abi/7.3.2
+cray-mpich-abi/7.5.3
+cray-mpich-compat/v6
+cray-mpich-compat/v7
+cray-netcdf/4.3.2(default)
+cray-netcdf/4.3.3.1
+cray-netcdf/4.4.0
+cray-netcdf/4.4.1.1
+cray-netcdf-hdf5parallel/4.3.2(default)
+cray-netcdf-hdf5parallel/4.3.3.1
+cray-netcdf-hdf5parallel/4.4.0
+cray-netcdf-hdf5parallel/4.4.1.1
+cray-parallel-netcdf/1.4.0
+cray-parallel-netcdf/1.5.0
+cray-parallel-netcdf/1.6.1(default)
+cray-parallel-netcdf/1.8.0
+craype/2.1.0
+craype/2.1.1
+craype/2.2.0
+craype/2.4.1(default)
+craype/2.5.0
+craype/2.5.3
+craype/2.5.9
+cray-petsc/3.5.3.2(default)
+cray-petsc/3.6.1.0
+cray-petsc/3.6.3.0
+cray-petsc/3.7.4.0
+cray-petsc-64/3.5.3.2(default)
+cray-petsc-64/3.6.1.0
+cray-petsc-64/3.6.3.0
+cray-petsc-64/3.7.4.0
+cray-petsc-complex/3.5.3.2(default)
+cray-petsc-complex/3.6.1.0
+cray-petsc-complex/3.6.3.0
+cray-petsc-complex/3.7.4.0
+cray-petsc-complex-64/3.5.3.2(default)
+cray-petsc-complex-64/3.6.1.0
+cray-petsc-complex-64/3.6.3.0
+cray-petsc-complex-64/3.7.4.0
+craypkg-gen/1.1.0
+craypkg-gen/1.1.1
+craypkg-gen/1.2.0
+craypkg-gen/1.2.1
+craypkg-gen/1.3.2(default)
+craypkg-gen/1.3.3
+craypkg-gen/1.3.5
+cray-shmem/7.0.0
+cray-shmem/7.0.3
+cray-shmem/7.2.4(default)
+cray-shmem/7.3.0
+cray-shmem/7.3.2
+cray-shmem/7.5.3
+cray-snplauncher/7.0.0
+cray-snplauncher/7.2.4
+cray-snplauncher/7.3.0
+cray-snplauncher/7.3.2
+cray-snplauncher/7.5.3
+cray-tpsl/1.4.1
+cray-tpsl/1.5.1(default)
+cray-tpsl/1.5.2
+cray-tpsl/16.03.1
+cray-tpsl/16.12.1
+cray-tpsl-64/1.5.1(default)
+cray-tpsl-64/1.5.2
+cray-tpsl-64/16.03.1
+cray-tpsl-64/16.12.1
+cray-trilinos/11.12.1.4(default)
+cray-trilinos/11.12.1.5
+cray-trilinos/11.8.1.0
+cray-trilinos/12.2.1.0
+cray-trilinos/12.8.1.0
+cudatoolkit/5.5.22-1.0502.7944.3.1
+cudatoolkit/5.5.51-1.0502.9594.1.1
+cudatoolkit/6.5.14-1.0502.9613.6.1
+cudatoolkit/6.5.14-1.0502.9836.8.1
+cudatoolkit/7.0.28-1.0502.10280.4.1
+cudatoolkit/7.0.28-1.0502.10742.5.1
+cudatoolkit/7.5.18-1.0502.10743.2.1(default)
+fftw/2.1.5.9
+fftw/3.3.0.4(default)
+fftw/3.3.4.0
+fftw/3.3.4.11
+fftw/3.3.4.4
+fftw/3.3.4.6
+fftw/3.3.4.7
+iobuf/2.0.5(default)
+iobuf/2.0.6
+iobuf/2.0.6.10
+iobuf/2.0.8
+papi/5.3.2
+papi/5.4.1.1(default)
+papi/5.4.1.3
+papi/5.4.3.1
+papi/5.5.1.1
+perftools/6.2.1
+perftools/6.2.5
+perftools/6.3.1
+perftools/6.3.2
+perftools/6.4.6(default)
+perftools-base/6.3.1
+perftools-base/6.3.2
+perftools-base/6.4.6(default)
+perftools-lite/6.2.1
+perftools-lite/6.2.5
+perftools-lite/6.3.1
+perftools-lite/6.3.2
+perftools-lite/6.4.6(default)
+PrgEnv-cray/5.2.14
+PrgEnv-cray/5.2.40
+PrgEnv-cray/5.2.82(default)
+PrgEnv-gnu/5.2.14
+PrgEnv-gnu/5.2.40
+PrgEnv-gnu/5.2.82(default)
+PrgEnv-intel/5.2.14
+PrgEnv-intel/5.2.40
+PrgEnv-intel/5.2.82(default)
+PrgEnv-pgi/5.2.14
+PrgEnv-pgi/5.2.40
+PrgEnv-pgi/5.2.82(default)
+stat/2.1.0.1(default)
+stat/2.2.0.1
+stat/2.2.0.2
+stat/2.2.0.3
+
+------------------------------- /opt/modulefiles -------------------------------
+cce/8.3.3                             intel/16.0.2.181
+cce/8.4.2(default)                    intel/17.0.2.174
+cce/8.4.5                             java/jdk1.7.0_45(default)
+cce/8.5.8                             java/jdk1.8.0_51
+ddt/4.2.0.1_34404                     modules/3.2.10.3(default)
+ddt/4.2.0.3_35818(default)            modules/3.2.10.5
+ddt/5.0.1.3_42607                     modules/3.2.6.7
+ddt-memdebug/5.0.1.3_42607            pbs
+eswrap/1.3.3-1.020200.1280.0(default) pgi/14.3.0(default)
+gcc/4.8.2                             pgi/14.7.0
+gcc/4.9.3(default)                    pgi/15.10.0
+gcc/5.2.0                             pgi/15.7.0
+gcc/5.3.0                             pgi/16.10.0
+gcc/6.1.0                             xc-sysroot/5.2.14
+gcc/6.3.0                             xc-sysroot/5.2.40
+intel/14.0.2.144(default)             xc-sysroot/5.2.82(default)
+intel/15.0.0.090
+utility.c(2245):ERROR:50: Cannot open file '/app/modulefiles/COTS/tecplot/360_2017R2' for 'reading'
+utility.c(2245):ERROR:50: Cannot open file '/app/modulefiles/COTS/tecplot/360_2017R1' for 'reading'
+utility.c(2245):ERROR:50: Cannot open file '/app/modulefiles/COTS/tecplot/360_2017R3' for 'reading'
+utility.c(2245):ERROR:50: Cannot open file '/app/modulefiles/COTS/ffmpeg/.version' for 'reading'
+ffmpeg(3):ERROR:106: Magic cookie '#%Module' missing in '/app/modulefiles/COTS/ffmpeg/.version'
+utility.c(2245):ERROR:50: Cannot open file '/app/modulefiles/COTS/ffmpeg/.version' for 'reading'
+ffmpeg(3):ERROR:106: Magic cookie '#%Module' missing in '/app/modulefiles/COTS/ffmpeg/.version'
+utility.c(2245):ERROR:50: Cannot open file '/app/modulefiles/COTS/tecplot/360_2017R1' for 'reading'
+tecplot(4):ERROR:106: Magic cookie '#%Module' missing in '/app/modulefiles/COTS/tecplot/360_2017R1'
+
+---------------------------- /app/modulefiles/COTS -----------------------------
+abaqus/6.13-4                       lammps/31mar17(default)
+abaqus/6.14-2(default)              lsdyna/971_R7.1.1(default)
+abaqus/6.17-1                       lsdyna/971_R9.0.1
+abinit/7.6.4(default)               ls-opt/4.2
+accelrys/MSModeling.2017(default)   matlab/R2014a
+accelrys/MSModeling.7.0             matlab/R2015a
+aces/3.0.7(default)                 matlab/R2015b
+ansys/162                           matlab/R2016a
+ansys/16.2.0                        matlab/R2016b
+ansys/171                           matlab/R2017a(default)
+ansys/17.1.0                        matlab/R2017b
+ansys/172                           namd/2.12
+ansys/17.2.0(default)               namd/2.9(default)
+ansys/181                           nwchem/6.3
+ansys/18.1.0                        nwchem/6.6(default)
+cfd++/15.1.1(default)               openfoam/2.3.1(default)
+cfd++/16.1.1                        openfoam/4.1
+cobalt/6.0(default)                 pico/4.10(default)
+CTH/11.2                            starccm/12.04.011(default)
+ddt/6.0.4                           starccm/12.04.011-R8
+ddt/7.0.3                           tecplot/360_2013R1
+emacs/25.1.1-gnu(default)           tecplot/360_2015R1
+ensight/10.1.2a                     tecplot/360_2015R2
+ensight/10.1.4a(default)            tecplot/360_2016R1
+ensight/10.1.4b                     tecplot/360_2016R2
+ensight/10.1.6a                     totalview/8.10
+ensight/10.2.1b                     totalview/8.13.0(default)
+ensight/10.2.2b                     totalview/8.15.4
+ffmpeg/2.7.2                        totalview/totalview-support/1.2.0.1
+fieldview/15.0(default)             totalview/totalview-support/1.2.0.5
+fieldview/16.0                      VASP/5.3(default)
+fluent/16.2.0                       VASP/5.3.5
+fluent/17.1.0                       VASP/5.4
+fluent/17.2.0(default)              VASP/5.4.1
+fluent/18.1.0                       vim/7.4(default)
+gamess/01may13                      wpswrt/5.28.000h
+gamess/20apr17(default)             wpswrt/5.34.36
+jove/4.16(default)                  xpdf/3.04(default)
+lammps/1feb14
+
+------------------------- /app/modulefiles/modulefiles -------------------------
+bct-env/0.1(default) create/0.1
+costinit/q3_2014     mpscp/1.3a(default)
+
+---------------------------- /app/modulefiles/devel ----------------------------
+placeholder/1.0.0(default) python/2.7(default)
+
+------------------------- /app/modulefiles/unsupported -------------------------
+ant/1.10.1              paraview/5.0.1_osmesa   paraview/5.4.1_osmesa
+ferret/6.96             paraview/5.1.2          visit/2.10.2
+nco/4.5.2               paraview/5.1.2_osmesa   visit/2.12.0
+paraview/4.3.1          paraview/5.2.0(default) visit/2.12.1(default)
+paraview/4.3.1_osmesa   paraview/5.2.0_osmesa   visit/2.12.3
+paraview/4.4.0          paraview/5.3.0          visit/2.8.2
+paraview/4.4.0_osmesa   paraview/5.3.0_osmesa   visit/2.9.0
+paraview/5.0.1          paraview/5.4.1          visit/2.9.1

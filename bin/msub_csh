@@ -1,0 +1,42 @@
+#! /bin/csh -f
+#
+# msub:   Submit a single model job.
+#
+# Usage:   msub cfile fjob
+#
+#          cfile is the basic C-shell script
+#          fjob is the number (00-99) used to identify the job
+#
+# use msub_nqs on machines that use NQS for batch jobs.
+#
+
+
+if ($#argv != 2 ) then
+    echo2 "Usage:  msub cfile fjob"
+    exit 1
+endif
+
+if (! -f $1) then
+    echo2 "msub:  '$1' does not exist"
+    exit 1
+endif
+
+@ fj = $2
+
+#
+# --- submit job.
+#
+set file = $1:r
+
+set nj = `echo $fj | awk '{printf("%02d", $1)}'`
+set echo
+setenv JOBNAME ${file}${nj}
+
+setenv OS `uname`
+if ($OS == "Linux") then
+# fix a Linux NFS/tcsh bug
+  (/bin/nice -7 /bin/csh $1 |& cat - >& ${JOBNAME}.log) &
+else
+  /bin/nice -7 /bin/csh $1 >& ${JOBNAME}.log &
+endif
+unset echo

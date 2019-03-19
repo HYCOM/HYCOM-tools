@@ -1,0 +1,12 @@
+#
+# --- set ARCH to the correct value for this machine.
+#
+#setenv ARCH amd64-openmpi
+#setenv ARCH hp-intel
+#setenv ARCH intelICE
+#setenv ARCH intel-impi
+#setenv ARCH intel-pe
+#setenv ARCH sp6-nofl
+#setenv ARCH xc30-intel
+#
+setenv ARCH hp-intel

@@ -1,0 +1,52 @@
+HYCOM-tools/plot/src/README.tools.plot.src:
+
+Domain-independent source code for plotting HYCOM archive files, and 
+plotting 2-D fields from any HYCOM *.a file, using NCAR graphics.  
+Alternatively, fields similar to those plotted here can be output 
+in several common data formats by programs in HYCOM-tools/archive/src.  
+These fields can then be plotted by your favorate graphics package.
+
+mod_plot.F and several other source routines are identical to those in 
+HYCOM-tools/archive/src, because both sets of programs are doing similar 
+archive "processing".  These are not hardlinked together, so any
+modifications in one directory must be manually propagated to the other.
+
+All programs read regional.grid.b at run-time to get idm and jdm for the 
+particular region being processed.
+
+There is a fixed size workspace buffer in conrec.f.  If you get the run 
+time error "AREA-MAP ARRAY OVERFLOW" try increasing the size of lgthmp 
+in conrec.f.  Similarly, "MCS TOO SMALL" refers to lgthwk in conrec.f.  
+These parameters are now set relatively large by default.
+
+The Makefile is configured to key on ../../config/$(ARCH)_setup for
+machine-dependent definitions, see ../../config/README.tools.config.  When 
+running on (say) a Linux PC, ARCH is "intel*" and an individual make 
+command for gfortran might be:  make hycomproc ARCH=intelGF >& Make_hycomproc.log
+
+Typically all executables are created just once by editing Make_all.src 
+for the correct ARCH and then issuing the command csh Make_all.csh.
+
+The same configuration file is used for all pre and post-processing 
+programs, but here the Makefile uses ncargf90 in place of $(LD) in order 
+to link in the NCAR graphics package.  Make sure this is in your path 
+and consistent with $(LDFLAGS) as defined in ../../config/$(ARCH)_setup.  
+If you don't have the NCAR graphics package, download it from 
+http://ngwww.ucar.edu/.  If you prefer to use another graphics package, 
+then hycomdata, archv2data and field2data from HYCOM-tools/archive/src 
+provide similar functionality to hycomproc and fieldproc except they 
+output data fields in one of several common formats rather than creating 
+plots of the fields.
+
+Inside Makefile, OPNGKS_OBJ selects the default output type (metafile or 
+PostScript portrait or PostScript landscape).  All three output types 
+can be used by making the specific executables (hp_meta, hp_psp, hp_psl).
+
+The program fieldproc will plot any 2-d horizontal scalar field from a
+HYCOM ".a" data file.  It is based on hycomproc and has similar input.
+
+The program fieldcell will plot any 2-d horizontal scalar field from a
+HYCOM ".a" data file.  It is based on fieldproc and has similar input,
+but the output is a pixel-based image, rather than a vector-based contour,
+and the plot is drawn on one of a large selection of projections, rather 
+than on logical array space.

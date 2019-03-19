@@ -1,0 +1,63 @@
+#
+# ------------------------------------------------------------------------
+# common definitions for IBM SMP Power4, single processor, real*4, 64-bit.
+# ------------------------------------------------------------------------
+#
+# MACROS      DESCRIPTIONS:
+#
+# FC:         Fortran 90 compiler.
+# FCFFLAGS:   Fortran 90 compilation flags.
+# CC:         C compiler.
+# CCFLAGS:    C compilation flags.
+# CPP:        cpp preprocessor (may be implied by FC).
+# CPPFLAGS:   cpp -D macro flags.
+# LD:         Loader.
+# LDFLAGS:    Loader flags.
+# EXTRALIBS:  Extra local libraries (if any).
+#
+FC            =	xlf95
+FCFFLAGS      =	-g -qfixed -O3 -qstrict -qarch=pwr4 -qtune=pwr4 -qcache=auto -qspillsize=32000 -q64 -qwarn64  -qflttrap=overflow:zerodivide:invalid:enable:imprecise -qsigtrap
+#
+# -g          = debugging (no effect on optimization),
+# -qfixed     = fixed line structure,
+# -O3         = medium optimization (2,3,4,5 possible),
+# -qstrict    = keeps O3 optimization from changing semantics,
+# -qarch      = the architecture,
+# -qtune      = tunes machine instruction to processor,
+# -qcache     = the cache configuration,
+# -qspillsize = internal compiler memory option,
+# -q64        = 64-bit
+# -qwarn64    = warn about 64-bit cast errors
+# -qflttrap   = throw IEEE error flags,
+# -qsigtrap   = turn on IEEE error trapping in main program.
+#
+CC            =	cc
+CCFLAGS       =	-q64
+CPP           =	/usr/lib/cpp -P
+CPPFLAGS      =	-DAIX -DREAL4
+LD            =	$(FC)
+LDFLAGS       =	$(FCFFLAGS) -b64
+EXTRALIBS     =
+
+#
+# --- generic make definitions
+#
+SHELL         = /bin/sh
+RM            = \rm -f
+
+#
+# rules.
+#
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CCFLAGS)  -c $*.c
+
+.f.o:
+	$(FC)             $(FCFFLAGS) -c $*.f
+
+.F.o:
+	$(RM) $<.f
+	$(CPP) $(CPPFLAGS) $< | sed -e '/^ *$$/d' > $<.f
+	$(FC) $(FCFFLAGS) -c $<.f
+	-\mv $<.o $*.o
+	$(RM) $<.f

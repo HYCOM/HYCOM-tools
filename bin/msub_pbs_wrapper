@@ -1,0 +1,47 @@
+#! /bin/csh -f
+#
+# msub:   Submit a single model job.
+#
+# Usage:   msub cfile fjob
+#
+#          cfile is the basic C-shell script
+#          fjob is the number (00-99) used to identify the job
+#
+# This version is for PBS at NAVO and ERDC where the standard qsub
+# command has been replaced by a poorly written wrapper script which
+# does not allow command line arguments.
+#
+# Use msub_csh on machines without PBS.
+#
+
+if ($#argv != 2 ) then
+    echo2 "Usage:  msub cfile fjob"
+    exit 1
+endif
+
+if (! -f $1) then
+    echo2 "msub:  '$1' does not exist"
+    exit 1
+endif
+
+@ fj = $2
+
+#
+# --- submit job to PBS, after inserting jobname and log file name in script.
+# --- note that the script muct include lines like:
+# --- #PBS -N 123pbs
+# --- #PBS -j oe
+# --- #PBS -o 123pbs.log
+#
+# --- scripts key on PBS_JOBNAME, from -N, which is at most 15 characters
+# --- name can be at most 11 characters (R at start and 3 character id at end)
+# --- if longer than 11, use 1st 3 and last 8
+#
+
+set file = $1:r
+set nj   = `echo $fj     | awk '{printf("%02d", $1)}'`
+set name = `echo ${file} | awk '{if (length($0) < 12) print $0; else print substr($0,1,3) substr($0,length-7,length)}'`
+
+sed -e "s/^#PBS  *-N .*/#PBS -N R${name}${nj}/" -e "s/^#PBS  *-o .*/#PBS -o R${name}${nj}.log/" $1 >! msub_$$
+qsub    msub_$$
+/bin/rm msub_$$

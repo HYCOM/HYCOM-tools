@@ -1,0 +1,69 @@
+#! /bin/csh -f
+#
+# mlist:   Create a list of model years in ./LIST for use in 
+#          run-time controlled model scripts.
+#
+# Usage:   mlist fyr lyr iyr
+#          mlist fyr lyr iyr a
+#          mlist fyr lyr iyr a b
+#
+#          fyr is the first model year to place in ./LIST
+#          lyr is the last  model year to place in ./LIST
+#          iyr is the increment between years   in ./LIST
+#          a   is the 1st part-year identifier
+#          b   is the 2nd part-year identifier
+#
+#          there can be any number of part-year identifiers 
+#           (each is typically a single letter)
+#
+#
+
+
+if ($#argv < 3 ) then
+    echo2 "Usage:  mlist fyr lyr iyr [a] [b] ..."
+    exit 1
+endif
+
+if (  -f ./LIST) then
+    if (! -z ./LIST) then
+        echo2 "mlist:  ./LIST already exists"
+        exit 1
+    endif
+endif
+
+@ fy = `echo $1 | awk '{printf("%d\n",$0)}'`
+@ ly = `echo $2 | awk '{printf("%d\n",$0)}'`
+@ iy = `echo $3 | awk '{printf("%d\n",$0)}'`
+
+if ( $fy > $ly ) then
+    echo2 "mlist:  fyr > lyr  (mlist fyr lyr iyr)"
+    exit 1
+endif
+
+if ( $iy < 1 ) then
+    echo2 "mlist:  iyr < 1  (mlist fyr lyr iyr)"
+    exit 1
+endif
+
+if ( ($ly - $fy) % $iy != 0 ) then
+    echo2 "mlist:  (lyr-fyr)%iyr!=0  (mlist fyr lyr iyr)"
+    exit 1
+endif
+
+if ($#argv == 3 ) then
+    touch ./LIST
+    @ i = $fy
+    while ($i <= $ly)
+        echo $i | awk '{printf("%03d\n", $1)}' >> ./LIST
+        @ i = $i + $iy
+    end
+else
+    touch ./LIST
+    @ i = $fy
+    while ($i <= $ly)
+        foreach ab ( $argv[4-$#argv] )
+            echo $i $ab | awk '{printf("%03d %s\n", $1,$2)}' >> ./LIST
+        end
+        @ i = $i + $iy
+    end
+endif

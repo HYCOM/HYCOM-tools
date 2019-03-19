@@ -1,0 +1,5 @@
+#!/bin/csh -f
+#
+#  C - null command
+#       used as a comment line initiator under csh -v or csh -x.
+#
