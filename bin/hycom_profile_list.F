@@ -613,6 +613,18 @@ C         remove steric SSH,one+eta,water flux
           SURF(7,:) = SURF(10,:) !tmix
           SURF(8,:) = SURF(11,:) !smix
           SURF(9,:) = SURF(12,:) !thmix
+        ELSEIF (LONETA .AND. LWTRFLX) THEN
+C         remove one+eta,water flux
+          SSHS(  :) = SURF( 1,:) !steric = montg1
+          ONETA( :) = SURF( 3,:) !oneta 
+          WFLX(  :) = SURF( 5,:) !wtrflx
+          SURF(3,:) = SURF( 4,:) !surflx
+          SURF(4,:) = SURF( 6,:) !salflx
+          SURF(5,:) = SURF( 7,:) !bl_dpth
+          SURF(6,:) = SURF( 8,:) !mix_dpth
+          SURF(7,:) = SURF( 9,:) !tmix
+          SURF(8,:) = SURF(10,:) !smix
+          SURF(9,:) = SURF(11,:) !thmix
         ELSEIF (LSTERIC .AND. LONETA) THEN
 C         remove steric SSH,one+eta
           SSHS(  :) = SURF( 3,:) !steric
@@ -638,7 +650,7 @@ C         remove steric SSH
           ONETA( :) = 1.0
           WFLX(  :) = -SURF( 4,I)*1.E-3/PROF(NLAY,1,:)
         ELSE
-          SSHS(  :) = SURF(2,:) !steric = srfhgt
+          SSHS(  :) = SURF(1,:) !steric = montg1
           ONETA( :) = 1.0
           WFLX(  :) = -SURF( 4,I)*1.E-3/PROF(NLAY,1,:)
         ENDIF  !steric/oneta/wtrflx
@@ -662,6 +674,20 @@ C         remove steric SSH,one+eta,water flux
           SURF(9,:) = SURF(12,:) !thmix
           UK(0,  :) = 0.5*(SURF(13,:)+SURU(13,:))+UB(:)
           VK(0,  :) = 0.5*(SURF(14,:)+SURV(14,:))+VB(:)
+        ELSEIF (LONETA .AND. LWTRFLX) THEN
+C         remove one+eta,water flux
+          SSHS(  :) = SURF( 1,:) !steric = montg1
+          ONETA( :) = SURF( 3,:) !oneta 
+          WFLX(  :) = SURF( 5,:) !wtrflx
+          SURF(3,:) = SURF( 4,:) !surflx
+          SURF(4,:) = SURF( 6,:) !salflx
+          SURF(5,:) = SURF( 7,:) !bl_dpth
+          SURF(6,:) = SURF( 8,:) !mix_dpth
+          SURF(7,:) = SURF( 9,:) !tmix
+          SURF(8,:) = SURF(10,:) !smix
+          SURF(9,:) = SURF(11,:) !thmix
+          UK(0,  :) = 0.5*(SURF(12,:)+SURU(12,:))+UB(:)
+          VK(0,  :) = 0.5*(SURF(13,:)+SURV(13,:))+VB(:)
         ELSEIF (LSTERIC .AND. LONETA) THEN
 C         remove steric SSH,one+eta
           SSHS(  :) = SURF( 3,:) !steric
@@ -691,7 +717,7 @@ C         remove steric SSH
           UK(0,  :) = 0.5*(SURF(11,:)+SURU(11,:))+UB(:)
           VK(0,  :) = 0.5*(SURF(12,:)+SURV(12,:))+VB(:)
         ELSE
-          SSHS(  :) = SURF(2,:) !steric = srfhgt
+          SSHS(  :) = SURF(1,:) !steric = montg1
           ONETA( :) = 1.0
           WFLX(  :) = -SURF( 4,I)*1.E-3/PROF(NLAY,1,:)
           UK(0,  :) = 0.5*(SURF(10,:)+SURU(10,:))+UB(:)
@@ -719,6 +745,25 @@ C         remove steric SSH,one+eta,water flux
           ELSE !p-grid archive
             UK(0,:) = SURF(13,:)  !already full m.l. velocity
             VK(0,:) = SURF(14,:)  !already full m.l. velocity
+          ENDIF
+        ELSEIF (LONETA .AND. LWTRFLX) THEN
+C         remove one+eta,water flux
+          SSHS(  :) = SURF( 1,:) !steric = montg1
+          ONETA( :) = SURF( 3,:) !oneta 
+          WFLX(  :) = SURF( 5,:) !wtrflx
+          SURF(3,:) = SURF( 4,:) !surflx
+          SURF(4,:) = SURF( 6,:) !salflx
+          SURF(5,:) = SURF( 7,:) !bl_dpth
+          SURF(6,:) = SURF( 8,:) !mix_dpth
+          SURF(7,:) = SURF( 9,:) !tmix
+          SURF(8,:) = SURF(10,:) !smix
+          SURF(9,:) = SURF(11,:) !thmix
+          IF (ARTYPE.GT.0) THEN
+            UK(0,:) = 0.5*(SURF(12,:)+SURU(12,:))  !already full m.l. velocity
+            VK(0,:) = 0.5*(SURF(13,:)+SURV(13,:))  !already full m.l. velocity
+          ELSE !p-grid archive
+            UK(0,:) = SURF(12,:)  !already full m.l. velocity
+            VK(0,:) = SURF(13,:)  !already full m.l. velocity
           ENDIF
         ELSEIF (LSTERIC .AND. LONETA) THEN
 C         remove steric SSH,one+eta
@@ -759,7 +804,7 @@ C         remove steric SSH
             VK(0,:) = SURF(12,:)  !already full m.l. velocity
           ENDIF
         ELSE
-          SSHS(  :) = SURF(2,:) !steric = srfhgt
+          SSHS(  :) = SURF(1,:) !steric = montg1
           ONETA( :) = 1.0
           WFLX(  :) = -SURF( 4,I)*1.E-3/PROF(NLAY,1,:)
           IF (ARTYPE.GT.0) THEN
