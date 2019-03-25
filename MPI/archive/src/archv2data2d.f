@@ -29,10 +29,9 @@ c
 c
       real, parameter :: flag = 2.0**100
 c
-c --- 'lhycom' -- hycom (vs micom) input file
 c --- 'trcout' -- tracer input
-      logical   lhycom,trcout,dbg
-      data      lhycom/.true. /, trcout/.false./
+      logical   trcout,dbg
+      data      trcout/.false./
 c
       real      tenm,onem,temcm,onecm,onemm
       data      tenm/10./,onem/1./,tencm/.1/,onecm/.01/,onemm/.001/
@@ -226,11 +225,7 @@ c ---   The size of the subgrid is determined by ii,jj.
           call flush(lp)
         endif
 c
-      if (lhycom) then
         call getartype(flnm,artype)
-      else
-        artype=1
-      endif
 c
 c --- array allocation
 c
@@ -257,7 +252,6 @@ c
 c
 c --- read the archive file.
 c
-      if (lhycom) then
         if     (artype.ne.3) then
           call getdat( flnm,time3,iweight,mntype,lsteric,icegln,trcout,
      &                 iexpt,iversn,yrflag,kkin)     ! hycom input
@@ -278,13 +272,6 @@ c
           endif  
           call xcstop('(archv2data2d - kk)')
         endif
-      else
-        if(mnproc.eq.1)then
-          write(lp,*)'Attempted to read micom Archive - Line 265'
-          call flush(lp)
-        endif
-        call xcstop('(archv3data2d_mpi micom Archive error)')
-      endif
 c
       if     (yrflag.eq.0) then
         year  = 360.0d0
@@ -374,7 +361,7 @@ c
         endif
           call xcstop('(archv2data2d - topo mismatch)')
         endif !ibads.ne.0
-        if     (ibadl.ne.0 .and. lhycom) then
+        if     (ibadl.ne.0) then
         if(mnproc.eq.1)then
           write(lp,*)
 *         write(lp,*) 'error - wrong bathymetry for this archive file'
@@ -835,7 +822,7 @@ c --- 'botio ' = bathymetry I/O unit (0 no I/O)
               endif
             enddo
           enddo
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' grid cell area   ',       ! plot name
      &                'area',                     ! ncdf name
      &                'sea_area',                 ! ncdf standard_name
@@ -866,13 +853,13 @@ c --- 'botio ' = bathymetry I/O unit (0 no I/O)
             enddo
           enddo
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                'no. fixed layers  ',       ! plot name
      &                'zlay',                     ! ncdf name
      &                ' ',                        ! ncdf standard_name
      &                ' ',                        ! units
      &                k,ltheta, frmt,ioin)
-          call horout(work,  artype,yrflag,time3,iexpt,lhycom,
+          call horout(work,  artype,yrflag,time3,iexpt,.true.,
      &                'depth fixed layers',       ! plot name
      &                'zldepth',                  ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -887,7 +874,7 @@ c --- 'botio ' = bathymetry I/O unit (0 no I/O)
             util1(i,j)=p(i,j,kk+1)
           enddo
         enddo
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              ' bathymetry       ',       ! plot name
      &              'bathymetry',               ! ncdf name
      &              'sea_floor_depth',          ! ncdf standard_name
@@ -902,7 +889,7 @@ c
 c --- 'flxio ' = surf. heat  flux I/O unit (0 no I/O)
       call blkini(ioin,'flxio ')
       if (ioin.gt.0) then
-        call horout(surflx,artype,yrflag,time3,iexpt,lhycom,
+        call horout(surflx,artype,yrflag,time3,iexpt,.true.,
      &              ' surf. heat flux  ',                ! plot name
      &              'qtot',                              ! ncdf name (mersea)
      &              'surface_downward_heat_flux_in_air', ! ncdf standard_name
@@ -921,7 +908,7 @@ c --- 'empio ' = surf. evap-pcip I/O unit (0 no I/O)
             endif
           enddo
         enddo
-        call horout( util1,artype,yrflag,time3,iexpt,lhycom,
+        call horout( util1,artype,yrflag,time3,iexpt,.true.,
      &              ' surf. water flux ',                 ! plot name
      &              'emp',                                ! ncdf name (mersea)
      &              'water_flux_into_ocean',              ! ncdf standard_name
@@ -932,7 +919,7 @@ c --- 'empio ' = surf. evap-pcip I/O unit (0 no I/O)
       if     (i.eq.1) then
 c ---   'ttrio ' = surf. temp trend I/O unit (0 no I/O)
         if (ioin.gt.0) then
-          call horout(ttrend,artype,yrflag,time3,iexpt,lhycom,
+          call horout(ttrend,artype,yrflag,time3,iexpt,.true.,
      &                ' surf. temp. trend',         ! plot name
      &                'surface_temperature_trend',  ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -942,7 +929,7 @@ c ---   'ttrio ' = surf. temp trend I/O unit (0 no I/O)
 c ---   'strio ' = surf. saln trend I/O unit (0 no I/O)
         call blkini(ioin,'strio ')
         if (ioin.gt.0) then
-          call horout(strend,artype,yrflag,time3,iexpt,lhycom,
+          call horout(strend,artype,yrflag,time3,iexpt,.true.,
      &                ' surf. saln. trend',       ! plot name
      &                'surface_salinity_trend',   ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -954,7 +941,7 @@ c ---   'tbfio ' = temp buoyancy flux I/O unit (0 no I/O)
         if (ioin.gt.0) then
           call buoflx(util1, ip, surflx,salflx,
      &                           temp(1,1,1),saln(1,1,1),ii,jj, 1)
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' temp. bouy. flux ',         ! plot name
      &                'surface_t_bouyancy_flux',    ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -966,7 +953,7 @@ c ---   'sbfio ' = saln buoyancy flux I/O unit (0 no I/O)
         if (ioin.gt.0) then
           call buoflx(util1, ip, surflx,salflx,
      &                           temp(1,1,1),saln(1,1,1),ii,jj, 2)
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' saln. bouy. flux ',         ! plot name
      &                'surface_s_bouyancy_flux',    ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -978,7 +965,7 @@ c ---   'abfio ' = tot. buoyancy flux I/O unit (0 no I/O)
         if (ioin.gt.0) then
           call buoflx(util1, ip, surflx,salflx,
      &                           temp(1,1,1),saln(1,1,1),ii,jj, 3)
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' total bouy. flux ',         ! plot name
      &                'surface_bouyancy_flux',      ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -1000,14 +987,14 @@ c ---           Rotate from Xward and Yward to Eastward
             enddo
           enddo
           if     (xyward) then
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  surf. x-stress  ',            ! plot name
      &                'surface_x_stress',              ! ncdf name
      &                'surface_downward_xward_stress', ! ncdf standard_name
      &                'Pa',                            ! units
      &                k,ltheta, frmt,ioin)
           else
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  surf. e-stress  ',               ! plot name
      &                'surface_e_stress',                 ! ncdf name
      &                'surface_downward_eastward_stress', ! ncdf standard_name
@@ -1030,14 +1017,14 @@ c ---           Rotate from Xward and Yward to Northward
             enddo
           enddo
           if     (xyward) then
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  surf. y-stress  ',            ! plot name
      &                'surface_y_stress',              ! ncdf name
      &                'surface_downward_yward_stress', ! ncdf standard_name
      &                'Pa',                            ! units
      &                k,ltheta, frmt,ioin)
           else
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  surf. n-stress  ',                ! plot name
      &                'surface_n_stress',                  ! ncdf name
      &                'surface_downward_northward_stress', ! ncdf standard_name
@@ -1081,7 +1068,7 @@ c            jp1 = min(j+1,jj)
               endif
             enddo
           enddo
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                'curl surf. stress ',            ! plot name
      &                'surface_stress_curl',           ! ncdf name
      &                ' ',                             ! ncdf standard_name
@@ -1105,7 +1092,7 @@ c --- 'icvio ' = ice coverage I/O unit (0 no I/O)
           call xcstop('(archv2data2d - kk)')
           stop
         endif
-        call horout(covice,artype,yrflag,time3,iexpt,lhycom,
+        call horout(covice,artype,yrflag,time3,iexpt,.true.,
      &              '     ice coverage ',       ! plot name
      &              'ice_coverage',             ! ncdf name
      &              'sea_ice_area_fraction',    ! ncdf standard_name
@@ -1124,7 +1111,7 @@ c --- 'ithio ' = ice thickness I/O unit (0 no I/O)
           call xcstop('(archv2data2d - kk)')
           stop
         endif
-        call horout(thkice,artype,yrflag,time3,iexpt,lhycom,
+        call horout(thkice,artype,yrflag,time3,iexpt,.true.,
      &              '    ice thickness ',       ! plot name
      &              'ice_thickness',            ! ncdf name
      &              'sea_ice_thickness',        ! ncdf standard_name
@@ -1143,7 +1130,7 @@ c --- 'ictio ' = ice temperature I/O unit (0 no I/O)
           call xcstop('(archv2data2d - kk)')
           stop
         endif
-        call horout(temice,artype,yrflag,time3,iexpt,lhycom,
+        call horout(temice,artype,yrflag,time3,iexpt,.true.,
      &              '  ice temperature ',       ! plot name
      &              'ice_temperature',          ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -1162,10 +1149,12 @@ c --- 'dsshio' = non-b.pres SSH   I/O unit (0 no I/O), always after bsshio
 c --- 'ssshio' = steric     SSH   I/O unit (0 no I/O), OPTIONAL, not with atthio
 c ---                                                  can be after dsshio
 c --- 'nsshio' = non-steric SSH   I/O unit (0 no I/O), OPTIONAL, after ssshio
+c --- 'montio' = Montgomery Pot.  I/O unit (0 no I/O), OPTIONAL
 c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
-      call blkini5(ioin,j, 'atthio','ssshio',
-     &                     'montio','sshio ','oetaio')  !read 1 of 5
-      if (j.eq.5) then !oetaio
+      call blkini9(ioin,j, 'atthio','ssshio','montio',
+     &                     'bsshio','sshio ','oetaio',  !read 1 of 6
+     &                     'XXXXXX','XXXXXX','XXXXXX')
+      if (j.eq.6) then !oetaio
         if (ioin.gt.0) then
           if     (.not.loneta) then
             write(lp,'(a)') 'error - no one+eta available'
@@ -1178,7 +1167,7 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
                 if     (artype.eq.3) then
                   util1(i,j)=onetas(i,j)  !unitless
                 else
-                  util1(i,j)=oneta(i,j)  !unitless
+                  util1(i,j)= oneta(i,j)  !unitless
                 endif
               else
                 util1(i,j)=flag
@@ -1186,14 +1175,16 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
             enddo
           enddo
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' one + eta        ',       ! plot name
      &                'one_eta',                  ! ncdf
      &                ' ',                        ! ncdf standard_name
      &                ' ',                        ! units
      &                k,ltheta, frmt,ioin)
         endif !ioin
-        call blkini4(ioin,j, 'atthio','ssshio','montio','sshio ')  !read 1 of 4
+        call blkini9(ioin,j, 'atthio','ssshio','montio',
+     &                       'bsshio','sshio ','XXXXXX',  !read 1 of 5
+     &                       'XXXXXX','XXXXXX','XXXXXX')
       endif  !j==5 (oetaio)
       if (j.eq.1) then !atthio
         if (ioin.gt.0) then
@@ -1213,7 +1204,7 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
             enddo
           enddo
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                'average HYCOM th3d',       ! plot name
      &                'avth',                     ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -1222,26 +1213,27 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
         endif
         call blkini(ioin,'sshio ')
         j = 1
-      elseif (j.eq.4) then !bsshio
+      elseif (j.eq.3) then !montio
         if (ioin.gt.0) then
           do j=1,jj
             do i=1,ii
               if (ip(i,j).ne.0) then
-                util1(i,j)=montg(i,j)/(thref*9806.0)  !MKS, assume this is bssh
+                util1(i,j)=montg(i,j)/(thref*9806.0)  !MKS
               else
                 util1(i,j)=flag
               endif
             enddo
           enddo
-          k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
-     &                ' bot.prs.anom SSH ',       ! plot name
-     &                'bp_ssh',                   ! ncdf name
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' montgomery pot.  ',       ! plot name
+     &                'mont_pot',                 ! ncdf name
      &                ' ',                        ! ncdf standard_name
      &                'm',                        ! units
      &                k,ltheta, frmt,ioin)
-        endif !ioin
-        call blkini(ioin,'dsshio')
+        endif
+        call blkini(ioin,'sshio ')
+        j = 1
+      elseif (j.eq.4) then !bsshio
         if (ioin.gt.0) then
           do j=1,jj
             do i=1,ii
@@ -1253,7 +1245,26 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
             enddo
           enddo
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' bot.prs.anom SSH ',       ! plot name
+     &                'bp_ssh',                   ! ncdf name
+     &                ' ',                        ! ncdf standard_name
+     &                'm',                        ! units
+     &                k,ltheta, frmt,ioin)
+        endif !ioin
+        call blkini(ioin,'dsshio')
+        if (ioin.gt.0) then
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=montg(i,j)/(thref*9806.0)  !MKS
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
+          k = 0
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' non-b.p.a  SSH   ',       ! plot name
      &                'nonbp_ssh',                ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -1261,7 +1272,7 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                k,ltheta, frmt,ioin)
         endif !ioin
         call blkini2(ioin,j, 'sshio ','ssshio')  !read one of two
-      endif !atthio:bsshio
+      endif !atthio:montio:bsshio
 c --- ssshio?
       if     (j.eq.2) then !ssshio
         if (ioin.gt.0) then
@@ -1283,7 +1294,7 @@ c --- ssshio?
             enddo
           enddo
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' steric SSH       ',       ! plot name
      &                'steric_ssh',               ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -1311,7 +1322,7 @@ c --- ssshio?
               enddo
             enddo
             k = 0
-            call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+            call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                  ' non-steric SSH   ',       ! plot name
      &                  'nonsteric_ssh',            ! ncdf name
      &                  ' ',                        ! ncdf standard_name
@@ -1333,7 +1344,7 @@ c --- sshio
           enddo
         enddo
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              ' sea surf. height ',       ! plot name
      &              'ssh',                      ! ncdf name (mersea)
      &              'sea_surface_elevation',    ! ncdf standard_name
@@ -1350,7 +1361,7 @@ c --- sshio
           enddo
         enddo
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              ' sea surf. height ',       ! plot name
      &              'ssh',                      ! ncdf name (mersea)
      &              'sea_surface_elevation',    ! ncdf standard_name
@@ -1363,7 +1374,7 @@ c ---   'bkeio ' = baro. kinetic energy I/O unit (0 no I/O)
         call blkini(ioin,'bkeio ')
         if (ioin.gt.0) then
           k = 0
-          call horout(kebaro,artype,yrflag,time3,iexpt,lhycom,
+          call horout(kebaro,artype,yrflag,time3,iexpt,.true.,
      &                '    baro.k.e./mass',                  ! plot name
      &                'barotropic_kinetic_energy_per_mass',  ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -1465,7 +1476,7 @@ c ---             Rotate from Xward and Yward to Eastward
           enddo !j
           if     (xyward) then
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  geostr. x-vel.  ',         ! plot name
      &               'u_geostrophic_velocity',      ! ncdf name
      & 'surface_xward_geostrophic_sea_water_velocity',! ncdf standard_name
@@ -1473,7 +1484,7 @@ c ---             Rotate from Xward and Yward to Eastward
      &                k,ltheta, frmt,ioin)
           else
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '   geostr u-vel.  ',         ! plot name
      &               'u_geostrophic_velocity',      ! ncdf name
      & 'surface_eastward_geostrophic_sea_water_velocity',! ncdf standard_name
@@ -1560,7 +1571,7 @@ c ---             Rotate from Xward and Yward to Northward
           enddo !j
           if     (xyward) then
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  geostr. y-vel.  ',         ! plot name
      &               'v_geostrophic_velocity',      ! ncdf name
      & 'surface_yward_geostrophic_sea_water_velocity',! ncdf standard_name
@@ -1568,7 +1579,7 @@ c ---             Rotate from Xward and Yward to Northward
      &                k,ltheta, frmt,ioin)
           else
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '  geostr. v-vel.  ',         ! plot name
      &               'v_geostrophic_velocity',      ! ncdf name
      & 'surface_northward_geostrophic_sea_water_velocity',! ncdf standard_name
@@ -1647,7 +1658,7 @@ c            jp1 = min(j+1,jj)
             enddo !i
           enddo !j
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &               'geostrophic speed ',        ! plot name
      &               'geostrophic_speed',         ! ncdf name
      &    'surface_geostrophic_sea_water_speed',  ! ncdf standard_name
@@ -1717,7 +1728,7 @@ c ---             Rotate from Xward and Yward to Eastward
           enddo !j
           if     (xyward) then
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '    baro. x-vel.  ',         ! plot name
      &                'u_barotropic_velocity',      ! ncdf name
      &            'barotropic_sea_water_x_velocity',! ncdf standard_name
@@ -1725,7 +1736,7 @@ c ---             Rotate from Xward and Yward to Eastward
      &                k,ltheta, frmt,ioin)
           else
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '    baro. u-vel.  ',         ! plot name
      &                'u_barotropic_velocity',      ! ncdf name
      &     'barotropic_eastward_sea_water_velocity',! ncdf standard_name
@@ -1743,7 +1754,7 @@ c ---             Rotate from Xward and Yward to Eastward
             enddo
           enddo
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '    baro. u-vel.  ',         ! plot name
      &                'u_barotropic_velocity',      ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -1803,7 +1814,7 @@ c ---             Rotate from Xward and Yward to Eastward
           enddo
           if     (xyward) then
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '    baro. y-vel.  ',         ! plot name
      &                'v_barotropic_velocity',      ! ncdf name
      &            'barotropic_sea_water_y_velocity',! ncdf standard_name
@@ -1811,7 +1822,7 @@ c ---             Rotate from Xward and Yward to Eastward
      &                k,ltheta, frmt,ioin)
           else
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '    baro. v-vel.  ',         ! plot name
      &                'v_barotropic_velocity',      ! ncdf name
      &    'barotropic_northward_sea_water_velocity',! ncdf standard_name
@@ -1829,7 +1840,7 @@ c ---             Rotate from Xward and Yward to Eastward
             enddo
           enddo
           k = 0
-          call horout(util1,artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1,artype,yrflag,time3,iexpt,.true.,
      &                '    baro. v-vel.  ',         ! plot name
      &                'v_barotropic_velocity',      ! ncdf name
      &                ' ',                          ! ncdf standard_name
@@ -1881,7 +1892,7 @@ c ---           Make transport accurate at the expense of velocity
             enddo
           enddo
           k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                'barotropic speed ',        ! plot name
      &                'barotropic_speed',         ! ncdf name
      &     'barotropic_sea_water_speed',          ! ncdf standard_name
@@ -1968,7 +1979,7 @@ ccc     call zebra(util1,ii,ii,jj)
 ccc     write (*,'('' shown above: barotropic stream function'')')
 c
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              'barotr. strmf. (V)',              ! plot name
      &              'bfsd_v',                          ! ncdf name
      &              'ocean_barotropic_streamfunction', ! ncdf standard_name
@@ -2042,7 +2053,7 @@ ccc     call zebra(util1,ii,ii,jj)
 ccc     write (*,'('' shown above: barotropic stream function'')')
 c
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              'barotr. strmf. (U)',              ! plot name
      &              'bfsd_u',                          ! ncdf name
      &              'ocean_barotropic_streamfunction', ! ncdf standard_name
@@ -2067,7 +2078,7 @@ c --- 'uvmio ' = mixed layer u-velocity I/O unit (0 no I/O)
           enddo
         enddo
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              'mix.l. u-velocity ',       ! plot name
      &              'mixed_layer_u_velocity',   ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2088,7 +2099,7 @@ c --- 'vvmio ' = mixed layer v-velocity I/O unit (0 no I/O)
           enddo
         enddo
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              ' mixl. v-velocity ',       ! plot name
      &              'mixed_layer_v_velocity',   ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2110,7 +2121,7 @@ c --- 'spmio ' = mixed layer speed I/O unit (0 no I/O)
           enddo
         enddo
         k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,lhycom,
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              'mixed-layer speed ',       ! plot name
      &              'mixed_layer_speed',        ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2122,7 +2133,7 @@ c --- 'bltio ' = bnd. lay. thick. I/O unit (0 no I/O)
       call blkini(ioin,'bltio ')
       if (ioin.gt.0) then
         k = 0
-        call horout(dpbl,  artype,yrflag,time3,iexpt,lhycom,
+        call horout(dpbl,  artype,yrflag,time3,iexpt,.true.,
      &              'bnd.layr.thickness',                ! plot name
      &              'surface_boundary_layer_thickness',  ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2134,7 +2145,7 @@ c --- 'mltio ' = mix. lay. thick. I/O unit (0 no I/O)
       call blkini(ioin,'mltio ')
       if (ioin.gt.0) then
         k = 0
-        call horout(dpmixl,artype,yrflag,time3,iexpt,lhycom,
+        call horout(dpmixl,artype,yrflag,time3,iexpt,.true.,
      &              'mix.layr.thickness',          ! plot name
      &              'mixed_layer_thickness',       ! ncdf name
      &              'ocean_mixed_layer_thickness', ! ncdf standard_name
@@ -2146,7 +2157,7 @@ c --- 'sstio ' = mix. lay. temp.  I/O unit (0 no I/O)
       call blkini(ioin,'sstio ')
       if (ioin.gt.0) then
         k = 0
-        call horout(tmix,  artype,yrflag,time3,iexpt,lhycom,
+        call horout(tmix,  artype,yrflag,time3,iexpt,.true.,
      &              'mix.layr.temp     ',       ! plot name
      &              'mixed_layer_temperature',  ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2158,7 +2169,7 @@ c --- 'sssio ' = mix. lay. saln.  I/O unit (0 no I/O)
       call blkini(ioin,'sssio ')
       if (ioin.gt.0) then
         k = 0
-        call horout(smix,  artype,yrflag,time3,iexpt,lhycom,
+        call horout(smix,  artype,yrflag,time3,iexpt,.true.,
      &              'mix.layr.saln     ',       ! plot name
      &              'mixed_layer_salinity',     ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2170,7 +2181,7 @@ c --- 'ssdio ' = mix. lay. dens.  I/O unit (0 no I/O)
       call blkini(ioin,'ssdio ')
       if (ioin.gt.0) then
         k = 0
-        call horout(thmix, artype,yrflag,time3,iexpt,lhycom,
+        call horout(thmix, artype,yrflag,time3,iexpt,.true.,
      &              'mix.layr.dens     ',       ! plot name
      &              'mixed_layer_density',      ! ncdf name
      &              ' ',                        ! ncdf standard_name
@@ -2183,7 +2194,7 @@ c ---   'mkeio ' = m.l. kinetic energy I/O unit (0 no I/O)
         call blkini(ioin,'mkeio ')
         if (ioin.gt.0) then
           k = 0
-          call horout(kemix, artype,yrflag,time3,iexpt,lhycom,
+          call horout(kemix, artype,yrflag,time3,iexpt,.true.,
      &                '    mixl.k.e./mass',                   ! plot name
      &                'mixed_layer_kinetic_energy_per_mass',  ! ncdf name
      &                ' ',                           ! ncdf standard_name
@@ -2263,7 +2274,7 @@ c ---             Rotate from Xward and Yward to Eastward
           if     (baclin) then
           if     (xyward) then
           k = 0
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' x-b.vel.',                   ! plot name
      &                'u_baroclinic_velocity',       ! ncdf name
      &            'baroclinic_sea_water_x_velocity', ! ncdf standard_name
@@ -2271,7 +2282,7 @@ c ---             Rotate from Xward and Yward to Eastward
      &                kf,kl,ltheta, frmt,ioin)
           else
           k = 0
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' u-b.vel.',                   ! plot name
      &                'u_baroclinic_velocity',       ! ncdf name
      &     'baroclinic_eastward_sea_water_velocity', ! ncdf standard_name
@@ -2281,7 +2292,7 @@ c ---             Rotate from Xward and Yward to Eastward
           else !total velocity
           if     (xyward) then
           k = 0
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' x-veloc.',                   ! plot name
      &                'u_velocity',                  ! ncdf name
      &                'sea_water_x_velocity',        ! ncdf standard_name
@@ -2289,7 +2300,7 @@ c ---             Rotate from Xward and Yward to Eastward
      &                kf,kl,ltheta, frmt,ioin)
           else
           k = 0
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' u-veloc.',                   ! plot name
      &                'u_velocity',                  ! ncdf name
      &                'eastward_sea_water_velocity', ! ncdf standard_name
@@ -2310,14 +2321,14 @@ c ---             Rotate from Xward and Yward to Eastward
           enddo
           enddo
           if     (baclin) then
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' u-b.vel.',                   ! plot name
      &                'u_baroclinic_velocity',       ! ncdf name
      &                ' ',                           ! ncdf standard_name
      &                'm/s',                         ! units
      &                kf,kl,ltheta, frmt,-ioin)
           else !total velocity
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' u-veloc.',                   ! plot name
      &                'u_velocity',                  ! ncdf name
      &                ' ',                           ! ncdf standard_name
@@ -2368,14 +2379,14 @@ c ---             Rotate from Xward and Yward to Northward
           enddo
           if     (baclin) then
           if     (xyward) then
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' y-b.vel.',                    ! plot name
      &                'v_baroclinic_velocity',        ! ncdf name
      &             'baroclinic_sea_water_y_velocity', ! ncdf standard_name
      &                'm/s',                          ! units
      &                kf,kl,ltheta, frmt,ioin)
           else
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' v-b.vel.',                    ! plot name
      &                'v_baroclinic_velocity',        ! ncdf name
      &     'baroclinic_northward_sea_water_velocity', ! ncdf standard_name
@@ -2384,14 +2395,14 @@ c ---             Rotate from Xward and Yward to Northward
           endif !xyward:else
           else !total velocity
           if     (xyward) then
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' y-veloc.',                    ! plot name
      &                'v_velocity',                   ! ncdf name
      &                'sea_water_y_velocity',         ! ncdf standard_name
      &                'm/s',                          ! units
      &                kf,kl,ltheta, frmt,ioin)
           else
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' v-veloc.',                    ! plot name
      &                'v_velocity',                   ! ncdf name
      &                'northward_sea_water_velocity', ! ncdf standard_name
@@ -2412,14 +2423,14 @@ c ---             Rotate from Xward and Yward to Northward
           enddo
           enddo
           if     (baclin) then
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' v-b.vel.',                ! plot name
      &                'v_baroclinic_velocity',    ! ncdf name
      &                ' ',                        ! ncdf standard_name
      &                'm/s',                      ! units
      &                kf,kl,ltheta, frmt,-ioin)
           else !total velocity
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' v-veloc.',                ! plot name
      &                'v_velocity',               ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -2463,14 +2474,14 @@ c            jp1 = min(j+1,jj)
           enddo
           enddo
           if     (baclin) then
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' bcl.spd.',                ! plot name
      &      'baroclinic_speed',                   ! ncdf name
      &     'baroclinic_sea_water_speed',          ! ncdf standard_name
      &                'm/s',                      ! units
      &                kf,kl,ltheta, frmt,ioin)
           else !total velocity
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' speed   ',                ! plot name
      &                'speed',                    ! ncdf name
      &                'sea_water_speed',          ! ncdf standard_name
@@ -2508,7 +2519,7 @@ c --- 'wvlio ' = w-velocity I/O unit (0 no I/O)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' w-veloc.',                   ! plot name
      &                'w_velocity',                  ! ncdf name
      &                'upward_sea_water_velocity',   ! ncdf standard_name
@@ -2534,7 +2545,7 @@ c ---   'infio ' = intf. k depth  I/O unit (0 no I/O)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                '  i.depth',                ! plot name
      &                'interface_depth',          ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -2563,7 +2574,7 @@ c ---   'thkio ' = lay.  k thick. I/O unit (0 no I/O)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                '  thknss ',                ! plot name
      &                'layer_thickness',          ! ncdf name
      &                ' ',                        ! ncdf standard_name
@@ -2595,14 +2606,14 @@ c ---   'temio ' = layer k temp I/O unit (0 no I/O, -ve MKS for NCOM)
           enddo
           enddo
           if     (kf.ne.1 .or. kf.ne.kl) then
-            call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+            call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                  '  temp   ',                       ! plot name
      &                  'layer_temperature',               ! ncdf name
      &                  'sea_water_potential_temperature', ! ncdf standard_name
      &                  'degC',                            ! units
      &                  kf,kl,ltheta, frmt,ioin)
           else !kf==kl==1
-            call horout(utilk, artype,yrflag,time3,iexpt,lhycom,
+            call horout(utilk, artype,yrflag,time3,iexpt,.true.,
      &                  ' sea surf. temp.  ',       ! plot name
      &                  'sst',                      ! ncdf name (mersea)
      &                  'sea_surface_temperature',  ! ncdf standard_name
@@ -2624,7 +2635,7 @@ c ---   'temio ' = layer k temp I/O unit (0 no I/O, -ve MKS for NCOM)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                '  temp   ',                       ! plot name
      &                'layer_temperature',               ! ncdf name
      &                'sea_water_potential_temperature', ! ncdf standard_name
@@ -2656,14 +2667,14 @@ c ---   'salio ' = lay.  k saln. I/O unit (0 no I/O)
           enddo
           enddo
           if     (kf.ne.1 .or. kf.ne.kl) then
-            call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+            call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                  ' salinity',                ! plot name
      &                  'layer_salinity',           ! ncdf name
      &                  'sea_water_salinity',       ! ncdf standard_name
      &                  'psu',                      ! units
      &                  kf,kl,ltheta, frmt,ioin)
           else !kf==kl==1
-            call horout(utilk, artype,yrflag,time3,iexpt,lhycom,
+            call horout(utilk, artype,yrflag,time3,iexpt,.true.,
      &                  'sea surf. salnity ',       ! plot name
      &                  'sss',                      ! ncdf name (mersea)
      &                  'sea_surface_salinity',     ! ncdf standard_name
@@ -2685,7 +2696,7 @@ c ---   'salio ' = lay.  k saln. I/O unit (0 no I/O)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' salinity',                ! plot name
      &                'layer_salinity',           ! ncdf name
      &                'sea_water_salinity',       ! ncdf standard_name
@@ -2716,7 +2727,7 @@ c ---   'tthio ' = layer k density I/O unit (0 no I/O)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' density ',                   ! plot name
      &                'layer_density',               ! ncdf name
      &                'sea_water_potential_density', ! ncdf standard_name
@@ -2748,7 +2759,7 @@ c ---   'trcio ' = layer k tracer I/O unit (0 no I/O)
             enddo
           enddo
           enddo
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                   trim(ctrc_title(ktr)),         ! plot name
      &                   trim(ctrc_lname(ktr)),         ! ncdf name
      &                   trim(ctrc_sname(ktr)),         ! ncdf standard_name
@@ -2781,7 +2792,7 @@ c ---     'keio  ' = kinetic energy I/O unit (0 no I/O)
               enddo
             enddo
             enddo
-            call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+            call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                  ' ke/mass ',                      ! plot name
      &                  'layer_kinetic_energy_per_mass',  ! ncdf name
      &                  ' ',                              ! ncdf standard_name
@@ -2878,7 +2889,7 @@ ccc       call zebra(utilk(1,1,k),ii,ii,jj)
 ccc       write (*,'('' shown above: layer''i3'' stream function'')') k
           enddo !k=kf,kl
 c
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                'strmf (V)',                ! plot name
      &                'layer_streamfunction_v',   ! ncdf name
      &                'ocean_streamfunction',     ! ncdf standard_name
@@ -2966,7 +2977,7 @@ ccc       call zebra(utilk(1,1,k),ii,ii,jj)
 ccc       write (*,'('' shown above: layer''i3'' stream function'')') k
           enddo !k=kf,kl
 c
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                'strmf (U)',                ! plot name
      &                'layer_streamfunction_u',   ! ncdf name
      &                'ocean_streamfunction',     ! ncdf standard_name
