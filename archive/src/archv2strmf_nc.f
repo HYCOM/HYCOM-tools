@@ -9,7 +9,8 @@
       real,    allocatable, dimension (:)     ::
      &    zz, z_mid, trz, p_mid, util1, util2, acoeff
       real,    allocatable, dimension (:,:)   ::
-     &   depthu, depthv, util,work, sumx, sumx_atl, vtr
+     &   depthu, depthv, util,work, sumx, sumx_atl, vtr,
+     &   oneta_u, oneta_v
       real,    allocatable, dimension (:,:,:) ::
      &   utilz, utilk, utilz1, utilz2, pi, dpi, mask, mask_atl
       integer, allocatable, dimension (:) :: 
@@ -159,6 +160,9 @@
 ! --- depth at u and v points
       allocate( depthu(ii,jj     ))
       allocate( depthv(ii,jj     ))
+! --- oneta at u and v points
+      allocate(oneta_u(ii,jj     ))
+      allocate(oneta_v(ii,jj     ))
 ! --- interface depth at u or v points
       allocate(     pi(ii,jj,kk+1))
       allocate(    dpi(ii,jj,kk  ))
@@ -264,6 +268,28 @@
           depthu(i,j)=min(depths(i, j), depths(i-1, j))
         enddo 
       enddo
+
+! --- get oneta at u- and v- points
+      do  j = 1, jj
+        do  i = 1, ii
+! ---       depthu is either pbot(i,j) or pbot(i-1,j)
+            if     (depths(i,j).eq.depths(i-1,j)) then
+              oneta_u(i,j) = 0.5*(oneta(i,j)+oneta(i-1,j))
+            elseif (depths(i,j).eq.depthu(i,j)) then
+              oneta_u(i,j) =      oneta(i,j)
+            else
+              oneta_u(i,j) =                 oneta(i-1,j)
+            endif
+! ---       depthv is either pbot(i,j) or pbot(i,j-1)
+            if     (depths(i,j).eq.depths(i,j-1)) then
+              oneta_v(i,j) = 0.5*(oneta(i,j)+oneta(i,j-1))
+            elseif (depths(i,j).eq.depthv(i,j)) then
+              oneta_v(i,j) =      oneta(i,j)
+            else
+              oneta_v(i,j) =                 oneta(i,j-1)
+            endif
+        enddo
+      enddo
       
 ! --- ---------------------------------------------------------------------
 ! --- 3-Z fields first, to allow 2-D and 3-D fields to be added to the file
@@ -285,7 +311,7 @@
 ! --- get the layer thickness at u-point
                 dpk1 = min(depthu(i,j), 0.5*(p(i,j,k+1)+p(i-1,j,k+1))) 
                 dpk  = min(depthu(i,j), 0.5*(p(i,j,k  )+p(i-1,j,k  )))
-                dpu0 = dpk1-dpk
+                dpu0 = (dpk1-dpk)*oneta_u(i,j)
 ! --- get the transport
                 if (uvflx.eq.1) then
                    utilk(i,j,k) = uflx(i,j,k)
@@ -322,7 +348,7 @@
 ! --- get the layer thickness at u-point
                 dpk1 = min(depthv(i,j), 0.5*(p(i,j,k+1)+p(i,j-1,k+1))) 
                 dpk  = min(depthv(i,j), 0.5*(p(i,j,k  )+p(i,j-1,k  )))
-                dpv0 = dpk1-dpk
+                dpv0 = (dpk1-dpk)*oneta_v(i,j)
 ! --- get the transport               
                 if (uvflx.eq.1) then
                    utilk(i,j,k) = vflx(i,j,k)
@@ -367,7 +393,7 @@
 ! --- get the layer thickness at u-point
                 dpk1 = min(depthu(i,j), 0.5*(p(i,j,k+1)+p(i-1,j,k+1))) 
                 dpk  = min(depthu(i,j), 0.5*(p(i,j,k  )+p(i-1,j,k  )))
-                dpu0 = dpk1-dpk
+                dpu0 = (dpk1-dpk)*oneta_u(i,j)
 ! --- get the transport               
                 if (uvflx.eq.1) then
                    utilk(i,j,k) = uflx(i,j,k)
@@ -387,8 +413,8 @@
             trz(:) = 0.0d0
 ! --- call layer to level function 
             call  lay2bin
-     &          ( trz         , zz        , kz ,
-     &            utilk(i,j,:), pi(i,j,:) , kk , depths(i,j), flag  )
+     & ( trz         , zz        , kz ,
+     &   utilk(i,j,:), pi(i,j,:) , kk , depthu(i,j)*oneta_u(i,j), flag )
 ! --- store in 3d field
             do k = 1, kz-1
               utilz1(i,j,k)= trz(k)
@@ -426,7 +452,7 @@
 ! --- get the layer thickness at v-point
                 dpk1 = min(depthv(i,j), 0.5*(p(i,j,k+1)+p(i,j-1,k+1))) 
                 dpk  = min(depthv(i,j), 0.5*(p(i,j,k  )+p(i,j-1,k  )))
-                dpv0 = dpk1-dpk
+                dpv0 = (dpk1-dpk)*oneta_v(i,j)
 ! --- get the  transport               
                 if (uvflx.eq.1) then
                    utilk(i,j,k) = vflx(i,j,k)
@@ -447,8 +473,8 @@
             trz(:) = 0.0d0         
 ! --- call layer to level function 
             call  lay2bin
-     &          ( trz         , zz        , kz ,
-     &            utilk(i,j,:), pi(i,j,:) , kk , depths(i,j), flag  )
+     & ( trz         , zz        , kz ,
+     &   utilk(i,j,:), pi(i,j,:) , kk , depthv(i,j)*oneta_v(i,j), flag )
 ! --- store in 3d field
             do k = 1, kz-1
               utilz1(i,j,k)= trz(k)
@@ -577,7 +603,7 @@
           do j = jj, 1, -1
             i = ii
             if (iu(i,j).eq.1) then
-                ubi = ubaro(i,j)*depthu(i,j)
+                ubi = ubaro(i,j)*depthu(i,j)*oneta_u(i,j)
             else
                 ubi = 0.0
             endif
@@ -590,7 +616,7 @@
             strmft     = strmfu
             do i=ii-1,1,-1
               if (iv(i,j).eq.1) then
-                  vbi = vbaro(i,j)*depthv(i,j)
+                  vbi = vbaro(i,j)*depthv(i,j)*oneta_v(i,j)
               else
                   vbi = 0.0
               endif
@@ -643,7 +669,7 @@
           do i = ii, 1, -1
             j = jj
             if (iv(i,j).eq.1) then
-                vbi = vbaro(i,j)*depthv(i,j)
+                vbi = vbaro(i,j)*depthv(i,j)*oneta_v(i,j)
             else
                 vbi = 0.0
             endif
@@ -656,7 +682,7 @@
             strmft     = strmfv
             do j = jj-1, 1, -1
               if (iu(i,j).eq.1) then
-                  ubi = ubaro(i,j)*depthu(i,j)
+                  ubi = ubaro(i,j)*depthu(i,j)*oneta_u(i,j)
               else
                   ubi = 0.0
               endif
@@ -721,7 +747,7 @@
 ! --- get the layer thickness  at v-point
                 dpk1 = min(depthv(i,j), 0.5*(p(i,j,k+1)+p(i,j-1,k+1))) 
                 dpk  = min(depthv(i,j), 0.5*(p(i,j,k  )+p(i,j-1,k  )))
-                dpv0 = dpk1-dpk
+                dpv0 = (dpk1-dpk)*oneta_v(i,j)
 ! --- get the meridional barotropic transport               
                 if (uvflx.eq.1) then
                    util(i,j) = util(i,j) + vflx(i,j,k)
@@ -768,7 +794,7 @@
                 dpk1 = min(depthv(i,j), 0.5*(p(i,j,k+1)+p(i,j-1,k+1))) 
                 dpk  = min(depthv(i,j), 0.5*(p(i,j,k  )+p(i,j-1,k  )))
                 tempv= 0.5*(temp(i,j,k)+temp(i,j-1,k))
-                dpv0 = dpk1-dpk
+                dpv0 = (dpk1-dpk)*oneta_v(i,j)
 ! --- get the heat transport               
                 if (uvflx.eq.1) then
                     util(i,j) = util(i,j) + vflx(i,j,k)*tempv
@@ -833,7 +859,7 @@ c --- 'salio ' = salinity I/O unit (0 no I/O)
 ! --- get the layer thickness  at v-point
                 dpk1 = min(depthv(i,j), 0.5*(p(i,j,k+1)+p(i,j-1,k+1))) 
                 dpk  = min(depthv(i,j), 0.5*(p(i,j,k  )+p(i,j-1,k  )))
-                dpv0 = dpk1-dpk
+                dpv0 = (dpk1-dpk)*oneta_v(i,j)
 ! --- get the meridional barotropic transport               
                 if (uvflx.eq.1) then
                    util(i,j) = util(i,j) + vflx(i,j,k)
@@ -860,7 +886,7 @@ c --- 'salio ' = salinity I/O unit (0 no I/O)
                 dpk1 = min(depthv(i,j), 0.5*(p(i,j,k+1)+p(i,j-1,k+1))) 
                 dpk  = min(depthv(i,j), 0.5*(p(i,j,k  )+p(i,j-1,k  )))
                 salnv= 0.5*(saln(i,j,k)+saln(i,j-1,k))
-                dpv0 = dpk1-dpk
+                dpv0 = (dpk1-dpk)*oneta_v(i,j)
 ! --- get the salt transport               
                 if (uvflx.eq.1) then
                     util(i,j) = util(i,j) + vflx(i,j,k)*salnv
