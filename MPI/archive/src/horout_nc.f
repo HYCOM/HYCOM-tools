@@ -201,10 +201,13 @@ c
 
         if (.not.lexist) then
           ! create a new NetCDF and write data to it
-            !almost certainly small enough to use 32-bit offsets
-            call ncheck(nf90_create(trim(ncfile),
-     &                              nf90_noclobber,
-     &                              ncfileID))
+          ! netcdf-4 classic model, netcdf version 4.3 and later
+          call nchek('nf90_create',
+     &                nf90_create(trim(ncfile),
+     &                            or(nf90_clobber,
+     &                               or(nf90_hdf5,
+     &                                  nf90_classic_model)),
+     &                            ncfileID))
           ! define the dimensions
             call nchek('nf90_def_dim( MT',
      &                  nf90_def_dim(ncfileID,
@@ -675,18 +678,13 @@ c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
           ! create a new NetCDF and write data to it
-          if     (jj*kz.lt.1024**3/(10*kz)) then
-            !almost certainly small enough to use 32-bit offsets
-            call ncheck(nf90_create(trim(ncfile),
-     &                              nf90_noclobber,
-     &                              ncfileID))
-          else
-            !might need 64-bit offsets, netcdf version 3.6 and later
-            call ncheck(nf90_create(trim(ncfile),
-     &                              or(nf90_clobber,
-     &                                 nf90_64bit_offset),
-     &                              ncfileID))
-          endif
+          ! netcdf-4 classic model, netcdf version 4.3 and later
+          call nchek('nf90_create',
+     &                nf90_create(trim(ncfile),
+     &                            or(nf90_clobber,
+     &                               or(nf90_hdf5,
+     &                                  nf90_classic_model)),
+     &                            ncfileID))
           ! define the dimensions
           if     (iotype.eq.4) then !not for MERSEA or NAVO
             call nchek('nf90_def_dim( MT',
@@ -1376,11 +1374,14 @@ c
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
-c
-c          create a new NetCDF and write data to it
-c
+          ! create a new NetCDF and write data to it
+          ! netcdf-4 classic model, netcdf version 4.3 and later
           call nchek('nf90_create',
-     &                nf90_create(trim(ncfile),nf90_noclobber,ncfileID))
+     &                nf90_create(trim(ncfile),
+     &                            or(nf90_clobber,
+     &                               or(nf90_hdf5,
+     &                                  nf90_classic_model)),
+     &                            ncfileID))
           ! define the dimensions
           if     (iotype.eq.4) then !not for MERSEA  or NAVO
             call ncheck(nf90_def_dim(ncfileID,
@@ -2553,21 +2554,14 @@ c
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
-c
-c         create a new NetCDF and write data to it
-c
-          if     (ii*jj.lt.1024**3/(10*(kl-kf+1))) then
-            !almost certainly small enough to use 32-bit offsets
-            call ncheck(nf90_create(trim(ncfile),
-     &                              nf90_noclobber,
-     &                              ncfileID))
-          else
-            !might need 64-bit offsets, netcdf version 3.6 and later
-            call ncheck(nf90_create(trim(ncfile),
-     &                              or(nf90_clobber,
-     &                                 nf90_64bit_offset),
-     &                              ncfileID))
-          endif
+          ! create a new NetCDF and write data to it
+          ! netcdf-4 classic model, netcdf version 4.3 and later
+          call nchek('nf90_create',
+     &                nf90_create(trim(ncfile),
+     &                            or(nf90_clobber,
+     &                               or(nf90_hdf5,
+     &                                  nf90_classic_model)),
+     &                            ncfileID))
           ! define the dimensions
           if     (iotype.eq.4) then !not for MERSEA
             call ncheck(nf90_def_dim(ncfileID,
@@ -3341,18 +3335,13 @@ c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
           ! create a new NetCDF and write data to it
-          if     (ii*jj.lt.1024**3/(10*kz)) then
-            !almost certainly small enough to use 32-bit offsets
-            call ncheck(nf90_create(trim(ncfile),
-     &                              nf90_noclobber,
-     &                              ncfileID))
-          else
-            !might need 64-bit offsets, netcdf version 3.6 and later
-            call ncheck(nf90_create(trim(ncfile),
-     &                              or(nf90_clobber,
-     &                                 nf90_64bit_offset),
-     &                              ncfileID))
-          endif
+          ! netcdf-4 classic model, netcdf version 4.3 and later
+          call nchek('nf90_create',
+     &                nf90_create(trim(ncfile),
+     &                            or(nf90_clobber,
+     &                               or(nf90_hdf5,
+     &                                  nf90_classic_model)),
+     &                            ncfileID))
           ! define the dimensions
           if     (iotype.eq.4) then !not for MERSEA or NAVO
             call nchek('nf90_def_dim( MT',
