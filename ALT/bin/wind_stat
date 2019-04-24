@@ -1,0 +1,67 @@
+#! /bin/csh -f
+#
+# wind_stat:  print statistics on a single layered ocean model wind file
+#
+# Usage:   wind_stat -s f1
+# or       wind_stat -l f1
+# or       wind_stat f1
+#
+#          f1   is the wind file, NRL .D or .nc
+#          -s   indicates the short, 2 line form
+#          -l   indicates the long form
+#
+#          if -s and -l are omitted, -l is assumed
+#
+# Most the the work is done by a Fortran program.
+#
+# Alan J. Wallcraft, Planning Systems Inc., February 1993.
+#
+
+if ($#argv != 1 && $#argv != 2) then
+    echo2 "Usage:  wind_stat [-s] [-l] f1"
+    exit 1
+endif
+
+if ($#argv == 1) then
+    set op='-l'
+    set f1=$1
+    set fx=$1:e
+else
+    set op=$1
+    set f1=$2
+    set fx=$2:e
+endif
+
+if ("$op" != '-s' && "$op" != '-l') then
+    echo2 "Usage:  wind_stat [-s] [-l] f1"
+    exit 1
+endif
+
+if (! -f ${f1}) then
+    echo2 "wind_stat:  '${f1}' does not exist"
+    exit 2
+endif
+
+#
+# --- Fortran programs.
+#
+
+if (${fx} == "nc") then
+  setenv CDF055 ${f1}
+
+  if ( "$op" == '-s' ) then
+      $0_nc.exe | head -1
+      $0_nc.exe | tail -1
+  else
+      $0_nc.exe
+  endif
+else
+  setenv FOR055 ${f1}
+
+  if ( "$op" == '-s' ) then
+      $0.exe | head -1
+      $0.exe | tail -1
+  else
+      $0.exe
+  endif
+endif

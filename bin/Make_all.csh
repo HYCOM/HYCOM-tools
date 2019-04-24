@@ -80,9 +80,7 @@ end
 #
 # --- *.f programs
 #
-foreach f ( atmos_gaussian clim_stat wind_stat wind_stat_check \
-            wind_stat_range wind_stat_range2 wind_stat_range5 \
-            wind_stat_raw wind_to_cd hycom_sigma )
+foreach f ( atmos_gaussian wind_to_cd hycom_sigma )
   if ( ! -e ${f}_${OS} ) then
     $FC $FFLAGS ${f}.f $FLIBS -o ${f}_${OS}
   else if ( -f `find ${f}.f -prune -newer ${f}_${OS}` ) then
@@ -90,6 +88,25 @@ foreach f ( atmos_gaussian clim_stat wind_stat wind_stat_check \
   else
     echo "${f}_${OS} is already up to date"
   endif
+  touch       ${f}
+  /bin/rm -f  ${f}
+  chmod a+rx  ${f}_${OS}
+  /bin/ln -s  ${f}_${OS} ${f}
+end
+foreach f ( clim_stat wind_stat wind_stat_check \
+            wind_stat_range wind_stat_range2 wind_stat_range4 wind_stat_range5 \
+            wind_stat_raw )
+  if ( ! -e ${f}_${OS} ) then
+    $FC $FFLAGS ${f}.f $FLIBS -o ${f}_${OS}
+  else if ( -f `find ${f}.f -prune -newer ${f}_${OS}` ) then
+    $FC $FFLAGS ${f}.f $FLIBS -o ${f}_${OS}
+  else
+    echo "${f}_${OS} is already up to date"
+  endif
+  touch       ${f}.exe
+  /bin/rm -f  ${f}.exe
+  chmod a+rx  ${f}_${OS}
+  /bin/ln -s  ${f}_${OS} ${f}.exe
 end
 foreach f ( cice_restart cice_restart_mask cice_restart_range cice_restart_superset \
             cice_stat cice_wind_ymdh cice_x1 hycom_palette lonlat_dist \
