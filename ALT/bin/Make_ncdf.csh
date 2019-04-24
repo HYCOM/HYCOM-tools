@@ -63,7 +63,7 @@ case 'XC30':
 #       compile for XC30/XC40 with ifort via aprun
         module switch PrgEnv-cray PrgEnv-intel
         setenv FC       "ftn"
-        setenv FFLAGS   "-traceback -xHost -O3 -fp-model precise -ftz -align array64 byte -convert big_endian -warn nogeneral -diag-disable 10212"
+        setenv FFLAGS   "-traceback -xHost -O3 -fp-model precise -ftz -align array64byte -convert big_endian -warn nogeneral -diag-disable 10212"
         setenv FLIBS    ""
         setenv CC       "cc"
         setenv CFLAGS   "-traceback -xHost -O"
