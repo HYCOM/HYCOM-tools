@@ -288,16 +288,17 @@ c           input domain close enough to north pole
           call flush(6)
         endif
         do ii= 1,idm_out
-          ldebug = mod(ii,      max(2,idm_out/10)).eq.1 .and.
-     &             mod(jj-jj1+1,max(2,jdm_out/10)).eq.1
+          ldebug = .false.
+*         ldebug = mod(ii,      max(2,idm_out/10)).eq.1 .and.
+*    &             mod(jj-jj1+1,max(2,jdm_out/10)).eq.1
 *         ldebug = ldebug .or. (ii.eq.1       .and.
 *    &                          mod(jj,max(2,jdm_out/10)).eq.1)
 *         ldebug = ldebug .or. (jj.eq.jdm_out .and.
 *    &                          mod(ii,max(2,idm_out/10)).eq.1)
-          ldebug = ldebug .or.  ii.eq.1
-          ldebug = ldebug .or.  jj.eq.jdm_out
-          write(6,*) 'ldebug = ',ldebug,ii,jj
-          call flush(6)
+*         ldebug = ldebug .or.  ii.eq.1
+*         ldebug = ldebug .or.  jj.eq.jdm_out
+*         write(6,*) 'ldebug = ',ldebug,ii,jj
+*         call flush(6)
 c
           if     (laxis2 .and. ii.ne.1 .and. jj.ne.jj1) then
 c         

@@ -8,15 +8,28 @@ set echo
 /bin/rm -f *.mod
 /bin/rm -f *.inc
 #
+foreach OS ( .exe _LinuxGF _LinuxIF _LinuxPGF _XC30 _AIX )
+#start OS
+foreach f ( clim_stat wind_stat wind_stat_check \
+            wind_stat_range wind_stat_range2 wind_stat_range4 wind_stat_range5 \
+            wind_stat_raw )
+  touch       ${f}${OS}
+  /bin/rm -f  ${f}${OS}
+end
+foreach f ( wind_stat_nc wind_stat_range_nc )
+  touch       ${f}${OS}
+  /bin/rm -f  ${f}${OS}
+end
+#end OS
+end
+#
 foreach OS ( "" _LinuxGF _LinuxIF _LinuxPGF _XC30 _AIX )
 #start OS
 foreach f ( echo2 endian )
   touch       ${f}${OS}
   /bin/rm -f  ${f}${OS}
 end
-foreach f ( atmos_gaussian clim_stat wind_stat wind_stat_check \
-            wind_stat_range wind_stat_range2 wind_stat_range5 \
-            wind_stat_raw wind_to_cd hycom_sigma )
+foreach f ( atmos_gaussian wind_to_cd hycom_sigma )
   touch       ${f}${OS}
   /bin/rm -f  ${f}${OS}
 end
@@ -84,10 +97,6 @@ foreach f ( hycom2nc hycom_binning_nc hycom_scrip_nc )
   /bin/rm -f  ${f}${OS}
 end
 foreach f ( hycom_profile2z_nc hycom_profile2s_nc hycom_seaice_nc )
-  touch       ${f}${OS}
-  /bin/rm -f  ${f}${OS}
-end
-foreach f ( wind_stat_nc wind_stat_range_nc )
   touch       ${f}${OS}
   /bin/rm -f  ${f}${OS}
 end

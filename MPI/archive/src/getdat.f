@@ -406,11 +406,10 @@ c        call xctilr(dpmixl,1,1,nbdy,nbdy, halo_ps)
 *     call xcsync(flush_lp)
 c
 c --- are there mix fields?
-        read (ni,'(a)',end=6) cline
+      read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
         write(lp,'(a)')       trim(cline)
       endif
-      write(lp,'(a)')            cline(1:len_trim(cline))
       lmix = ios.eq.0 .and. cline(1:8).eq.'tmix    '
       if     (lmix) then
         i = index(cline,'=')
@@ -598,12 +597,12 @@ c ---   already input at end of k=1 loop.
         stop
       endif
       call getfld(u(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .true.)
-        call xctilr(u(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_uv)
-*     if(mnproc.eq.1)then
-*       write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'u       ',k
-*     endif
-      write(lp,'("input  ",a," into ",a,2i3)') cline(1:8),'u       ',k,
-     &  mnproc
+      call xctilr(u(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_uv)
+      if(mnproc.eq.1)then
+        write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'u       ',k
+      endif
+*     write(lp,'("input  ",a," into ",a,2i3)') cline(1:8),'u       ',k,
+*    &  mnproc
 *     call xcsync(flush_lp)
 c
       read (ni,'(a)',end=6) cline

@@ -1,0 +1,59 @@
+#! /bin/csh -f
+#
+# clim_stat:  print statistics on a climatology file
+#
+# Usage:   clim_stat f1
+#
+#          f1   is the climatology file
+#
+# Most the the work is done by a Fortran program.
+#
+# Alan J. Wallcraft, Naval Research Laboratory, June 2000.
+#
+
+
+if ($#argv != 1 && $#argv != 2) then
+    echo2 "Usage:  clim_stat f1"
+    exit 1
+endif
+
+if ($#argv == 1) then
+    set op='-l'
+    set f1=$1
+else
+    set op=$1
+    set f1=$2
+endif
+
+if ("$op" != '-s' && "$op" != '-l') then
+    echo2 "Usage:  clim_stat f1"
+    exit 1
+endif
+
+if (! -f ${f1}) then
+    echo2 "clim_stat:  '${f1}' does not exist"
+    exit 2
+endif
+
+#
+# --- Fortran program.
+#
+
+setenv FOR055 ${f1}
+
+setenv OS `/bin/uname`
+#if ($OS == "SunOS") then
+#  setenv OS SunOS64
+#endif
+if ($OS == "Linux") then
+  if (`/bin/uname -m` == "alpha") then
+        setenv OS LinuxA
+  endif
+  if (`/bin/uname -m` == "x86_64") then
+        setenv OS Linux64
+  endif
+# setenv OS LinuxIFC
+endif
+
+#clim_stat_${OS}
+$0_${OS}
