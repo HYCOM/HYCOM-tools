@@ -10,7 +10,7 @@ C
 C
       LOGICAL   LARCTIC
       INTEGER   IWI,JWI
-      REAL*4    XFIN,YFIN,DXIN,DYIN
+      REAL*4    XFIN,DXIN
       REAL*4    PLATIJ,YFMIN,YFMAX,XAMAX,XAMIN,YAMAX,YAMIN
       CHARACTER PREAMBL(5)*79
 C
@@ -77,10 +77,7 @@ C
 C        IWI    = 1ST DIMENSION OF FLUX GRID
 C        JWI    = 2ND DIMENSION OF FLUX GRID
 C        XFIN   = LONGITUDE OF 1ST FLUX GRID POINT
-C        YFIN   = LATITUDE  OF 1ST FLUX GRID POINT
 C        DXIN   = FLUX LONGITUDINAL GRID SPACING
-C        DYIN   = FLUX LATITUDINAL  GRID SPACING
-C                  =0.0; GAUSSIAN GRID WITH JWI/2 NODES PER HEMISPHERE.
 C
 C 3)  NAMELIST INPUT:
 C
@@ -616,27 +613,12 @@ C
         ENDIF
         IF     (INT(YAMAX).GE.JWI+1) THEN  !may need jwi+3 and perhaps jwi+4
           IF     (IWIX.GT.IWI) THEN  !global grid
-            IF     (DYIN.EQ.0.0 .OR.
-     +              ABS(YFIN+JWI*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+3 = 90N
               DO I= 1,IWI+4
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 KPARI(I,JWI+4) =      KPARI(II,JWI+2)
                 KPARI(I,JWI+3) = 0.5*(KPARI(I, JWI+2)+KPARI(I,JWI+4))
               ENDDO !i
-            ELSEIF (ABS(YFIN+(JWI-1)*DYIN-90.0).LE.0.1*DYIN) THEN
-C ---         JWI+2 = 90N
-              DO I= 1,IWI+4
-                II = MOD(I-3+IWI/2+IWI,IWI)+3
-                KPARI(I,JWI+3) = KPARI(II,JWI+1)
-                KPARI(I,JWI+4) = KPARI(II,JWI  )
-              ENDDO !i
-            ELSE
-              DO I= 1,IWI+4
-                KPARI(I,JWI+3) = 2.0*KPARI(I,JWI+2) -     KPARI(I,JWI+1)
-                KPARI(I,JWI+4) = 3.0*KPARI(I,JWI+2) - 2.0*KPARI(I,JWI+1)
-              ENDDO !i
-            ENDIF
           ELSE  !non-global grid
             DO 345 I= 1,IWI+4
               KPARI(I,JWI+3) = 2.0*KPARI(I,JWI+2) -     KPARI(I,JWI+1)
@@ -646,27 +628,12 @@ C ---         JWI+2 = 90N
         ENDIF
         IF     (INT(YAMIN).LE.4) THEN  !may need 2 and perhaps 1
           IF     (IWIX.GT.IWI) THEN  !global grid
-            IF     (DYIN.EQ.0.0 .OR.
-     +              ABS(YFIN-DYIN+90.0).LE.0.1*DYIN) THEN
 C ---         2 = 90S
               DO I= 1,IWI+4
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 KPARI(I,1) =      KPARI(II,3)
                 KPARI(I,2) = 0.5*(KPARI(I, 1)+KPARI(I,3))
               ENDDO !i
-            ELSEIF (ABS(YFIN+90.0).LE.0.1*DYIN) THEN
-C ---         3 = 90S
-              DO I= 1,IWI+4
-                II = MOD(I-3+IWI/2+IWI,IWI)+3
-                KPARI(I,1) = KPARI(II,5)
-                KPARI(I,2) = KPARI(II,4)
-              ENDDO !i
-            ELSE
-              DO I= 1,IWI+4
-                KPARI(I,1) = 3.0*KPARI(I,3) - 2.0*KPARI(I,4)
-                KPARI(I,2) = 2.0*KPARI(I,3) -     KPARI(I,4)
-              ENDDO !i
-            ENDIF
           ELSE  !non-global grid
             DO 355 I= 1,IWI+4
               KPARI(I,1) = 3.0*KPARI(I,3) - 2.0*KPARI(I,4)

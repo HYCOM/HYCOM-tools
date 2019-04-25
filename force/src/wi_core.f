@@ -13,7 +13,7 @@ C
 C
       LOGICAL   LARCTIC,LROTATE
       INTEGER   IWI,JWI
-      REAL*4    XFIN,YFIN,DXIN,DYIN
+      REAL*4    XFIN,DXIN
       REAL*4    TXMIJ,TYMIJ,COSPANG,SINPANG,
      +          PLATIJ,YFMIN,YFMAX,XAMAX,XAMIN,YAMAX,YAMIN
       CHARACTER PREAMBL(5)*79
@@ -76,10 +76,7 @@ C
 C        IWI    = 1ST DIMENSION OF WIND GRID
 C        JWI    = 2ND DIMENSION OF WIND GRID
 C        XFIN   = LONGITUDE OF 1ST WIND GRID POINT
-C        YFIN   = LATITUDE  OF 1ST WIND GRID POINT
 C        DXIN   = WIND LONGITUDINAL GRID SPACING
-C        DYIN   = WIND LATITUDINAL  GRID SPACING
-C                  =0.0; GAUSSIAN GRID WITH JWI/2 NODES PER HEMISPHERE.
 C
 C 3)  NAMELIST INPUT:
 C
@@ -983,8 +980,6 @@ C
         ENDIF
         IF     (INT(YAMAX).GE.JWI+1) THEN  !may need jwi+3 and perhaps jwi+4
           IF     (IWIX.GT.IWI) THEN  !global grid
-            IF     (DYIN.EQ.0.0 .OR.
-     +              ABS(YFIN+JWI*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+3 = 90N
               DO I= 1,IWI+4
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
@@ -1001,31 +996,6 @@ C ---         JWI+3 = 90N
 *    +              TYI(I,JWI+1),TYI(I,JWI+2),
 *    +              TYI(I,JWI+3),TYI(I,JWI+4)
               ENDDO !i
-            ELSEIF (ABS(YFIN+(JWI-1)*DYIN-90.0).LE.0.1*DYIN) THEN
-C ---         JWI+2 = 90N
-              DO I= 1,IWI+4
-                II = MOD(I-3+IWI/2+IWI,IWI)+3
-                TXI(I,JWI+3) = -TXI(II,JWI+1)
-                TXI(I,JWI+4) = -TXI(II,JWI  )
-                TYI(I,JWI+3) = -TYI(II,JWI+1)
-                TYI(I,JWI+4) = -TYI(II,JWI  )
-*                  WRITE(6,'(A,2I5,4F10.3)')
-*    +              'I,II,TX = ',I,II,
-*    +              TXI(I,JWI+1),TXI(I,JWI+2),
-*    +              TXI(I,JWI+3),TXI(I,JWI+4)
-*                  WRITE(6,'(A,2I5,4F10.3)')
-*    +              'I,II,TY = ',I,II,
-*    +              TYI(I,JWI+1),TYI(I,JWI+2),
-*    +              TYI(I,JWI+3),TYI(I,JWI+4)
-              ENDDO !i
-            ELSE
-              DO I= 1,IWI+4
-                TXI(I,JWI+3) = 2.0*TXI(I,JWI+2) -     TXI(I,JWI+1)
-                TXI(I,JWI+4) = 3.0*TXI(I,JWI+2) - 2.0*TXI(I,JWI+1)
-                TYI(I,JWI+3) = 2.0*TYI(I,JWI+2) -     TYI(I,JWI+1)
-                TYI(I,JWI+4) = 3.0*TYI(I,JWI+2) - 2.0*TYI(I,JWI+1)
-              ENDDO !i
-            ENDIF
           ELSE  !non-global grid
             DO 345 I= 1,IWI+4
               TXI(I,JWI+3) = 2.0*TXI(I,JWI+2) -     TXI(I,JWI+1)
@@ -1037,8 +1007,6 @@ C ---         JWI+2 = 90N
         ENDIF
         IF     (INT(YAMIN).LE.4) THEN  !may need 2 and perhaps 1
           IF     (IWIX.GT.IWI) THEN  !global grid
-            IF     (DYIN.EQ.0.0 .OR.
-     +              ABS(YFIN-DYIN+90.0).LE.0.1*DYIN) THEN
 C ---         2 = 90S
               DO I= 1,IWI+4
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
@@ -1047,23 +1015,6 @@ C ---         2 = 90S
                 TXI(I,2) = 0.5*(TXI(I,1)+TXI(I,3))
                 TYI(I,2) = 0.5*(TYI(I,1)+TYI(I,3))
               ENDDO !i
-            ELSEIF (ABS(YFIN+90.0).LE.0.1*DYIN) THEN
-C ---         3 = 90S
-              DO I= 1,IWI+4
-                II = MOD(I-3+IWI/2+IWI,IWI)+3
-                TXI(I,1) = -TXI(II,5)
-                TXI(I,2) = -TXI(II,4)
-                TYI(I,1) = -TYI(II,5)
-                TYI(I,2) = -TYI(II,4)
-              ENDDO !i
-            ELSE
-              DO I= 1,IWI+4
-                TXI(I,1) = 3.0*TXI(I,3) - 2.0*TXI(I,4)
-                TXI(I,2) = 2.0*TXI(I,3) -     TXI(I,4)
-                TYI(I,1) = 3.0*TYI(I,3) - 2.0*TYI(I,4)
-                TYI(I,2) = 2.0*TYI(I,3) -     TYI(I,4)
-              ENDDO !i
-            ENDIF
           ELSE  !non-global grid
             DO 355 I= 1,IWI+4
               TXI(I,1) = 3.0*TXI(I,3) - 2.0*TXI(I,4)
