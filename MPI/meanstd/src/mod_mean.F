@@ -301,7 +301,6 @@ c
      &                    min(depthu(i,j),
      &                        0.5*(p(i,j,k  )+p(i-1,j,k  )))  )*
      &              onetaw_u(i,j)
-
               dpu_m(i,j,k) = dpu_m(i,j,k) +            swk
                 u_m(i,j,k) =   u_m(i,j,k) + u(i,j,k) * swk
             enddo
@@ -413,19 +412,35 @@ c       call xctilr(p(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy,halo_ps)
         enddo
       enddo
 c
+      call xctilr(onetaw,1,1,nbdy,nbdy,halo_ps)
+      do j=1-nbdy,jj+nbdy
+        onetaw(0,j)=onetaw(ii,j)
+      enddo
+c
       do j= 1,jj
         do i= 1,ii
           if     (iu(i,j).eq.1) then
             ubaro_m(i,j) =  ubaro_m(i,j) + ubaro(i,j)**2 * s
              umix_m(i,j) =   umix_m(i,j) +  umix(i,j)**2 * s
 c
+c ---       depthu is either depths(i,j) or depths(i-1,j)
+            if     (depths(i,j).eq.depths(i-1,j)) then
+              onetaw_u(i,j) = 0.5*(onetaw(i,j)+onetaw(i-1,j))
+            elseif (depths(i,j).eq.depthu(i,j)) then
+              onetaw_u(i,j) =      onetaw(i,j)
+            else
+              onetaw_u(i,j) =                  onetaw(i-1,j)
+            endif
+c
             do k= 1,kk
               swk = s*max(0.0,
      &                    min(depthu(i,j),
      &                        0.5*(p(i,j,k+1)+p(i-1,j,k+1))) -
      &                    min(depthu(i,j),
-     &                        0.5*(p(i,j,k  )+p(i-1,j,k  )))  )
-              u_m(i,j,k) = u_m(i,j,k) + u(i,j,k)**2 * swk
+     &                        0.5*(p(i,j,k  )+p(i-1,j,k  )))  )*
+     &              onetaw_u(i,j)
+              dpu_m(i,j,k) = dpu_m(i,j,k) +               swk
+                u_m(i,j,k) =   u_m(i,j,k) + u(i,j,k)**2 * swk
             enddo
           endif !iu
 c
@@ -433,13 +448,24 @@ c
             vbaro_m(i,j) = vbaro_m(i,j) + vbaro(i,j)**2 * s
              vmix_m(i,j) =  vmix_m(i,j) +  vmix(i,j)**2 * s
 c
+c ---       depthv is either depths(i,j) or depths(i,j-1)
+            if     (depths(i,j).eq.depths(i,j-1)) then
+              onetaw_v(i,j) = 0.5*(onetaw(i,j)+onetaw(i,j-1))
+            elseif (depths(i,j).eq.depthv(i,j)) then
+              onetaw_v(i,j) =      onetaw(i,j)
+            else
+              onetaw_v(i,j) =                  onetaw(i,j-1)
+            endif
+c
             do k= 1,kk
               swk = s*max(0.0,
      &                    min(depthv(i,j),
      &                        0.5*(p(i,j,k+1)+p(i,j-1,k+1))) -
      &                    min(depthv(i,j),
-     &                        0.5*(p(i,j,k  )+p(i,j-1,k  )))  )
-              v_m(i,j,k) = v_m(i,j,k) + v(i,j,k)**2 * swk
+     &                        0.5*(p(i,j,k  )+p(i,j-1,k  )))  )*
+     &              onetaw_v(i,j)
+              dpv_m(i,j,k) = dpv_m(i,j,k) +               swk
+                v_m(i,j,k) =   v_m(i,j,k) + v(i,j,k)**2 * swk
             enddo
           endif !iv
 c
