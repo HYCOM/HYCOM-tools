@@ -393,7 +393,7 @@ C
 C
 C       EXTRA ARRAYS FOR INTERPOLATION
 C
-        ALLOCATE( KPARI(IWI+4,JWI+4) )
+        ALLOCATE( KPARI(IWI+5,JWI+5) ) !+5 needed for bicubc
         IF     (INTERP.EQ.1) THEN
           ALLOCATE( FXI(IWI+4),
      +              FYI(JWI+4),
@@ -618,16 +618,18 @@ C
 C
 C       FILL IN THE PADDING AREA AS NECESSARY.
 C
-        IF     (INT(XAMAX).GE.IWI+1) THEN  !may need iwi+3 and perhaps iwi+4
+        IF     (INT(XAMAX).GE.IWI+1) THEN  !may need iwi+3 and perhaps iwi+4/5
           IF     (IWIX.GT.IWI) THEN
             DO 320 J= 3,JWI+2
               KPARI(IWI+3,J) = KPARI(3,J)
               KPARI(IWI+4,J) = KPARI(4,J)
+              KPARI(IWI+5,J) = KPARI(5,J)
   320       CONTINUE
           ELSE
             DO 325 J= 3,JWI+2
-              KPARI(IWI+3,J) = 2.0*KPARI(IWI+2,J) -     KPARI(IWI+1,J)
-              KPARI(IWI+4,J) = 3.0*KPARI(IWI+2,J) - 2.0*KPARI(IWI+1,J)
+              KPARI(IWI+3,J) = 2.0*KPARI(IWI+2,J) - KPARI(IWI+1,J)
+              KPARI(IWI+4,J) = 2.0*KPARI(IWI+3,J) - KPARI(IWI+2,J)
+              KPARI(IWI+5,J) = 2.0*KPARI(IWI+4,J) - KPARI(IWI+3,J)
   325       CONTINUE
           ENDIF
         ENDIF
@@ -644,33 +646,37 @@ C
   335       CONTINUE
           ENDIF
         ENDIF
-        IF     (INT(YAMAX).GE.JWI+1) THEN  !may need jwi+3 and perhaps jwi+4
+        IF     (INT(YAMAX).GE.JWI+1) THEN  !may need jwi+3 and perhaps jwi+4/5
           IF     (IWIX.GT.IWI) THEN  !global grid
             IF     (DYIN.EQ.0.0 .OR.
      +              ABS(YFIN+JWI*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+3 = 90N
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
+                KPARI(I,JWI+5) =      KPARI(II,JWI+1)
                 KPARI(I,JWI+4) =      KPARI(II,JWI+2)
                 KPARI(I,JWI+3) = 0.5*(KPARI(I, JWI+2)+KPARI(I,JWI+4))
               ENDDO !i
             ELSEIF (ABS(YFIN+(JWI-1)*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+2 = 90N
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 KPARI(I,JWI+3) = KPARI(II,JWI+1)
                 KPARI(I,JWI+4) = KPARI(II,JWI  )
+                KPARI(I,JWI+5) = KPARI(II,JWI-1)
               ENDDO !i
             ELSE
-              DO I= 1,IWI+4
-                KPARI(I,JWI+3) = 2.0*KPARI(I,JWI+2) -     KPARI(I,JWI+1)
-                KPARI(I,JWI+4) = 3.0*KPARI(I,JWI+2) - 2.0*KPARI(I,JWI+1)
+              DO I= 1,IWI+5
+                KPARI(I,JWI+3) = 2.0*KPARI(I,JWI+2) - KPARI(I,JWI+1)
+                KPARI(I,JWI+4) = 2.0*KPARI(I,JWI+3) - KPARI(I,JWI+2)
+                KPARI(I,JWI+5) = 2.0*KPARI(I,JWI+4) - KPARI(I,JWI+3)
               ENDDO !i
             ENDIF
           ELSE  !non-global grid
-            DO 345 I= 1,IWI+4
-              KPARI(I,JWI+3) = 2.0*KPARI(I,JWI+2) -     KPARI(I,JWI+1)
-              KPARI(I,JWI+4) = 3.0*KPARI(I,JWI+2) - 2.0*KPARI(I,JWI+1)
+            DO 345 I= 1,IWI+5
+              KPARI(I,JWI+3) = 2.0*KPARI(I,JWI+2) - KPARI(I,JWI+1)
+              KPARI(I,JWI+4) = 2.0*KPARI(I,JWI+3) - KPARI(I,JWI+2)
+              KPARI(I,JWI+5) = 2.0*KPARI(I,JWI+4) - KPARI(I,JWI+3)
   345       CONTINUE
           ENDIF
         ENDIF
@@ -679,26 +685,26 @@ C ---         JWI+2 = 90N
             IF     (DYIN.EQ.0.0 .OR.
      +              ABS(YFIN-DYIN+90.0).LE.0.1*DYIN) THEN
 C ---         2 = 90S
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 KPARI(I,1) =      KPARI(II,3)
                 KPARI(I,2) = 0.5*(KPARI(I, 1)+KPARI(I,3))
               ENDDO !i
             ELSEIF (ABS(YFIN+90.0).LE.0.1*DYIN) THEN
 C ---         3 = 90S
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 KPARI(I,1) = KPARI(II,5)
                 KPARI(I,2) = KPARI(II,4)
               ENDDO !i
             ELSE
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 KPARI(I,1) = 3.0*KPARI(I,3) - 2.0*KPARI(I,4)
                 KPARI(I,2) = 2.0*KPARI(I,3) -     KPARI(I,4)
               ENDDO !i
             ENDIF
           ELSE  !non-global grid
-            DO 355 I= 1,IWI+4
+            DO 355 I= 1,IWI+5
               KPARI(I,1) = 3.0*KPARI(I,3) - 2.0*KPARI(I,4)
               KPARI(I,2) = 2.0*KPARI(I,3) -     KPARI(I,4)
   355       CONTINUE
@@ -710,16 +716,16 @@ C       INTERPOLATE FROM NATIVE TO MODEL FLUX GRIDS.
 C
         IF     (INTERP.EQ.0) THEN
           CALL LINEAR(KPM,XAF,YAF,IDM,IDM,JDM,
-     +                KPARI,IWI+4,IWI+4,JWI+4)
+     +                KPARI,IWI+5,IWI+4,JWI+4)
         ELSEIF (INTERP.EQ.2) THEN
           CALL BESSEL(KPM,XAF,YAF,IDM,IDM,JDM,
-     +                KPARI,IWI+4,IWI+4,JWI+4)
+     +                KPARI,IWI+5,IWI+4,JWI+4)
         ELSEIF (INTERP.EQ.3) THEN
           CALL BICUBC(KPM,XAF,YAF,IDM,IDM,JDM,
-     +                KPARI,IWI+4,IWI+4,JWI+4)
+     +                KPARI,IWI+5,IWI+5,JWI+5)
         ELSEIF (INTERP.EQ.1) THEN
           CALL CUBSPL(KPM,XAF,YAF,IDM,IDM,JDM,
-     +                KPARI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WKPAR3,WK)
+     +                KPARI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WKPAR3,WK)
         ELSE !interp.eq.4
           CALL SCRIP(KPM,   IDM,JDM,
      &               KPARIN,IWI,JWI )  !use original input array

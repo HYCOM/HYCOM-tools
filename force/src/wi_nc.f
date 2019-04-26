@@ -712,8 +712,8 @@ C
 C
 C       EXTRA ARRAYS FOR INTERPOLATION
 C
-        ALLOCATE( TXI(IWI+4,JWI+4),
-     +            TYI(IWI+4,JWI+4) )
+        ALLOCATE( TXI(IWI+5,JWI+5),
+     +            TYI(IWI+5,JWI+5) )  !+5 needed for bicubc
         IF     (INTERP.EQ.1) THEN
           ALLOCATE( WTX3(IWI+4,JWI+4,3) )
           ALLOCATE( FXI(IWI+4),
@@ -970,20 +970,24 @@ C
 C
 C       FILL IN THE PADDING AREA AS NECESSARY.
 C
-        IF     (INT(XAMAX).GE.IWI+1) THEN  !may need iwi+3 and perhaps iwi+4
+        IF     (INT(XAMAX).GE.IWI+1) THEN  !may need iwi+3 and perhaps iwi+4/5
           IF     (IWIX.GT.IWI) THEN
             DO 320 J= 3,JWI+2
               TXI(IWI+3,J) = TXI(3,J)
               TXI(IWI+4,J) = TXI(4,J)
+              TXI(IWI+5,J) = TXI(5,J)
               TYI(IWI+3,J) = TYI(3,J)
               TYI(IWI+4,J) = TYI(4,J)
+              TYI(IWI+5,J) = TYI(5,J)
   320       CONTINUE
           ELSE
             DO 325 J= 3,JWI+2
-              TXI(IWI+3,J) = 2.0*TXI(IWI+2,J) -     TXI(IWI+1,J)
-              TXI(IWI+4,J) = 3.0*TXI(IWI+2,J) - 2.0*TXI(IWI+1,J)
-              TYI(IWI+3,J) = 2.0*TYI(IWI+2,J) -     TYI(IWI+1,J)
-              TYI(IWI+4,J) = 3.0*TYI(IWI+2,J) - 2.0*TYI(IWI+1,J)
+              TXI(IWI+3,J) = 2.0*TXI(IWI+2,J) - TXI(IWI+1,J)
+              TXI(IWI+4,J) = 2.0*TXI(IWI+3,J) - TXI(IWI+2,J)
+              TXI(IWI+5,J) = 2.0*TXI(IWI+4,J) - TXI(IWI+3,J)
+              TYI(IWI+3,J) = 2.0*TYI(IWI+2,J) - TYI(IWI+1,J)
+              TYI(IWI+4,J) = 2.0*TYI(IWI+3,J) - TYI(IWI+2,J)
+              TYI(IWI+5,J) = 2.0*TYI(IWI+4,J) - TYI(IWI+3,J)
   325       CONTINUE
           ENDIF
         ENDIF
@@ -1004,13 +1008,15 @@ C
   335       CONTINUE
           ENDIF
         ENDIF
-        IF     (INT(YAMAX).GE.JWI+1) THEN  !may need jwi+3 and perhaps jwi+4
+        IF     (INT(YAMAX).GE.JWI+1) THEN  !may need jwi+3 and perhaps jwi+4/5
           IF     (IWIX.GT.IWI) THEN  !global grid
             IF     (DYIN.EQ.0.0 .OR.
      +              ABS(YFIN+JWI*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+3 = 90N
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
+                TXI(I,JWI+5) = -TXI(II,JWI+1)
+                TYI(I,JWI+5) = -TYI(II,JWI+1)
                 TXI(I,JWI+4) = -TXI(II,JWI+2)
                 TYI(I,JWI+4) = -TYI(II,JWI+2)
                 TXI(I,JWI+3) = 0.5*(TXI(I,JWI+2)+TXI(I,JWI+4))
@@ -1026,12 +1032,14 @@ C ---         JWI+3 = 90N
               ENDDO !i
             ELSEIF (ABS(YFIN+(JWI-1)*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+2 = 90N
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 TXI(I,JWI+3) = -TXI(II,JWI+1)
                 TXI(I,JWI+4) = -TXI(II,JWI  )
+                TXI(I,JWI+5) = -TXI(II,JWI-1)
                 TYI(I,JWI+3) = -TYI(II,JWI+1)
                 TYI(I,JWI+4) = -TYI(II,JWI  )
+                TYI(I,JWI+5) = -TYI(II,JWI-1)
 *                  WRITE(6,'(A,2I5,4F10.3)')
 *    +              'I,II,TX = ',I,II,
 *    +              TXI(I,JWI+1),TXI(I,JWI+2),
@@ -1042,19 +1050,23 @@ C ---         JWI+2 = 90N
 *    +              TYI(I,JWI+3),TYI(I,JWI+4)
               ENDDO !i
             ELSE
-              DO I= 1,IWI+4
-                TXI(I,JWI+3) = 2.0*TXI(I,JWI+2) -     TXI(I,JWI+1)
-                TXI(I,JWI+4) = 3.0*TXI(I,JWI+2) - 2.0*TXI(I,JWI+1)
-                TYI(I,JWI+3) = 2.0*TYI(I,JWI+2) -     TYI(I,JWI+1)
-                TYI(I,JWI+4) = 3.0*TYI(I,JWI+2) - 2.0*TYI(I,JWI+1)
+              DO I= 1,IWI+5
+                TXI(I,JWI+3) = 2.0*TXI(I,JWI+2) - TXI(I,JWI+1)
+                TXI(I,JWI+4) = 2.0*TXI(I,JWI+3) - TXI(I,JWI+2)
+                TXI(I,JWI+5) = 2.0*TXI(I,JWI+4) - TXI(I,JWI+3)
+                TYI(I,JWI+3) = 2.0*TYI(I,JWI+2) - TYI(I,JWI+1)
+                TYI(I,JWI+4) = 2.0*TYI(I,JWI+3) - TYI(I,JWI+2)
+                TYI(I,JWI+5) = 2.0*TYI(I,JWI+4) - TYI(I,JWI+3)
               ENDDO !i
             ENDIF
           ELSE  !non-global grid
-            DO 345 I= 1,IWI+4
-              TXI(I,JWI+3) = 2.0*TXI(I,JWI+2) -     TXI(I,JWI+1)
-              TXI(I,JWI+4) = 3.0*TXI(I,JWI+2) - 2.0*TXI(I,JWI+1)
-              TYI(I,JWI+3) = 2.0*TYI(I,JWI+2) -     TYI(I,JWI+1)
-              TYI(I,JWI+4) = 3.0*TYI(I,JWI+2) - 2.0*TYI(I,JWI+1)
+            DO 345 I= 1,IWI+5
+              TXI(I,JWI+3) = 2.0*TXI(I,JWI+2) - TXI(I,JWI+1)
+              TXI(I,JWI+4) = 2.0*TXI(I,JWI+3) - TXI(I,JWI+2)
+              TXI(I,JWI+5) = 2.0*TXI(I,JWI+4) - TXI(I,JWI+3)
+              TYI(I,JWI+3) = 2.0*TYI(I,JWI+2) - TYI(I,JWI+1)
+              TYI(I,JWI+4) = 2.0*TYI(I,JWI+3) - TYI(I,JWI+2)
+              TYI(I,JWI+5) = 2.0*TYI(I,JWI+4) - TYI(I,JWI+3)
   345       CONTINUE
           ENDIF
         ENDIF
@@ -1063,7 +1075,7 @@ C ---         JWI+2 = 90N
             IF     (DYIN.EQ.0.0 .OR.
      +              ABS(YFIN-DYIN+90.0).LE.0.1*DYIN) THEN
 C ---         2 = 90S
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 TXI(I,1) = -TXI(II,3)
                 TYI(I,1) = -TYI(II,3)
@@ -1072,7 +1084,7 @@ C ---         2 = 90S
               ENDDO !i
             ELSEIF (ABS(YFIN+90.0).LE.0.1*DYIN) THEN
 C ---         3 = 90S
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 TXI(I,1) = -TXI(II,5)
                 TXI(I,2) = -TXI(II,4)
@@ -1080,7 +1092,7 @@ C ---         3 = 90S
                 TYI(I,2) = -TYI(II,4)
               ENDDO !i
             ELSE
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 TXI(I,1) = 3.0*TXI(I,3) - 2.0*TXI(I,4)
                 TXI(I,2) = 2.0*TXI(I,3) -     TXI(I,4)
                 TYI(I,1) = 3.0*TYI(I,3) - 2.0*TYI(I,4)
@@ -1088,7 +1100,7 @@ C ---         3 = 90S
               ENDDO !i
             ENDIF
           ELSE  !non-global grid
-            DO 355 I= 1,IWI+4
+            DO 355 I= 1,IWI+5
               TXI(I,1) = 3.0*TXI(I,3) - 2.0*TXI(I,4)
               TXI(I,2) = 2.0*TXI(I,3) -     TXI(I,4)
               TYI(I,1) = 3.0*TYI(I,3) - 2.0*TYI(I,4)
@@ -1102,24 +1114,24 @@ C       INTERPOLATE WIND STRESSES FROM NATIVE TO MODEL P-GRID.
 C
         IF     (INTERP.EQ.0) THEN
           CALL LINEAR(TXM,XAF,YAF,IDM,IDM,JDM,
-     +                TXI,IWI+4,IWI+4,JWI+4)
+     +                TXI,IWI+5,IWI+4,JWI+4)
           CALL LINEAR(TYM,XAF,YAF,IDM,IDM,JDM,
-     +                TYI,IWI+4,IWI+4,JWI+4)
+     +                TYI,IWI+5,IWI+4,JWI+4)
         ELSEIF (INTERP.EQ.2) THEN
           CALL BESSEL(TXM,XAF,YAF,IDM,IDM,JDM,
-     +                TXI,IWI+4,IWI+4,JWI+4)
+     +                TXI,IWI+5,IWI+4,JWI+4)
           CALL BESSEL(TYM,XAF,YAF,IDM,IDM,JDM,
-     +                TYI,IWI+4,IWI+4,JWI+4)
+     +                TYI,IWI+5,IWI+4,JWI+4)
         ELSEIF (INTERP.EQ.3) THEN
           CALL BICUBC(TXM,XAF,YAF,IDM,IDM,JDM,
-     +                TXI,IWI+4,IWI+4,JWI+4)
+     +                TXI,IWI+5,IWI+5,JWI+5)
           CALL BICUBC(TYM,XAF,YAF,IDM,IDM,JDM,
-     +                TYI,IWI+4,IWI+4,JWI+4)
+     +                TYI,IWI+5,IWI+5,JWI+5)
         ELSEIF (INTERP.EQ.1) THEN
           CALL CUBSPL(TXM,XAF,YAF,IDM,IDM,JDM,
-     +                TXI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTX3,WK)
+     +                TXI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTX3,WK)
           CALL CUBSPL(TYM,XAF,YAF,IDM,IDM,JDM,
-     +                TYI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTX3,WK)
+     +                TYI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTX3,WK)
         ELSE !interp.eq.4
           CALL SCRIP(TXM, IDM,JDM,
      &               TXIN,IWI,JWI )

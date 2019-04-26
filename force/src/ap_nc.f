@@ -464,11 +464,11 @@ C
         ALLOCATE( MASKIN(IWI,JWI) )
       ENDIF
 C
-      ALLOCATE( TAIRI(IWI+4,JWI+4),
-     +          HAIRI(IWI+4,JWI+4),
-     +          FLXRI(IWI+4,JWI+4),
-     +          FLXPI(IWI+4,JWI+4),
-     +          PCIPI(IWI+4,JWI+4) )
+      ALLOCATE( TAIRI(IWI+5,JWI+5),
+     +          HAIRI(IWI+5,JWI+5),
+     +          FLXRI(IWI+5,JWI+5),
+     +          FLXPI(IWI+5,JWI+5),
+     +          PCIPI(IWI+5,JWI+5) )  !+5 needed for bicubc
       IF     (INTERP.EQ.1) THEN
         ALLOCATE( FXI(IWI+4),
      +            FYI(JWI+4),
@@ -722,32 +722,42 @@ C
 C
 C       FILL IN THE PADDING AREA AS NECESSARY.
 C
-        IF     (INT(XAMAX).GE.IWI+1) THEN  !may need iwi+3 and perhaps iwi+4
+        IF     (INT(XAMAX).GE.IWI+1) THEN  !may need iwi+3 and perhaps iwi+4/5
           IF     (IWIX.GT.IWI) THEN
             DO 320 J= 3,JWI+2
               TAIRI(IWI+3,J) = TAIRI(3,J)
               TAIRI(IWI+4,J) = TAIRI(4,J)
+              TAIRI(IWI+5,J) = TAIRI(5,J)
               HAIRI(IWI+3,J) = HAIRI(3,J)
               HAIRI(IWI+4,J) = HAIRI(4,J)
+              HAIRI(IWI+5,J) = HAIRI(5,J)
               FLXRI(IWI+3,J) = FLXRI(3,J)
               FLXRI(IWI+4,J) = FLXRI(4,J)
+              FLXRI(IWI+5,J) = FLXRI(5,J)
               FLXPI(IWI+3,J) = FLXPI(3,J)
               FLXPI(IWI+4,J) = FLXPI(4,J)
+              FLXPI(IWI+5,J) = FLXPI(5,J)
               PCIPI(IWI+3,J) = PCIPI(3,J)
               PCIPI(IWI+4,J) = PCIPI(4,J)
+              PCIPI(IWI+5,J) = PCIPI(5,J)
   320       CONTINUE
           ELSE
             DO 325 J= 3,JWI+2
-              TAIRI(IWI+3,J) = 2.0*TAIRI(IWI+2,J) -     TAIRI(IWI+1,J)
-              TAIRI(IWI+4,J) = 3.0*TAIRI(IWI+2,J) - 2.0*TAIRI(IWI+1,J)
-              HAIRI(IWI+3,J) = 2.0*HAIRI(IWI+2,J) -     HAIRI(IWI+1,J)
-              HAIRI(IWI+4,J) = 3.0*HAIRI(IWI+2,J) - 2.0*HAIRI(IWI+1,J)
-              FLXRI(IWI+3,J) = 2.0*FLXRI(IWI+2,J) -     FLXRI(IWI+1,J)
-              FLXRI(IWI+4,J) = 3.0*FLXRI(IWI+2,J) - 2.0*FLXRI(IWI+1,J)
-              FLXPI(IWI+3,J) = 2.0*FLXPI(IWI+2,J) -     FLXPI(IWI+1,J)
-              FLXPI(IWI+4,J) = 3.0*FLXPI(IWI+2,J) - 2.0*FLXPI(IWI+1,J)
-              PCIPI(IWI+3,J) = 2.0*PCIPI(IWI+2,J) -     PCIPI(IWI+1,J)
-              PCIPI(IWI+4,J) = 3.0*PCIPI(IWI+2,J) - 2.0*PCIPI(IWI+1,J)
+              TAIRI(IWI+3,J) = 2.0*TAIRI(IWI+2,J) - TAIRI(IWI+1,J)
+              TAIRI(IWI+4,J) = 2.0*TAIRI(IWI+3,J) - TAIRI(IWI+2,J)
+              TAIRI(IWI+5,J) = 2.0*TAIRI(IWI+4,J) - TAIRI(IWI+3,J)
+              HAIRI(IWI+3,J) = 2.0*HAIRI(IWI+2,J) - HAIRI(IWI+1,J)
+              HAIRI(IWI+4,J) = 2.0*HAIRI(IWI+3,J) - HAIRI(IWI+2,J)
+              HAIRI(IWI+5,J) = 2.0*HAIRI(IWI+4,J) - HAIRI(IWI+3,J)
+              FLXRI(IWI+3,J) = 2.0*FLXRI(IWI+2,J) - FLXRI(IWI+1,J)
+              FLXRI(IWI+4,J) = 2.0*FLXRI(IWI+3,J) - FLXRI(IWI+2,J)
+              FLXRI(IWI+5,J) = 2.0*FLXRI(IWI+4,J) - FLXRI(IWI+3,J)
+              FLXPI(IWI+3,J) = 2.0*FLXPI(IWI+2,J) - FLXPI(IWI+1,J)
+              FLXPI(IWI+4,J) = 2.0*FLXPI(IWI+3,J) - FLXPI(IWI+2,J)
+              FLXPI(IWI+5,J) = 2.0*FLXPI(IWI+4,J) - FLXPI(IWI+3,J)
+              PCIPI(IWI+3,J) = 2.0*PCIPI(IWI+2,J) - PCIPI(IWI+1,J)
+              PCIPI(IWI+4,J) = 2.0*PCIPI(IWI+3,J) - PCIPI(IWI+2,J)
+              PCIPI(IWI+5,J) = 2.0*PCIPI(IWI+4,J) - PCIPI(IWI+3,J)
   325       CONTINUE
           ENDIF
         ENDIF
@@ -780,21 +790,26 @@ C
   335       CONTINUE
           ENDIF
         ENDIF
-        IF     (INT(YAMAX).GE.JWI+1) THEN !may need jwi+3 and perhaps jwi+4
+        IF     (INT(YAMAX).GE.JWI+1) THEN !may need jwi+3 and perhaps jwi+4/5
           IF     (IWIX.GT.IWI) THEN  !global grid
             IF     (DYIN.EQ.0.0 .OR.
      +              ABS(YFIN+JWI*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+3 = 90N
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
+                TAIRI(I,JWI+5) =      TAIRI(II,JWI+1)
                 TAIRI(I,JWI+4) =      TAIRI(II,JWI+2)
                 TAIRI(I,JWI+3) = 0.5*(TAIRI(I, JWI+2)+TAIRI(I,JWI+4))
+                HAIRI(I,JWI+5) =      HAIRI(II,JWI+1)
                 HAIRI(I,JWI+4) =      HAIRI(II,JWI+2)
                 HAIRI(I,JWI+3) = 0.5*(HAIRI(I, JWI+2)+HAIRI(I,JWI+4))
+                FLXRI(I,JWI+5) =      FLXRI(II,JWI+1)
                 FLXRI(I,JWI+4) =      FLXRI(II,JWI+2)
                 FLXRI(I,JWI+3) = 0.5*(FLXRI(I, JWI+2)+FLXRI(I,JWI+4))
+                FLXPI(I,JWI+5) =      FLXPI(II,JWI+1)
                 FLXPI(I,JWI+4) =      FLXPI(II,JWI+2)
                 FLXPI(I,JWI+3) = 0.5*(FLXPI(I, JWI+2)+FLXPI(I,JWI+4))
+                PCIPI(I,JWI+5) =      PCIPI(II,JWI+1)
                 PCIPI(I,JWI+4) =      PCIPI(II,JWI+2)
                 PCIPI(I,JWI+3) = 0.5*(PCIPI(I, JWI+2)+PCIPI(I,JWI+4))
 *                WRITE(6,'(A,2I5,4F10.3)')
@@ -804,35 +819,45 @@ C ---         JWI+3 = 90N
               ENDDO !i
             ELSEIF (ABS(YFIN+(JWI-1)*DYIN-90.0).LE.0.1*DYIN) THEN
 C ---         JWI+2 = 90N
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 TAIRI(I,JWI+3) = TAIRI(II,JWI+1)
                 TAIRI(I,JWI+4) = TAIRI(II,JWI  )
+                TAIRI(I,JWI+5) = TAIRI(II,JWI-1)
                 HAIRI(I,JWI+3) = HAIRI(II,JWI+1)
                 HAIRI(I,JWI+4) = HAIRI(II,JWI  )
+                HAIRI(I,JWI+5) = HAIRI(II,JWI-1)
                 FLXRI(I,JWI+3) = FLXRI(II,JWI+1)
                 FLXRI(I,JWI+4) = FLXRI(II,JWI  )
+                FLXRI(I,JWI+5) = FLXRI(II,JWI-1)
                 FLXPI(I,JWI+3) = FLXPI(II,JWI+1)
                 FLXPI(I,JWI+4) = FLXPI(II,JWI  )
+                FLXPI(I,JWI+5) = FLXPI(II,JWI-1)
                 PCIPI(I,JWI+3) = PCIPI(II,JWI+1)
                 PCIPI(I,JWI+4) = PCIPI(II,JWI  )
+                PCIPI(I,JWI+5) = PCIPI(II,JWI-1)
 *                WRITE(6,'(A,2I5,4F10.3)')
 *    +            'I,II,FLXR = ',I,II,
 *    +            FLXRI(I,JWI+1),FLXRI(I,JWI+2),
 *    +            FLXRI(I,JWI+3),FLXRI(I,JWI+4)
               ENDDO !i
             ELSE
-              DO I= 1,IWI+4
-                TAIRI(I,JWI+3) = 2.0*TAIRI(I,JWI+2) -     TAIRI(I,JWI+1)
-                TAIRI(I,JWI+4) = 3.0*TAIRI(I,JWI+2) - 2.0*TAIRI(I,JWI+1)
-                HAIRI(I,JWI+3) = 2.0*HAIRI(I,JWI+2) -     HAIRI(I,JWI+1)
-                HAIRI(I,JWI+4) = 3.0*HAIRI(I,JWI+2) - 2.0*HAIRI(I,JWI+1)
-                FLXRI(I,JWI+3) = 2.0*FLXRI(I,JWI+2) -     FLXRI(I,JWI+1)
-                FLXRI(I,JWI+4) = 3.0*FLXRI(I,JWI+2) - 2.0*FLXRI(I,JWI+1)
-                FLXPI(I,JWI+3) = 2.0*FLXPI(I,JWI+2) -     FLXPI(I,JWI+1)
-                FLXPI(I,JWI+4) = 3.0*FLXPI(I,JWI+2) - 2.0*FLXPI(I,JWI+1)
-                PCIPI(I,JWI+3) = 2.0*PCIPI(I,JWI+2) -     PCIPI(I,JWI+1)
-                PCIPI(I,JWI+4) = 3.0*PCIPI(I,JWI+2) - 2.0*PCIPI(I,JWI+1)
+              DO I= 1,IWI+5
+                TAIRI(I,JWI+3) = 2.0*TAIRI(I,JWI+2) - TAIRI(I,JWI+1)
+                TAIRI(I,JWI+4) = 2.0*TAIRI(I,JWI+3) - TAIRI(I,JWI+2)
+                TAIRI(I,JWI+5) = 2.0*TAIRI(I,JWI+4) - TAIRI(I,JWI+3)
+                HAIRI(I,JWI+3) = 2.0*HAIRI(I,JWI+2) - HAIRI(I,JWI+1)
+                HAIRI(I,JWI+4) = 2.0*HAIRI(I,JWI+3) - HAIRI(I,JWI+2)
+                HAIRI(I,JWI+5) = 2.0*HAIRI(I,JWI+4) - HAIRI(I,JWI+3)
+                FLXRI(I,JWI+3) = 2.0*FLXRI(I,JWI+2) - FLXRI(I,JWI+1)
+                FLXRI(I,JWI+4) = 2.0*FLXRI(I,JWI+3) - FLXRI(I,JWI+2)
+                FLXRI(I,JWI+5) = 2.0*FLXRI(I,JWI+4) - FLXRI(I,JWI+3)
+                FLXPI(I,JWI+3) = 2.0*FLXPI(I,JWI+2) - FLXPI(I,JWI+1)
+                FLXPI(I,JWI+4) = 2.0*FLXPI(I,JWI+3) - FLXPI(I,JWI+2)
+                FLXPI(I,JWI+5) = 2.0*FLXPI(I,JWI+4) - FLXPI(I,JWI+3)
+                PCIPI(I,JWI+3) = 2.0*PCIPI(I,JWI+2) - PCIPI(I,JWI+1)
+                PCIPI(I,JWI+4) = 2.0*PCIPI(I,JWI+3) - PCIPI(I,JWI+2)
+                PCIPI(I,JWI+5) = 2.0*PCIPI(I,JWI+4) - PCIPI(I,JWI+3)
 *                WRITE(6,'(A,2I5,4F10.3)')
 *    +            'I,II,FLXR = ',I,II,
 *    +            FLXRI(I,JWI+1),FLXRI(I,JWI+2),
@@ -840,17 +865,22 @@ C ---         JWI+2 = 90N
               ENDDO !i
             ENDIF
           ELSE  !non-global grid
-            DO 345 I= 1,IWI+4
-              TAIRI(I,JWI+3) = 2.0*TAIRI(I,JWI+2) -     TAIRI(I,JWI+1)
-              TAIRI(I,JWI+4) = 3.0*TAIRI(I,JWI+2) - 2.0*TAIRI(I,JWI+1)
-              HAIRI(I,JWI+3) = 2.0*HAIRI(I,JWI+2) -     HAIRI(I,JWI+1)
-              HAIRI(I,JWI+4) = 3.0*HAIRI(I,JWI+2) - 2.0*HAIRI(I,JWI+1)
-              FLXRI(I,JWI+3) = 2.0*FLXRI(I,JWI+2) -     FLXRI(I,JWI+1)
-              FLXRI(I,JWI+4) = 3.0*FLXRI(I,JWI+2) - 2.0*FLXRI(I,JWI+1)
-              FLXPI(I,JWI+3) = 2.0*FLXPI(I,JWI+2) -     FLXPI(I,JWI+1)
-              FLXPI(I,JWI+4) = 3.0*FLXPI(I,JWI+2) - 2.0*FLXPI(I,JWI+1)
-              PCIPI(I,JWI+3) = 2.0*PCIPI(I,JWI+2) -     PCIPI(I,JWI+1)
-              PCIPI(I,JWI+4) = 3.0*PCIPI(I,JWI+2) - 2.0*PCIPI(I,JWI+1)
+            DO 345 I= 1,IWI+5
+              TAIRI(I,JWI+3) = 2.0*TAIRI(I,JWI+2) - TAIRI(I,JWI+1)
+              TAIRI(I,JWI+4) = 2.0*TAIRI(I,JWI+3) - TAIRI(I,JWI+2)
+              TAIRI(I,JWI+5) = 2.0*TAIRI(I,JWI+4) - TAIRI(I,JWI+3)
+              HAIRI(I,JWI+3) = 2.0*HAIRI(I,JWI+2) - HAIRI(I,JWI+1)
+              HAIRI(I,JWI+4) = 2.0*HAIRI(I,JWI+3) - HAIRI(I,JWI+2)
+              HAIRI(I,JWI+5) = 2.0*HAIRI(I,JWI+4) - HAIRI(I,JWI+3)
+              FLXRI(I,JWI+3) = 2.0*FLXRI(I,JWI+2) - FLXRI(I,JWI+1)
+              FLXRI(I,JWI+4) = 2.0*FLXRI(I,JWI+3) - FLXRI(I,JWI+2)
+              FLXRI(I,JWI+5) = 2.0*FLXRI(I,JWI+4) - FLXRI(I,JWI+3)
+              FLXPI(I,JWI+3) = 2.0*FLXPI(I,JWI+2) - FLXPI(I,JWI+1)
+              FLXPI(I,JWI+4) = 2.0*FLXPI(I,JWI+3) - FLXPI(I,JWI+2)
+              FLXPI(I,JWI+5) = 2.0*FLXPI(I,JWI+4) - FLXPI(I,JWI+3)
+              PCIPI(I,JWI+3) = 2.0*PCIPI(I,JWI+2) - PCIPI(I,JWI+1)
+              PCIPI(I,JWI+4) = 2.0*PCIPI(I,JWI+3) - PCIPI(I,JWI+2)
+              PCIPI(I,JWI+5) = 2.0*PCIPI(I,JWI+4) - PCIPI(I,JWI+3)
   345       CONTINUE
           ENDIF
         ENDIF
@@ -859,7 +889,7 @@ C ---         JWI+2 = 90N
             IF     (DYIN.EQ.0.0 .OR.
      +              ABS(YFIN-DYIN+90.0).LE.0.1*DYIN) THEN
 C ---         2 = 90S
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 TAIRI(I,1) =      TAIRI(II,3)
                 TAIRI(I,2) = 0.5*(TAIRI(I, 1)+TAIRI(I,3))
@@ -874,7 +904,7 @@ C ---         2 = 90S
               ENDDO !i
             ELSEIF (ABS(YFIN+90.0).LE.0.1*DYIN) THEN
 C ---         3 = 90S
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 II = MOD(I-3+IWI/2+IWI,IWI)+3
                 TAIRI(I,1) = TAIRI(II,5)
                 TAIRI(I,2) = TAIRI(II,4)
@@ -888,7 +918,7 @@ C ---         3 = 90S
                 PCIPI(I,2) = PCIPI(II,4)
               ENDDO !i
             ELSE
-              DO I= 1,IWI+4
+              DO I= 1,IWI+5
                 TAIRI(I,1) = 3.0*TAIRI(I,3) - 2.0*TAIRI(I,4)
                 TAIRI(I,2) = 2.0*TAIRI(I,3) -     TAIRI(I,4)
                 HAIRI(I,1) = 3.0*HAIRI(I,3) - 2.0*HAIRI(I,4)
@@ -902,7 +932,7 @@ C ---         3 = 90S
               ENDDO !i
             ENDIF
           ELSE  !non-global grid
-            DO 355 I= 1,IWI+4
+            DO 355 I= 1,IWI+5
               TAIRI(I,1) = 3.0*TAIRI(I,3) - 2.0*TAIRI(I,4)
               TAIRI(I,2) = 2.0*TAIRI(I,3) -     TAIRI(I,4)
               HAIRI(I,1) = 3.0*HAIRI(I,3) - 2.0*HAIRI(I,4)
@@ -922,82 +952,82 @@ C
         IF     (INTERP.EQ.0) THEN
           IF     (LINTERP(1)) THEN
             CALL LINEAR(TAM,XAF,YAF,IDM,IDM,JDM,
-     +                  TAIRI,IWI+4,IWI+4,JWI+4)
+     +                  TAIRI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(2)) THEN
             CALL LINEAR(HAM,XAF,YAF,IDM,IDM,JDM,
-     +                  HAIRI,IWI+4,IWI+4,JWI+4)
+     +                  HAIRI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(3)) THEN
             CALL LINEAR(FRM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXRI,IWI+4,IWI+4,JWI+4)
+     +                  FLXRI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(4)) THEN
             CALL LINEAR(FPM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXPI,IWI+4,IWI+4,JWI+4)
+     +                  FLXPI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(5)) THEN
             CALL LINEAR(PCM,XAF,YAF,IDM,IDM,JDM,
-     +                  PCIPI,IWI+4,IWI+4,JWI+4)
+     +                  PCIPI,IWI+5,IWI+4,JWI+4)
           ENDIF
         ELSEIF (INTERP.EQ.2) THEN
           IF     (LINTERP(1)) THEN
             CALL BESSEL(TAM,XAF,YAF,IDM,IDM,JDM,
-     +                  TAIRI,IWI+4,IWI+4,JWI+4)
+     +                  TAIRI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(2)) THEN
             CALL BESSEL(HAM,XAF,YAF,IDM,IDM,JDM,
-     +                  HAIRI,IWI+4,IWI+4,JWI+4)
+     +                  HAIRI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(3)) THEN
             CALL BESSEL(FRM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXRI,IWI+4,IWI+4,JWI+4)
+     +                  FLXRI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(4)) THEN
             CALL BESSEL(FPM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXPI,IWI+4,IWI+4,JWI+4)
+     +                  FLXPI,IWI+5,IWI+4,JWI+4)
           ENDIF
           IF     (LINTERP(5)) THEN
             CALL BESSEL(PCM,XAF,YAF,IDM,IDM,JDM,
-     +                  PCIPI,IWI+4,IWI+4,JWI+4)
+     +                  PCIPI,IWI+5,IWI+4,JWI+4)
           ENDIF
         ELSEIF (INTERP.EQ.3) THEN
           IF     (LINTERP(1)) THEN
             CALL BICUBC(TAM,XAF,YAF,IDM,IDM,JDM,
-     +                  TAIRI,IWI+4,IWI+4,JWI+4)
+     +                  TAIRI,IWI+5,IWI+5,JWI+5)
           ENDIF
           IF     (LINTERP(2)) THEN
             CALL BICUBC(HAM,XAF,YAF,IDM,IDM,JDM,
-     +                  HAIRI,IWI+4,IWI+4,JWI+4)
+     +                  HAIRI,IWI+5,IWI+5,JWI+5)
           ENDIF
           IF     (LINTERP(3)) THEN
             CALL BICUBC(FRM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXRI,IWI+4,IWI+4,JWI+4)
+     +                  FLXRI,IWI+5,IWI+5,JWI+5)
           ENDIF
           IF     (LINTERP(4)) THEN
             CALL BICUBC(FPM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXPI,IWI+4,IWI+4,JWI+4)
+     +                  FLXPI,IWI+5,IWI+5,JWI+5)
           ENDIF
           IF     (LINTERP(5)) THEN
             CALL BICUBC(PCM,XAF,YAF,IDM,IDM,JDM,
-     +                  PCIPI,IWI+4,IWI+4,JWI+4)
+     +                  PCIPI,IWI+5,IWI+5,JWI+5)
           ENDIF
         ELSE
           IF     (LINTERP(1)) THEN
             CALL CUBSPL(TAM,XAF,YAF,IDM,IDM,JDM,
-     +                  TAIRI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
+     +                  TAIRI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
           ENDIF
           IF     (LINTERP(2)) THEN
             CALL CUBSPL(HAM,XAF,YAF,IDM,IDM,JDM,
-     +                  HAIRI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
+     +                  HAIRI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
           ENDIF
           IF     (LINTERP(3)) THEN
             CALL CUBSPL(FRM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXRI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
+     +                  FLXRI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
           ENDIF
           IF     (LINTERP(4)) THEN
             CALL CUBSPL(FPM,XAF,YAF,IDM,IDM,JDM,
-     +                  FLXPI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
+     +                  FLXPI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
 C
 C           CUBIC SPLINE CAN CREATE NEW (NEGATIVE) MINIMA.
 C
@@ -1009,7 +1039,7 @@ C
           ENDIF
           IF     (LINTERP(5)) THEN
             CALL CUBSPL(PCM,XAF,YAF,IDM,IDM,JDM,
-     +                  PCIPI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
+     +                  PCIPI,IWI+5,IWI+4,JWI+4, IBD, FXI,FYI,WTAIR3,WK)
 C
 C           CUBIC SPLINE CAN CREATE NEW MINIMA.
 C
