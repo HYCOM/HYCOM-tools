@@ -33,7 +33,7 @@ c
       integer              :: k,l0,l1, ibadl,ibads
       integer              :: if_sm,il_sm,jf_sm,jl_sm
       logical              :: lrot(2),lcheck,lnotsd
-      logical              :: smooth,icegln
+      logical              :: layave,laythk,smooth,icegln
       real                 :: hmina,hminb,hmaxa,hmaxb,
      &                        rtmp,up,vp
       integer, allocatable ::    m_sm(:,:),    iv_sm(:,:)
@@ -43,6 +43,7 @@ c
       real,    allocatable ::    u_in(:,:),    u_out(:,:)
       real,    allocatable ::    v_in(:,:),    v_out(:,:)
       real,    allocatable ::    t_in(:,:),    t_out(:,:,:)
+      real,    allocatable ::    h_in(:,:)
       real,    allocatable ::    p_in(:,:,:),  p_out(:,:,:)
       real,    allocatable :: pang_in( :,:),pang_out(:,:)
 c
@@ -56,7 +57,7 @@ c
       call xcspmd
       call zaiost
       call blkdat(idm_out,jdm_out,
-     &            smooth,icegln,
+     &            layave,smooth,icegln,
      &            flnm_reg,flnm_map,flnm_in,flnm_tin,
      &            flnm_out,flnm_top,cline_out)
       call zbiost(idm_out,jdm_out)
@@ -71,6 +72,10 @@ c
       allocate(    t_in(idm,jdm),     t_out(idm_out,jdm_out,3) )
       allocate(    p_in(idm,jdm,0:1), p_out(idm_out,jdm_out,0:1) )
       allocate( pang_in(idm,jdm),  pang_out(idm_out,jdm_out) )
+c
+      if     (layave) then
+        allocate(  h_in(idm,jdm) )
+      endif
 c                                                            
       allocate( i_out(idm_out,jdm_out), j_out(idm_out,jdm_out) )
       allocate( x_out(idm_out,jdm_out), y_out(idm_out,jdm_out) )
@@ -377,6 +382,7 @@ c
       p_out(:,:,:) = 0.0
 c
       lnotsd = .true.  !default is mean or snapshot archive
+      laythk = .false. !.false. until layer thickness is in h_in
 c
       do  ! loop until file ends
         read( ni,'(a)',iostat=ios) cline
@@ -529,7 +535,19 @@ c
           k  = k + 1
           l0 = mod(k+1, 2)
           l1 = mod(k,   2)
-          p_in(:,:,l0) = p_in(:,:,l1) + a_in
+          if     (layave) then
+            laythk = .true.  !h_in is defined
+            do j= 1,jdm
+              do i= 1,idm
+                if     (a_in(i,j).gt.hspval) then
+                  h_in(i,j) = 0.0
+                else
+                  h_in(i,j) = a_in(i,j)
+                endif
+              enddo
+            enddo
+          endif
+          p_in(:,:,l0) = p_in(:,:,l1) + a_in(:,:)
           call landfill(  p_in( 1,1,l0),m_sm,idm,    jdm,
      &                    iv_sm,if_sm,il_sm,jf_sm,jl_sm)
           call bilinear_p(p_in( 1,1,l0),     idm,    jdm,
@@ -642,9 +660,15 @@ c ---     p-grid (continued).
 c
           call landfill(  a_in,m_sm,idm,    jdm,
      &                    iv_sm,if_sm,il_sm,jf_sm,jl_sm)
-          call bilinear_p(a_in,     idm,    jdm,
-     &                    a_out,    idm_out,jdm_out,
-     &                    m_out,i_out,j_out,x_out,y_out)
+          if     (laythk) then !implies layave
+            call bilinear_ph(a_in,h_in,idm,    jdm,
+     &                       a_out,    idm_out,jdm_out,
+     &                       m_out,i_out,j_out,x_out,y_out)
+          else
+            call bilinear_p(a_in,     idm,    jdm,
+     &                      a_out,    idm_out,jdm_out,
+     &                      m_out,i_out,j_out,x_out,y_out)
+          endif
           call zbiowr(a_out,m_out,.true.,  hmina,hmaxa, no, .false.)
           write(no,'(a,1p2e16.7)') cline(1:41),hmina,hmaxa
           call flush(no)
@@ -710,7 +734,77 @@ c
         enddo
       enddo
       return
-      end
+      end subroutine bilinear_p
+
+      subroutine bilinear_ph(a_in,h_in, idm_in, jdm_in,
+     &                       a_out,     idm_out,jdm_out,
+     &                       m_out,i_out,j_out,x_out,y_out)
+      implicit none
+c
+      integer idm_in, jdm_in,
+     &        idm_out,jdm_out
+      integer m_out(idm_out,jdm_out),
+     &        i_out(idm_out,jdm_out),
+     &        j_out(idm_out,jdm_out)
+      real    a_in( idm_in, jdm_in ),
+     &        h_in( idm_in, jdm_in ),
+     &        a_out(idm_out,jdm_out),
+     &        x_out(idm_out,jdm_out),
+     &        y_out(idm_out,jdm_out)
+c
+c --- interpolate from a_in to a_out.
+c --- version that weights the interpolation by layer thickness
+c
+      real, parameter  :: onemm=9.806  !h_in is in pressure units
+c
+      integer i,ii,ip,j,jj,jp
+      real    sx,sy,w00,w01,w10,w11
+c
+      do jj= 1,jdm_out
+        do ii= 1,idm_out
+          if     (m_out(ii,jj).eq.1) then
+            sx = x_out(ii,jj)
+            sy = y_out(ii,jj)
+            i  = i_out(ii,jj)
+            if     (i.ne.idm_in) then
+              ip = i+1
+            else
+              ip =   1
+            endif
+            j  = j_out(ii,jj)
+            jp = j+1
+c
+            w00 = (1.0-sx)*(1.0-sy)*max(onemm,h_in(i, j ))
+            w01 = (1.0-sx)*     sy *max(onemm,h_in(i, jp))
+            w10 =      sx *(1.0-sy)*max(onemm,h_in(ip,j ))
+            w11 =      sx *     sy *max(onemm,h_in(ip,jp))
+            a_out(ii,jj) = (w00*a_in(i, j ) +
+     &                      w01*a_in(i, jp) +
+     &                      w10*a_in(ip,j ) +
+     &                      w11*a_in(ip,jp)  ) / (w00+w01+w10+w11)
+*           if     (a_out(ii,jj).lt.0.0) then
+*             write(6,'(a,6i5,2f7.3,5f9.2)')
+*    &        'ii,jj,i,ip,j,jp,sx,sy,w_sum,h_in',
+*    &         ii,jj,i,ip,j,jp,
+*    &         sx,sy,(w00+w01+w10+w11),
+*    &         h_in(i, j ), 
+*    &         h_in(i, jp), 
+*    &         h_in(ip,j ), 
+*    &         h_in(ip,jp)
+*             write(6,'(a,6i5,2f7.3,5f9.2)')
+*    &        'ii,jj,i,ip,j,jp,sx,sy,a_out,a_in',
+*    &         ii,jj,i,ip,j,jp,
+*    &         sx,sy,a_out(ii,jj),
+*    &         a_in(i, j ), 
+*    &         a_in(i, jp), 
+*    &         a_in(ip,j ), 
+*    &         a_in(ip,jp)
+*           endif
+          endif
+        enddo
+      enddo
+      return
+      end subroutine bilinear_ph
 
       subroutine landfill(a,mask,m,n, iv,if,il,jf,jl)
       implicit none
@@ -897,21 +991,23 @@ c
       end subroutine psmooth
 
       subroutine blkdat(idm_out,jdm_out,
-     &                  smooth,icegln,
+     &                  layave,smooth,icegln,
      &                  flnm_reg,flnm_map,flnm_in,flnm_tin,
      &                  flnm_out,flnm_top,
      &                  cline_out)
       use mod_xc  ! HYCOM communication interface
       implicit none
       integer       :: idm_out,jdm_out
-      logical       :: smooth,icegln
+      logical       :: layave,smooth,icegln
       character*256 :: flnm_reg,flnm_map,flnm_in,flnm_tin,
      &                 flnm_out,flnm_top
       character*80  :: cline_out
 c
 c --- read blkdat.input for interpolated subregion.
 c
-      integer       :: iceflg
+      character*6   :: cvarin
+      logical       :: lblkdat
+      integer       :: iceflg,n,idm_reg,jdm_reg
 c
 c --- 'flnm_reg'  = target sub-region grid       filename
 c --- 'flnm_map'  = target sub-region grid map   filename
@@ -944,6 +1040,23 @@ c
       call blkini(idm_out,   'idm   ')
       call blkini(jdm_out,   'jdm   ')
 c
+c --- check idm_out,jdm_out
+c
+      n = len_trim(flnm_reg)
+      open(unit=11,file=flnm_reg(1:n-2)//'.b',form='formatted',
+     &     status='old',action='read')
+      read( 11,*) idm_reg
+      read( 11,*) jdm_reg
+      close(11)
+      if     (idm_out.ne.idm_reg .or.
+     &        jdm_out.ne.jdm_reg     ) then
+        write(lp,'(/ a,a / a,2i6 /)')
+     &    'error - target idm,jdm not consistent with ',
+     &    flnm_reg(1:n-2)//'.b',
+     &    ' which has idh,jdm =',idm_reg,jdm_reg
+        stop
+      endif
+c
 c --- 'iceflg' = ice in output archive flag (0=none,1=energy loan model)
       call blkini(iceflg, 'iceflg')
       icegln = iceflg.eq.1
@@ -951,8 +1064,17 @@ c
       write(6,*)
       call flush(6)
 c
+c --- 'layave' = allow for layer thickness in scalar interp. (0=F,1=T)
+c ---             optional, default .false.
 c --- 'smooth' = smooth interface depths (0=F,1=T)
-      call blkinl(smooth,'smooth')
+      call blkinl2(lblkdat,n,'layave','smooth')
+      if     (n.eq.1) then
+        layave = lblkdat
+        call blkinl(smooth,'smooth')
+      else
+        layave = .false.
+        smooth = lblkdat
+      endif
 c
       write(6,*)
       call flush(6)
@@ -1015,3 +1137,38 @@ c
       return
  6000 format(a6,' =',l6)
       end subroutine blkinl
+
+      subroutine blkinl2(lvar,nvar,cvar1,cvar2)
+      implicit none
+c
+      logical     lvar
+      integer     nvar
+      character*6 cvar1,cvar2
+c
+c     read in one logical value
+c     identified as either cvar1 (return nvar=1) or cvar2 (return nvar=2)
+c     due to a SGI bug for logical I/O: read in an integer 0=F,1=T
+c
+      character*6 cvarin
+      integer     ivar
+c
+      read(*,*) ivar,cvarin
+      lvar = ivar .ne. 0
+      write(6,6000) cvarin,lvar
+      call flush(6)
+c
+      if     (cvarin.eq.cvar1) then
+        nvar = 1
+      elseif (cvarin.eq.cvar2) then
+        nvar = 2
+      else
+        write(6,*)
+        write(6,*) 'error in blkinl2 - input ',cvarin,
+     +             ' but should be ',cvar1,' or ',cvar2
+        write(6,*)
+        call flush(6)
+        stop
+      endif
+      return
+ 6000 format(a6,' =',l6)
+      end subroutine blkinl2
