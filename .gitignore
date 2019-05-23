@@ -1,0 +1,32 @@
+# bin type markers
+*_LinuxGF
+*_LinuxIF
+*_LinuxPGF
+*_XC30
+*_AIX
+
+# log files from running make
+*.log
+
+# Compiled Object files
+*.o
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
