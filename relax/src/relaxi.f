@@ -452,7 +452,7 @@ C
         ELSEIF (THFLAG.EQ.2) THEN
           WRITE(6,6000) 1,DP0K(1),DPMS,SIGMA(1),' Sigma2'
         ENDIF
- 6000   FORMAT(       'k =',I3,
+ 6000   FORMAT(       'k =',I4,
      +         '   thkns =',F6.1,' m',
      +         '   depth =',F8.1,' m',
      +         '   density =',F7.3,A)
@@ -553,7 +553,7 @@ C
           CALL ZAIORD(SIG3D(1,1,K),MSK,.FALSE., HMINA,HMAXA, 52)
           IF     (HMINA.GT.SIGMA(K)+0.005 .OR.
      &            HMAXA.LT.SIGMA(K)-0.005     ) THEN
-            WRITE(6,'(/ a,i3,a /)')
+            WRITE(6,'(/ a,i4,a /)')
      &        'ERROR - VARIABLE TARGET DENSITY FOR LAYER',
      &        K,' IS NOT CONSISTENT WITH SIGMA(K)'
             WRITE(6,*) 'SIGMA(K)    = ',SIGMA(K)
@@ -641,7 +641,7 @@ C
           ENDDO
         ENDIF
           if     (ldebug .and. min(itest,jtest).gt.0) then
-            write(6,'(a,2i5,i3,a,f7.3)')
+            write(6,'(a,2i6,i4,a,f7.3)')
      +       'i,j,k =',itest,jtest,k,
      +       '   s =',sz(k,itest,jtest)
             call zhflsh(6)
@@ -734,20 +734,20 @@ C
         ENDIF
           if     (ldebug .and. min(itest,jtest).gt.0) then
             if     (tz(k,itest,jtest).eq.work(itest,jtest)) then
-              write(6,'(a,2i5,i3,a,f7.3)')
+              write(6,'(a,2i6,i4,a,f7.3)')
      +         'i,j,k =',itest,jtest,k,
      +         '   r =',rz(k,itest,jtest)
-              write(6,'(a,2i5,i3,a,f7.3)')
+              write(6,'(a,2i6,i4,a,f7.3)')
      +         'i,j,k =',itest,jtest,k,
      +         '   t =',tz(k,itest,jtest)
             else
-              write(6,'(a,2i5,i3,a,f7.3)')
+              write(6,'(a,2i6,i4,a,f7.3)')
      +         'i,j,k =',itest,jtest,k,
      +         '   r =',rz(k,itest,jtest)
-              write(6,'(a,2i5,i3,a,f7.3)')
+              write(6,'(a,2i6,i4,a,f7.3)')
      +         'i,j,k =',itest,jtest,k,
      +         '   t =',tz(k,itest,jtest)
-              write(6,'(a,2i5,i3,a,f7.3)')
+              write(6,'(a,2i6,i4,a,f7.3)')
      +         'i,j,k =',itest,jtest,k,
      +         '   w =',work(itest,jtest)
             endif !tz as input?
@@ -773,10 +773,10 @@ C
               RZ(K,I,J) = RZ(LEVTOP,I,J)
               TZ(K,I,J) = TZ(LEVTOP,I,J)
               if (ldebug .and. i.eq.itest .and. j.eq.jtest) then
-                write(6,'(a,2i5,i3,a,f7.3)')
+                write(6,'(a,2i6,i4,a,f7.3)')
      +           'i,j,k =',i,j,k,
      +           '   R =',rz(k,i,j)
-                write(6,'(a,2i5,i3,a,f7.3)')
+                write(6,'(a,2i6,i4,a,f7.3)')
      +           'i,j,k =',i,j,k,
      +           '   T =',tz(k,i,j)
                 call zhflsh(6)
@@ -800,7 +800,7 @@ C
       IF     (MIN(ITEST,JTEST).GT.0) THEN
         WRITE(6,*)
         DO K= 1,KZ
-          WRITE(6,'(A,2I5,I3,A,F8.2,A,3F7.3)')
+          WRITE(6,'(A,2I6,I4,A,F8.2,A,3F7.3)')
      +     'I,J,K =',ITEST,JTEST,K,
      +     '  ZLEV =',ZLEV(K),
      +     '   R,T,S =',RZ(K,ITEST,JTEST),
@@ -835,7 +835,7 @@ C
      +        'Layered averages w.r.t. Sigma-',THFLAG,
      +        ',  levtop=',LEVTOP,' (sigver=',SIGVER,')'
 C
-      WRITE(PREAMBL(5),'(A,2I5,I3,F9.3,F9.2,2F6.3)')
+      WRITE(PREAMBL(5),'(A,2I6)')
      +        'i/jdm =',
      +       IDM,JDM
 C
@@ -1016,7 +1016,7 @@ C
      +                    (DPCK(NSIGMA) - DSCK(NSIGMA))  ) )
               DMIN = (1.0-QDEP)*DSCK(K-1) + QDEP*DPCK(K-1)
                 if (ldebug .and. i.eq.itest .and. j.eq.jtest) then
-                  WRITE(6,'(A,I3,F10.3)')
+                  WRITE(6,'(A,I4,F10.3)')
      +              'ISOTOP - K,DMIN =',K,DMIN
                 endif !debug
               IF     (ISOPYC .AND. K.EQ.1) THEN
@@ -1036,7 +1036,7 @@ C
                 DMIN    = (1.0-QDEP)*DSCK(K) + QDEP*DPCK(K)
                 PM(I,J) = MIN( DEPTH(I,J), MAX( PKM1(I,J), DMIN ) )
                   if (ldebug .and. i.eq.itest .and. j.eq.jtest) then
-                    WRITE(6,'(A,I3,F10.3)')
+                    WRITE(6,'(A,I4,F10.3)')
      +                'FIXED - K,PM =',K,PM(I,J)
                   endif !debug
               ELSEIF (RM(I,J).LT.RKM1(I,J)) THEN
@@ -1193,7 +1193,7 @@ C
      +                'PM,PZMID =',PM(I,J),PZMID
                   endif !debug
                   if (ldebug .and. i.eq.itest .and. j.eq.jtest) then
-                    WRITE(6,'(A,I3,2F10.3)')
+                    WRITE(6,'(A,I4,2F10.3)')
      +                'HYBRID - K,PKM1,PM =',K,PKM1(I,J),PM(I,J)
                   endif !debug
                 IF     (PM(I,J).GT.PKM1(I,J)) THEN
@@ -1269,7 +1269,7 @@ C       DIAGNOSTIC PRINTOUT.
 C
         IF     (MIN(ITEST,JTEST).GT.0) THEN
           WRITE(6,*)
-          WRITE(6,'(A,2I5,I3,A,F9.2,F9.2,A,3F7.3)')
+          WRITE(6,'(A,2I6,I4,A,F9.2,F9.2,A,3F7.3)')
      +     'I,J,K =',ITEST,JTEST,K,
      +     '   INF,THK =',PKM1(ITEST,JTEST),
      +                    WORK(ITEST,JTEST),
@@ -1396,15 +1396,15 @@ C
      & I5,4x,'''jdm   '' = latitudinal  array size'/
      & 'field       time step  model day',
      & '  k  dens        min              max')
- 4201 FORMAT(a8,' =',i11,f11.2,i3,f7.3,1p2e16.7)
+ 4201 FORMAT(a8,' =',i11,f11.2,i4,f7.3,1p2e16.7)
  5000 FORMAT(A40)
  5500 FORMAT(6E13.6)
  6200 FORMAT(/ 1X,'MIN,MAX I COORDS = ',F8.2,',',F8.2 
      +       / 1X,'MIN,MAX J COORDS = ',F8.2,',',F8.2 /)
- 6300 FORMAT(10X,'WRITING CLIM LAYER',I5,'    SIGMA =',F7.3 /)
+ 6300 FORMAT(10X,'WRITING CLIM LAYER',I4,'    SIGMA =',F7.3 /)
  8100 FORMAT(1X,A,': min=',F9.2,' ave=',F9.2,' max=',F9.2,
-     +   '   (k,sigma =',i3,F7.2,')')
- 8200 FORMAT(' k =',I3.2,' j = ',I4.4,' to ',I4.4,
+     +   '   (k,sigma =',i4,F7.2,')')
+ 8200 FORMAT(' k =',I4.2,' j = ',I4.4,' to ',I4.4,
      +       ' sig =',F7.3,' lat =',F6.1,' inf =',F8.2)
 C     END OF PROGRAM WNDINT.
       END
