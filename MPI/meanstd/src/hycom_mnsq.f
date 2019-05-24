@@ -1,4 +1,4 @@
-      program hycom_mean
+      program hycom_mnsq
       use mod_mean  ! HYCOM mean array interface
       use mod_za    ! HYCOM array I/O interface
       implicit none
@@ -134,7 +134,7 @@ c     read (*,'(a)') flnm
       call putdat(flnm,time_min,time_max,time_ave,
      &            mntype,icegln,trcout,iexpt,jexpt,yrflag, kk, thbase)
 
-      call xcstop('hycom_mean END')
+      call xcstop('hycom_mnsq END')
       stop
 
       end

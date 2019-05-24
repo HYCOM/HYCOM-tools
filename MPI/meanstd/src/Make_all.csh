@@ -19,7 +19,7 @@ endif
 #
 # --- meanstd programs
 #
-foreach m ( mean std diff )
+foreach m ( mnsq std diff )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"

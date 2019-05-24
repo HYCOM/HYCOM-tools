@@ -1,7 +1,7 @@
 #
 # Makefile for meanstd processing
 #
-# --- usage: make mean ARCH=intelGF >& Make_mean.log
+# --- usage: make mnsq ARCH=intelGF >& Make_mnsq.log
 #
 # --- Tunable parameters in ../../config/$(ARCH)_setup
 #
@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod M*log *mean *std *diff *wsum
+	/bin/rm *.o *.a *.mod M*log *mnsq *std *diff *wsum
 
 MODS     =	mod_mean.o mod_mean_esmf.o mod_xc.o mod_za.o wtime.o zh.o
 
@@ -48,8 +48,8 @@ MEAN_SRC = 	putdat.f
 hycom_diff: $(MODS) hycom_diff.o $(MEAN_OBJ)
 	$(LD) $(LDFLAGS)  -o hycom_diff  hycom_diff.o $(MODS) $(MEAN_OBJ)
 
-hycom_mean: $(MODS) hycom_mean.o $(MEAN_OBJ)
-	$(LD) $(LDFLAGS)  -o hycom_mean  hycom_mean.o $(MODS) $(MEAN_OBJ)
+hycom_mnsq: $(MODS) hycom_mnsq.o $(MEAN_OBJ)
+	$(LD) $(LDFLAGS)  -o hycom_mnsq  hycom_mnsq.o $(MODS) $(MEAN_OBJ)
 
 hycom_std:  $(MODS) hycom_std.o $(MEAN_OBJ)
 	$(LD) $(LDFLAGS)  -o hycom_std   hycom_std.o  $(MODS) $(MEAN_OBJ)
@@ -71,7 +71,7 @@ hesmf_mean.o: hesmf_mean.f            mod_mean_esmf.o mod_za.o
 hesmf_std.o:  hesmf_std.f             mod_mean_esmf.o mod_za.o
 
 hycom_diff.o: hycom_diff.f mod_mean.o                 mod_za.o
-hycom_mean.o: hycom_mean.f mod_mean.o                 mod_za.o
+hycom_mnsq.o: hycom_mnsq.f mod_mean.o                 mod_za.o
 hycom_std.o:  hycom_std.f  mod_mean.o                 mod_za.o
 hycom_wsum.o: hycom_wsum.f mod_mean.o                 mod_za.o
 

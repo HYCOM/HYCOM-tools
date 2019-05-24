@@ -1,4 +1,4 @@
-      program hycom_mean
+      program hycom_mnsq
       use mod_mean  ! HYCOM mean array interface
       use mod_za    ! HYCOM array I/O interface
       implicit none

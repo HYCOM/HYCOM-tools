@@ -16,9 +16,9 @@ if (! -e ../../config/${ARCH}_setup) then
   exit 1
 endif
 #
-# --- meanstd programs
+# --- mnanstd programs
 #
-foreach m ( hycom_mean hycom_std hycom_diff hycom_wsum hesmf_mean hesmf_std )
+foreach m ( hycom_mnsq hycom_std hycom_diff hycom_wsum hesmf_mean hesmf_std )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"
