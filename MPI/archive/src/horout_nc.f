@@ -382,6 +382,10 @@ c
               call ncheck(nf90_put_att(ncfileID,varID,
      &            "long_name",
      &            trim(name)//label(73:81)))
+          elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &            "long_name",
+     &            trim(name)//label(73:81)))
           else
               call ncheck(nf90_put_att(ncfileID,varID,
      &            "long_name",
@@ -437,6 +441,10 @@ c
      &                               "valid_range",
      &                               (/hmin(1), hmax(1)/)))
             if     (artype.eq.1) then
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &                                 "long_name",
+     &                                 trim(name)//label(73:81)))
+            elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
      &                                 trim(name)//label(73:81)))
@@ -878,6 +886,10 @@ c
               call ncheck(nf90_put_att(ncfileID,varID,
      &            "long_name",
      &            trim(name)//label(73:81)))
+          elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &            "long_name",
+     &            trim(name)//label(73:81)))
           else
               call ncheck(nf90_put_att(ncfileID,varID,
      &            "long_name",
@@ -940,6 +952,10 @@ c
      &                               "valid_range",
      &                               (/hmin(1), hmax(1)/)))
             if     (artype.eq.1) then
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &                                 "long_name",
+     &                                 trim(name)//label(73:81)))
+            elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
      &                                 trim(name)//label(73:81)))
@@ -2049,6 +2065,10 @@ c
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
      &                                 label(33:50)//label(73:81)))
+            elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &                                 "long_name",
+     &                                 label(33:50)//label(73:81)))
             else
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
@@ -2298,6 +2318,10 @@ c
      &                                 "long_name",
      &                                 name))
             elseif (artype.eq.1) then
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &                                 "long_name",
+     &                                 label(33:50)//label(73:81)))
+            elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
      &                                 label(33:50)//label(73:81)))
@@ -2954,6 +2978,10 @@ c
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
      &                               trim(name)//label(73:81)))
+          elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
+            call ncheck(nf90_put_att(ncfileID,varID,
+     &                               "long_name",
+     &                               trim(name)//label(73:81)))
           else
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
@@ -3067,6 +3095,10 @@ c
      &                             "valid_range",
      &                             (/hmin(1), hmax(1)/)))
           if     (artype.eq.1) then
+            call ncheck(nf90_put_att(ncfileID,varID,
+     &                               "long_name",
+     &                               trim(name)//label(73:81)))
+          elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
      &                               trim(name)//label(73:81)))
@@ -3993,6 +4025,10 @@ c
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
      &                                 trim(name)//label(73:81)))
+            elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &                                 "long_name",
+     &                                 trim(name)//label(73:81)))
             else
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
@@ -4207,6 +4243,10 @@ c
      &                               "valid_range",
      &                               (/hmin(1), hmax(1)/)))
             if     (artype.eq.1) then
+              call ncheck(nf90_put_att(ncfileID,varID,
+     &                                 "long_name",
+     &                                 trim(name)//label(73:81)))
+            elseif (artype.eq.2 .and. time3(2)-time3(1).lt.1.1) then  !daily mean
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
      &                                 trim(name)//label(73:81)))
