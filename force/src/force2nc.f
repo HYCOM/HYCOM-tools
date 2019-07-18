@@ -19,6 +19,8 @@ C        ON UNIT 20:    UNFORMATTED MODEL FIELD FILE
 C     OUTPUT:
 C                       NETCDF MODEL FIELD FILE
 C
+C        The yrflag is taken from environment variable YRFLAG:
+C         2 for noleap, 3 (default) for gregorian and 4 for all_leap
 C        The NetCDF filename is taken from
 C         environment variable CDF_FILE, with no default.
 C        The NetCDF title and institution are taken from 
@@ -35,6 +37,7 @@ C
       PARAMETER (MAXREC=190000)
 C
       CHARACTER*240 CLINE
+      INTEGER       YRFLAG
       INTEGER       NREC
       REAL          WDAY(MAXREC+1),WSTRT,WEND
       REAL          HMINA,HMINB,HMAXA,HMAXB
@@ -99,6 +102,21 @@ C
       CLOSE(UNIT=21)
       CALL ZAIOCL(21)
 C
+      CLINE = ' '
+      CALL GETENV('YRFLAG',CLINE)
+      IF (CLINE.EQ.' ') THEN
+        YRFLAG = 3  !default
+      ELSE
+        READ(CLINE,*) YRFLAG
+      ENDIF
+      WRITE(6,*)
+      WRITE(6, '(A,I2)') "YRFLAG = ",YRFLAG
+      WRITE(6,*)
+      IF     (YRFLAG.LT.2 .OR. YRFLAG.GT.4) THEN
+        WRITE(6, '(A)') "YRFLAG must be 2, 3, or 4"
+        STOP
+      ENDIF
+C
 C     INITIALIZE INPUT.
 C
       CALL ZAIOPN('OLD', 20)
@@ -115,7 +133,7 @@ C
       KREC = 0
       DO
         KREC = KREC+1
-        CALL READ20(FLD,MSK, WDAY(KREC),CNAME,LEOF)
+        CALL READ20(FLD,MSK, WDAY(KREC),YRFLAG,CNAME,LEOF)
         IF     (LEOF) THEN
           EXIT
         ENDIF
@@ -132,7 +150,7 @@ C
 *           WRITE(6,*) 'CALL HOROUT, KREC = ',KREC
 *           CALL ZHFLSH(6)
         CALL HOROUT(FLD,PLON,PLAT,IDM,JDM,WDAY(KREC),WDAY(KREC+1),
-     +              PNAME,CNAME,SNAME,UNAME)
+     +              YRFLAG, PNAME,CNAME,SNAME,UNAME)
 *           WRITE(6,*) 'EXIT HOROUT, KREC = ',KREC
 *           CALL ZHFLSH(6)
       ENDDO
@@ -188,13 +206,13 @@ C
       RETURN
 C     END OF WNDAY.
       END
-      SUBROUTINE READ20(FIN,MSK, DAY,CNAME,LEOF)
+      SUBROUTINE READ20(FIN,MSK, DAY,YRFLAG,CNAME,LEOF)
       USE MOD_ZA  ! HYCOM array I/O interface
       IMPLICIT NONE
 C
       LOGICAL     LEOF
       CHARACTER*8 CNAME
-      INTEGER     MSK(IDM,JDM)
+      INTEGER     MSK(IDM,JDM),YRFLAG
       REAL        FIN(IDM,JDM),DAY
 C
 C     READ THE NEXT WIND/FLUX RECORD ON UNIT 20.
@@ -202,6 +220,12 @@ C
       INTEGER       I,IOS,MONTH
       REAL          FINC,XMINA,XMAXA,XMINB,XMAXB
       CHARACTER*240 CLINE
+C
+      REAL M0(14,2)
+      DATA M0 /   1.0,  32.0,  60.0,  91.0, 121.0, 152.0, 182.0,
+     +          213.0, 244.0, 274.0, 305.0, 335.0, 366.0, 397.0,
+     +            1.0,  32.0,  60.0,  92.0, 122.0, 153.0, 183.0,
+     +          214.0, 245.0, 275.0, 306.0, 336.0, 367.0, 398.0 /
 C
       READ(20,'(A)',IOSTAT=IOS) CLINE
       LEOF = IOS.NE.0
@@ -220,8 +244,19 @@ C
       IF     (I.NE.0) THEN
         I = INDEX(CLINE,'=')
         READ(CLINE(I+1:),*) MONTH,XMINB,XMAXB
-        DAY  = 1111.0 + (MONTH-1)*30.5  !1st record nominaly on Jan 16th 1904.
-        FINC = 30.5
+        IF     (YRFLAG.EQ.3) THEN  !default
+          DAY  = 0.5*(M0(MONTH  ,1)+M0(MONTH+1,1))
+          FINC = 0.5*(M0(MONTH+1,1)+M0(MONTH+2,1)) - DAY
+          DAY = DAY + 1095.0   !1904
+        ELSEIF (YRFLAG.EQ.4) THEN !noleap
+          DAY  = 0.5*(M0(MONTH  ,1)+M0(MONTH+1,1))
+          FINC = 0.5*(M0(MONTH+1,1)+M0(MONTH+2,1)) - DAY
+          DAY  = DAY - 1.0
+        ELSE  !all_leap
+          DAY  = 0.5*(M0(MONTH  ,2)+M0(MONTH+1,2))
+          FINC = 0.5*(M0(MONTH+1,2)+M0(MONTH+2,2)) - DAY
+          DAY  = DAY - 1.0
+        ENDIF
       ELSE
         I = INDEX(CLINE,'=')
         READ(CLINE(I+1:),*) DAY,FINC,XMINB,XMAXB
@@ -342,14 +377,16 @@ c
 c
       if (yrflag.eq.3) then
         if     (mod(iyear,4).eq.0) then
-          k = 3
+          k = 3  !366-day
         else
-          k = 2
+          k = 2  !365-day
         endif
+      elseif (yrflag.eq.4) then
+        k = 2  !365-day
       elseif (yrflag.eq.0) then
-        k = 1
+        k = 1  !360-day
       else
-        k = 3
+        k = 3  !366-day
       endif
       do m= 1,12
         if     (jday.ge.month0(m,  k) .and.
@@ -360,7 +397,6 @@ c
       enddo
       return
       end
-
       subroutine forday(dtime,yrflag, iyear,iday,ihour)
       implicit none
 c
@@ -390,6 +426,12 @@ c ---   366 days per model year, starting Jan 01
         iday  =  mod( dtime+ 0.001d0 ,366.d0) + 1
         ihour = (mod( dtime+ 0.001d0 ,366.d0) + 1.d0 - iday)*24.d0
 c
+      elseif (yrflag.eq.4) then
+c ---   365 days per model year, starting Jan 01
+        iyear =  int((dtime+ 0.001d0)/365.d0) + 1
+        iday  =  mod( dtime+ 0.001d0 ,365.d0) + 1
+        ihour = (mod( dtime+ 0.001d0 ,365.d0) + 1.d0 - iday)*24.d0
+c
       elseif (yrflag.eq.3) then
 c ---   model day is calendar days since 01/01/1901
         iyr   = (dtime-1.d0)/365.25d0
@@ -408,7 +450,14 @@ c ---   model day is calendar days since 01/01/1901
 c
         iyear =  1901 + iyr
         iday  =  dtime - dtim1 + 1
-        ihour = (dtime - dtim1 + 1.d0 - iday)*24.d0
+        ihour = (dtime - dtim1 + 1.001d0 - iday)*24.d0
+*
+*       write( 6,*)
+*       write( 6,*) 'dtime,dtim1 = ',dtime,dtim1
+*       write( 6,*) 'iday        = ',dtime - dtim1 + 1.d0,iday
+*       write( 6,*) 'ihour       = ',
+*    &              (dtime - dtim1 + 1.d0 - iday)*24.d0,ihour
+*       write( 6,*)
 c
       else
         write( 6,*)
@@ -420,12 +469,12 @@ c
       end
 
       subroutine horout(array,plon,plat,ii,jj,wday,wday_next,
-     &                  name,namec,names,units)
+     &                  yrflag, name,namec,names,units)
       use netcdf   ! NetCDF fortran 90 interface
       implicit none
 c
       character*(*) name,namec,names,units
-      integer       ii,jj
+      integer       ii,jj,yrflag
       real          array(ii,jj),plon(ii,jj),plat(ii,jj)
       real          wday,wday_next
 c
@@ -488,13 +537,13 @@ c
         time = wday
 c       correct wind day to nearest 15 minutes
         time = nint(time*96.d0)/96.d0
-        call fordate(time,3, iyear,month,iday,ihour)
+        call fordate(time,yrflag, iyear,month,iday,ihour)
         date = (iday + 100 * month + 10000 * iyear) + 
      &         (time - int(time))
 c
         time_next = wday_next
         time_next = nint(time_next*96.d0)/96.d0
-        call fordate(time_next,3, iyear,month,iday,ihour)
+        call fordate(time_next,yrflag, iyear,month,iday,ihour)
         date_next = (iday + 100 * month + 10000 * iyear) + 
      &              (time_next - int(time_next))
 c
@@ -579,6 +628,7 @@ c
      &                    nf90_put_att(ncfileID,MTVarID,
      &                                 "long_name",
      &                                 "time"))
+            if     (yrflag.eq.3) then  !default
               call nchek("nf90_put_att-units",
      &                    nf90_put_att(ncfileID,MTVarID,
      &                                 "units",
@@ -587,6 +637,25 @@ c
      &                    nf90_put_att(ncfileID,MTVarID,
      &                                 "calendar",
      &                                 "gregorian"))  !same as standard
+            elseif (yrflag.eq.4) then  !365-day
+              call nchek("nf90_put_att-units",
+     &                    nf90_put_att(ncfileID,MTVarID,
+     &                                 "units",
+     &                            "days since 0001-01-01 00:00:00"))
+              call nchek("nf90_put_att-calendar",
+     &                    nf90_put_att(ncfileID,MTVarID,
+     &                                 "calendar",
+     &                                 "noleap"))
+            else  !366-day
+              call nchek("nf90_put_att-units",
+     &                    nf90_put_att(ncfileID,MTVarID,
+     &                                 "units",
+     &                            "days since 0001-01-01 00:00:00"))
+              call nchek("nf90_put_att-calendar",
+     &                    nf90_put_att(ncfileID,MTVarID,
+     &                                 "calendar",
+     &                                 "all_leap"))
+            endif !yrflag
             call nchek("nf90_put_att-axis",
      &                  nf90_put_att(ncfileID,MTVarID,
      &                               "axis","T"))
@@ -795,13 +864,13 @@ c
       time = wday
 c     correct wind day to nearest 15 minutes
       time = nint(time*96.d0)/96.d0
-      call fordate(time,3, iyear,month,iday,ihour)
+      call fordate(time,yrflag, iyear,month,iday,ihour)
       date = (iday + 100 * month + 10000 * iyear) + 
      &       (time - int(time))
 c
       time_next = wday_next
       time_next = nint(time_next*96.d0)/96.d0
-      call fordate(time_next,3, iyear,month,iday,ihour)
+      call fordate(time_next,yrflag, iyear,month,iday,ihour)
       date_next = (iday + 100 * month + 10000 * iyear) + 
      &            (time_next - int(time_next))
 c
