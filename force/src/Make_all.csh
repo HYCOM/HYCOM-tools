@@ -16,7 +16,7 @@ if (! -e ../../config/${ARCH}_setup) then
   exit 1
 endif
 #
-foreach m ( ap diff kp kpc kphfc pzero riv_mon riv_hf runoff stoch time_interp tp wi wi_curl wi_ewdnwd wi_xwdywd wi_magstress wi_meanfit wc zero )
+foreach m ( ap diff kp kpc kphfc pzero riv_mon riv_hf runoff stoch time_interp time_shift tp wi wi_curl wi_ewdnwd wi_xwdywd wi_magstress wi_meanfit wc zero )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"
