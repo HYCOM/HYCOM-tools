@@ -244,7 +244,7 @@ c
       endif
 *     write(lp,'(a,i2,i3)') 'iweight=',iweight, mnproc
 *     write(lp,'(a,i2,i3)') 'artype =',mntype+1,mnproc
-*     call xcsync(flush_lp)
+      call xcsync(flush_lp)
 c
       read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
@@ -314,6 +314,7 @@ c
         if     (artype.ge.3) then  !std
           if     (.not. allocated(onetas)) then
             allocate( onetas(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
+            onetas(:,:) = 1.0
           endif
           read (ni,'(a)',end=6) cline
           if(mnproc.eq.1)then
@@ -322,7 +323,7 @@ c
           i = index(cline,'=')
           read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
           call getfld(onetas, ni, hminb,hmaxb, .true.)
-c          call xctilr(onetas,1,1,nbdy,nbdy, halo_ps)
+c            call xctilr(onetas,1,1,nbdy,nbdy, halo_ps)
           if(mnproc.eq.1)then
             write(lp,'("input  ",a," into ",a)') cline(1:8),'onetas  '
           endif
@@ -360,7 +361,7 @@ c
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
         call getfld(salflx, ni, hminb,hmaxb, .false.)
-c        call xctilr(salflx,1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(salflx,1,1,nbdy,nbdy, halo_ps)
         if(mnproc.eq.1)then
           write(lp,'("input  ",a," into ",a)') cline(1:8),'salflx  '
         endif
@@ -415,7 +416,7 @@ c --- are there mix fields?
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(tmix, ni, hminb,hmaxb, .false.)
-c        call xctilr(tmix,1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(tmix,1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
         write(lp,'("input  ",a," into ",a)') cline(1:8),'tmix    '
       endif
@@ -482,11 +483,12 @@ c
       if     (iweight.eq.0) then  ! mean archive
         if     (.not. allocated(kemix)) then
            allocate( kemix(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
+           kemix(:,:) = 0.0
         endif
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(kemix, ni, hminb,hmaxb, .true.)
-c        call xctilr(kemix,1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(kemix,1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
         write(lp,'("input  ",a," into ",a)') cline(1:8),'kemix   '
       endif
@@ -495,7 +497,7 @@ c        call xctilr(kemix,1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
         write(lp,'(a)')       trim(cline)
       endif
-      endif
+      endif !iweight.eq.0
 c
 c --- is there ice?
       icegln = cline(1:8).eq.'covice  '
@@ -503,7 +505,7 @@ c --- is there ice?
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(covice, ni, hminb,hmaxb, .false.)
-c        call xctilr(covice,1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(covice,1,1,nbdy,nbdy, halo_ps)
 c
         read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
@@ -512,7 +514,7 @@ c
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(thkice, ni, hminb,hmaxb, .false.)
-c        call xctilr(thkice,1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(thkice,1,1,nbdy,nbdy, halo_ps)
 c
         read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
@@ -521,7 +523,7 @@ c
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(temice, ni, hminb,hmaxb, .false.)
-c        call xctilr(temice,1,1,nbdy,nbdy, halo_ps)  
+c          call xctilr(temice,1,1,nbdy,nbdy, halo_ps)  
 c
         read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
@@ -553,11 +555,12 @@ c
       if(mnproc.eq.1)then
       write(lp,'("input  ",a," into ",a)') cline(1:8),'vbaro   '
       endif
-*     call xcsync(flush_lp)
+      call xcsync(flush_lp)
 c
       if     (iweight.eq.0) then  ! mean archive
         if     (.not. allocated(kebaro)) then
           allocate( kebaro(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
+           kebaro(:,:) = 0.0
         endif
         read (ni,'(a)',end=6) cline
         if(mnproc.eq.1)then
@@ -566,12 +569,15 @@ c
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(kebaro, ni, hminb,hmaxb, .true.)
-c        call xctilr(kebaro,1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(kebaro,1,1,nbdy,nbdy, halo_ps)
         if(mnproc.eq.1)then
           write(lp,'("input  ",a," into ",a)') cline(1:8),'kebaro  '
         endif
-*       call xcsync(flush_lp)
-      endif
+*     write(lp,'("input  ",a," into ",a,2i3)') cline(1:8),'kebaro  ',k,
+*    &  mnproc
+*     call xcsync(flush_lp)
+*
+      endif !iweight.eq.0
 c
       kkin=1
       do 14 k=1,kk
@@ -579,10 +585,11 @@ c
 c ---   already input at end of k=1 loop.
       else
         read (ni,'(a)',end=6)   cline
-      if(mnproc.eq.1)then
-        write(lp,'(a)')         trim(cline)
-      endif
-      endif
+        if(mnproc.eq.1)then
+          write(lp,'(a)')         trim(cline)
+        endif
+      endif !k.eq.2:else
+      call xcsync(flush_lp)
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
       if     (cline(1:8).ne.'u-vel.  ') then
@@ -609,11 +616,11 @@ c
       if(mnproc.eq.1)then
         write(lp,'(a)')       trim(cline)
       endif
-*     call xcsync(flush_lp)
+      call xcsync(flush_lp)
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
       call getfld(v(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .true.)
-        call xctilr(v(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_vv)
+      call xctilr(v(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_vv)
       if(mnproc.eq.1)then
         write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'v       ',k
       endif
@@ -622,44 +629,46 @@ c
 *     call xcsync(flush_lp)
 *
 c
+*     write(lp,'(a,i2,i3)') 'iweight,ke=',iweight, mnproc
+*     call xcsync(flush_lp)
       if     (iweight.eq.0) then  ! mean archive
         if     (.not. allocated(ke)) then
           allocate( ke(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
+          ke(:,:,:) = 0.0
         endif
         read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
         write(lp,'(a)')       trim(cline)
       endif
+*     write(lp,'(a,i4)') trim(cline),mnproc
 *     call xcsync(flush_lp)
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(ke(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .false.)
-        call xctilr(ke(1-nbdy,1-nbdy,k),1,1,ndby,ndby,halo_ps)
+c          call xctilr(ke(1-nbdy,1-nbdy,k),1,1,ndby,ndby,halo_ps)
       if(mnproc.eq.1)then
         write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'k.e.    ',k
       endif
 *     write(lp,'("input  ",a," into ",a,2i3)') cline(1:8),'k.e.    ',k,
 *    &  mnproc
-*     call xcsync(flush_lp)
-*
-      endif
+      call xcsync(flush_lp)
+      endif !iweight.eq.0
 c
       read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
         write(lp,'(a)')       trim(cline)
       endif
-*     call xcsync(flush_lp)
+      call xcsync(flush_lp)
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
       call getfld(dp(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .true.)
-        call xctilr(dp(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
+      call xctilr(dp(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
         write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'dp      ',k
       endif   
 *     write(lp,'("input  ",a," into ",a,2i3)') cline(1:8),'dp      ',k,
 *    &  mnproc
 *     call xcsync(flush_lp)
-*
 c
       if (mntype.eq.2) then  ! mnsq
         read (ni,'(a)',end=6) cline
@@ -696,14 +705,13 @@ c
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
       call getfld(temp(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .false.)
-        call xctilr(temp(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
+c        call xctilr(temp(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
       write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'temp    ',k
       endif
 *     write(lp,'("input  ",a," into ",a,2i3)') cline(1:8),'temp    ',k,
 *    &  mnproc
 *     call xcsync(flush_lp)
-*
 c
       read (ni,'(a)',end=6) cline
       if(mnproc.eq.1)then
@@ -712,7 +720,7 @@ c
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
       call getfld(saln(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .false.)
-        call xctilr(saln(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
+c        call xctilr(saln(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
       write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'saln    ',k
       endif
@@ -738,7 +746,7 @@ c
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
         call getfld(th3d(1-nbdy,1-nbdy,k), ni, hminb,hmaxb, .false.)   
-        call xctilr(th3d(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
+c          call xctilr(th3d(1-nbdy,1-nbdy,k),1,1,nbdy,nbdy, halo_ps)
       if(mnproc.eq.1)then
         write(lp,'("input  ",a," into ",a,i3)') cline(1:8),'th3d    ',k
       endif

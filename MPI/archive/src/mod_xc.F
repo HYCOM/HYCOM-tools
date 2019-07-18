@@ -2732,10 +2732,10 @@ c
         call mp_flush(1)  ! flushes stdout, and implies a barrier
 #else
         call flush(lp)
-c        BARRIER
+        BARRIER
 #endif
       else
-c        BARRIER
+        BARRIER
       endif
       return
       end subroutine xcsync
