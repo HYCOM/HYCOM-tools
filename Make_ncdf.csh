@@ -30,7 +30,7 @@ printenv NCDF
 #
 setenv A $cwd
 #
-foreach d ( archive force relax )
+foreach d ( archive force relax topo )
   echo "PROCESSING ${d}/src:"
   cd ${A}/${d}/src
   csh Make_ncdf.csh >&! Make_ncdf.log
