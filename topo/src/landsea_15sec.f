@@ -5,21 +5,19 @@
 C
 C     DEFINE INPUT BATHYMETRY GRID.
 C
-C     SETUP FOR 30-second DATA (extended 2deg across poles).
+C     SETUP FOR 15 arc-second DATA (extended 2deg across poles).
 C
-C     92S+15sec is at j=     1
-C     90S+15sec is at j=   241
-C     80S+15sec is at j=  1441 (or JWI80+1-38 in LS)
-C      0S-15sec is at j= 11040
-C      0S+15sec is at j= 11041
-C     90N-15sec is at j= 21840
-C     92N-15sec is at j= 22080
+C     92S+7.5sec is at j=     1
+C     90S+7.5sec is at j=   481
+C      0S-7.5sec is at j= 22080
+C      0S+7.5sec is at j= 22081
+C     90N-7.5sec is at j= 43680
+C     92N-7.5sec is at j= 44160
 C
-      INTEGER    IWI,JWI,JWI90,JWI80
+      INTEGER    IWI,JWI,JWI90
       REAL*8     XFIN,YFIN,DXIN,DYIN
-      PARAMETER (IWI =43200,    JWI =22080,  JWI90=21600,
-     &                                       JWI80=19277)
-      PARAMETER (DXIN=1.D0/120.D0,        DYIN=1.D0/120.D0)
+      PARAMETER (IWI =86400, JWI90=43200, JWI =JWI90+2*480)
+      PARAMETER (DXIN=1.D0/240.D0,        DYIN=1.D0/240.D0)
       PARAMETER (XFIN=-180.D0+0.5D0*DXIN, YFIN=-92.D0+0.5D0*DYIN)
 C
 C     BATHTMETRY ARRAYS.
@@ -27,12 +25,11 @@ C
       INTEGER,   ALLOCATABLE :: IP(:,:)
       REAL*4,    ALLOCATABLE :: PLON(:,:),PLAT(:,:),XAF(:,:),YAF(:,:)
       REAL*4,    ALLOCATABLE :: DH(:,:)
-C
-      INTEGER*2, ALLOCATABLE :: IZ(:)
-      INTEGER*1, ALLOCATABLE :: LS(:,:)
+      REAL*4,    ALLOCATABLE :: BTHY90(:,:)
 C
       REAL*4  YAG(JWI),WKG(JWI),
      +        PLATIJ,YFMIN,YFMAX,XAMAX,XAMIN,YAMAX,YAMIN
+      CHARACTER PREAMBL(5)*79
 C
 C     NETCDF I/O VARIABLES.
 C
@@ -53,7 +50,7 @@ C
 C**********
 C*
 C 1)  FROM UNFORMATTED BATHYMETRY DATA ON ITS NATIVE GRID, 
-C      CREATE A MODEL GRID BATHYMETRY FILE SUITABLE FOR INPUT
+C      CREATE A MODEL GRID LAND/SEA FILE SUITABLE FOR INPUT
 C      TO THE HYCOM OCEAN MODEL OVER THE GIVEN REGION.
 C
 C     INTERPOLATION IS EITHER PIECEWISE BILINEAR
@@ -83,11 +80,9 @@ C                    = 2; FULLY GLOBAL (ARCTIC BI-POLE PATCH)
 C
 C 4)  INPUT:
 C        ON UNIT  5:  NAMELIST /TOPOG/
-C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO OR CDF_NAVO OR
-C                                        CDF_GLC).
-C        Binary:      GLOBAL BATHYMETRY (RAW_SRTMP)
+C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO).
 C     OUTPUT:
-C        ON UNIT 61A: HYCOM LAND/SEA FOR THE SPECIFIED REGION.
+C        ON UNIT 61A: HYCOM LAND/SEA MASK FOR THE SPECIFIED REGION.
 C*
 C**********
 C
@@ -98,7 +93,7 @@ C
 C
       CHARACTER*80 CLINE
       INTEGER I,I0,II,IJ,IWIX,J,JJ,J0,L,LENGTH,MRECL,NFILL,NZERO
-      REAL*4  XFD,YFD,DXD,DYD,FLAND,MAXLND,MAXSEA
+      REAL*4  XFD,YFD,DXD,DYD,FLAND
       REAL*8  XLIN,XFDX,XOV,YOU
       REAL*4  XMIN,XMAX,XAVE,XRMS,DHMIN,DHMAX
       REAL*4  HMINA,HMINB,HMAXA,HMAXB
@@ -253,6 +248,9 @@ C
 C
 C     READ THE INPUT (netCDF).
 C
+      I0    =   2
+      J0    = 482
+C
       CFILE = ' '
       CALL GETENV('CDF_GEBCO',CFILE)
       IF     (CFILE.NE.' ') THEN
@@ -263,162 +261,43 @@ C
         call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
         ! inquire variable ID
         call ncheck(nf90_inq_varid(ncFID,
-     &                             'z',
+     &                             'elevation',
      &                             ncVID))
 C
-        ALLOCATE( IZ(IWI*JWI90) )
-        call ncheck(nf90_get_var(ncFID,ncVID,IZ))
-        write(6,*) 'IZ.1,1 = ',IZ(1)
-        write(6,*) 'IZ.N,M = ',IZ(IWI*JWI90)
+        ALLOCATE( BTHY90(IWI,JWI90) )
+        call ncheck(nf90_get_var(ncFID,ncVID,BTHY90))
+        write(6,*) 'BATHY.1,1 = ',BTHY90(  1,    1)
+        write(6,*) 'BATHY.N,M = ',BTHY90(IWI,JWI90)
 C
 C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
 C
-        I0    =   2
-        J0    = 242
-        MAXSEA =  10.0
-        MAXLND = -10.0
+        DHMIN =  1.e30
+        DHMAX = -1.e30
         DO J= 1,JWI90
-          JJ = JWI90+1-J  !1st point at 90N
           DO I= 1,IWI
-            IJ = I+(JJ-1)*IWI
-            BTHYI(I0+I,J+J0) = -IZ(IJ)
-            BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
-            BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
+            BTHYI(I0+I,J+J0) = MAX(-10.0,MIN(10.0,-BTHY90(I,J)))
+            DHMIN = MIN( DHMIN, BTHYI(I0+I,J+J0) )
+            DHMAX = MAX( DHMAX, BTHYI(I0+I,J+J0) )
           ENDDO !i
         ENDDO !j
+        write (6,'(/a,2f12.5/)') 'min,max depth = ',dhmin,dhmax
+        write (6,*) 'min,max depth = ',dhmin,dhmax
+        write (6,*)
 C
-        DEALLOCATE( IZ )
+        DEALLOCATE( BTHY90 )
       ELSE
-        CFILE = ' '
-        CALL GETENV('CDF_NAVO',CFILE)
-        IF     (CFILE.NE.' ') THEN
-          WRITE(6,*)
-          WRITE(6,*) 'CDF_NAVO  = ',trim(CFILE)
-          CALL ZHFLSH(6)
-          ! open NetCDF file
-          call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
-          ! inquire variable ID
-          call ncheck(nf90_inq_varid(ncFID,
-     &                               'dst',
-     &                               ncVID))
-C
-          ALLOCATE( LS(IWI,JWI80) )
-          call ncheck(nf90_get_var(ncFID,ncVID,LS))
-          write(6,*) 'LS.1,1 = ',LS(1,1)
-          write(6,*) 'LS.N,M = ',LS(IWI,JWI80)
-C
-C         COPY INTO THE (LARGER) INTERPOLATION ARRAY.
-C         LAND POLEWARD OF 80.3125.
-C
-          I0    =    2
-          J0    = 1405
-          MAXSEA =  10.0
-          MAXLND = -10.0
-          BTHYI(:,:) = MAXLND
-          DO J= 1,JWI80
-            JJ = JWI80+1-J
-            DO I= 1,IWI
-              IF     (LS(I,JJ).NE.0) THEN
-                BTHYI(I0+I,J+J0) = MAXSEA
-              ELSE
-                BTHYI(I0+I,J+J0) = MAXLND
-              ENDIF
-            ENDDO !i
-          ENDDO !j
-C
-          DEALLOCATE( LS )
-        ELSE
-          CFILE = ' '
-          CALL GETENV('CDF_GLC',CFILE)
-          IF     (CFILE.NE.' ') THEN
-            WRITE(6,*)
-            WRITE(6,*) 'CDF_GLC   = ',trim(CFILE)
-            CALL ZHFLSH(6)
-            ! open NetCDF file
-            call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
-            ! inquire variable ID
-            call ncheck(nf90_inq_varid(ncFID,
-     &                                 'z',
-     &                                 ncVID))
-C
-            ALLOCATE( LS(IWI,JWI90) )
-            call ncheck(nf90_get_var(ncFID,ncVID,LS))
-            write(6,*) 'LS.1,1 = ',LS(1,1)
-            write(6,*) 'LS.N,M = ',LS(IWI,JWI90)
-C
-C           COPY INTO THE (LARGER) INTERPOLATION ARRAY.
-C
-            I0    =   2
-            J0    = 242
-            MAXSEA =  10.0
-            MAXLND = -10.0
-            BTHYI(:,:) = MAXLND
-            DO J= 1,JWI90
-              JJ = J  !1st point at 90S
-              DO I= 1,IWI
-                IF     (LS(I,JJ).GE.50.0) THEN
-                  BTHYI(I0+I,J+J0) = MAXSEA
-                ELSE
-                  BTHYI(I0+I,J+J0) = MAXLND
-                ENDIF
-              ENDDO !i
-            ENDDO !j
-C
-            DEALLOCATE( LS )
-          ELSE
-            CFILE = ' '
-            CALL GETENV('RAW_SRTMP',CFILE)
-            IF     (CFILE.EQ.' ') THEN
-              WRITE(6,'(/a,a/)')
-     &        'error - CDF_GEBCO, CDF_NAVO, CDF_GLC',
-     &        ' and RAW_SRTMP are not defined'
-              CALL ZHFLSH(6)
-              STOP
-            ENDIF
-            WRITE(6,*)
-            WRITE(6,*) 'RAW_SRTMP = ',trim(CFILE)
-            CALL ZHFLSH(6)
-C
-            ALLOCATE( IZ(IWI*JWI90) )
-C
-            INQUIRE(IOLENGTH=MRECL) IZ
-
-            OPEN(UNIT=1001, FILE=CFILE, FORM='UNFORMATTED',
-     +           STATUS='OLD', ACCESS='DIRECT', RECL=MRECL)
-            READ( 1001,REC=1) IZ
-            CLOSE(1001)
-            write(6,*) 'IZ.1,1 = ',IZ(1)
-            write(6,*) 'IZ.N,M = ',IZ(IWI*JWI90)
-C
-C           COPY INTO THE (LARGER) INTERPOLATION ARRAY.
-C
-            I0    =   2
-            J0    = 242
-            MAXSEA =  10.0
-            MAXLND = -10.0
-            DO J= 1,JWI90
-              JJ = JWI90+1-J  !1st point at 90N
-              DO I= 1,IWI
-                II = MOD( I + IWI/2 -1, IWI ) + 1  !1st point at 0E
-                IJ = II+(JJ-1)*IWI
-                BTHYI(I0+I,J+J0) = -IZ(IJ)
-                BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
-                BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
-              ENDDO !i
-            ENDDO !j
-C
-            DEALLOCATE( IZ )
-          ENDIF !CDF_GLC:else
-        ENDIF !CDF_NAVO:else
-      ENDIF !CDF_GEBCO:else
+        WRITE(6,'(/ a /)')
+     &    'environment variable CDF_GEBCO must be defined'
+        CALL ZHFLSH(6)
+        STOP
+      ENDIF
 C
 C       2-degree wrap across pole.
 C
         DO I= 1,IWI
-          II = MOD( I-1+21601, 43200 ) + 1
-          DO J= 1,240
-            BTHYI(I0+I, J0+    1-J) = BTHYI(I0+II, J0        +J)
-            BTHYI(I0+I, J0+JWI90+J) = BTHYI(I0+II, J0+JWI90+1-J)
+          DO J= 1,480
+            BTHYI(I0+I, J0+    1-J) = BTHYI(I0+I, J0        +J)
+            BTHYI(I0+I, J0+JWI90+J) = BTHYI(I0+I, J0+JWI90+1-J)
           ENDDO
         ENDDO
 C
@@ -488,17 +367,25 @@ C
 C
         DO J= 1,JDM
           DO I= 1,IDM
-            IF     (DH(I,J).GT.0.0) THEN
+            IF     (DH(I,J).GE.0.0) THEN
               IP(I,J) = 1
-              DH(I,J) = 1.0  !sea
+              DH(I,J) = 1.0
             ELSE
               IP(I,J) = 0
-              DH(I,J) = 0.0  !land
+              DH(I,J) = 0.0
             ENDIF
           ENDDO
         ENDDO
 C
-        IF     (MTYPE.EQ.2) THEN
+        IF     (MTYPE.EQ.0 .OR. MTYPE.EQ.1) THEN
+C
+C         NORTH BOUNDARY CLOSED.
+C
+          DO I= 1,IDM
+            IP(I,JDM) = 0
+            DH(I,JDM) = 0.0
+          ENDDO
+        ELSEIF (MTYPE.EQ.2) THEN
 C
 C         NORTH BOUNDARY IS AN ARCTIC PATCH.
 C
@@ -508,6 +395,15 @@ C
             DH(I,JDM) = DH(II,JDM-1)
           ENDDO
         ENDIF
+        IF     (MTYPE.EQ.0) THEN
+C
+C         EAST BOUNDARY CLOSED.
+C
+          DO J= 1,JDM
+            IP(IDM,J) = 0
+            DH(IDM,J) = 0.0
+          ENDDO
+        ENDIF
 C
 C       WRITE OUT STATISTICS.
 C
@@ -515,19 +411,24 @@ C
         CALL AVERMS(DH,IDM,JDM, XAVE,XRMS)
         WRITE(6,8100) 'DH', XMIN,XMAX,XAVE,XRMS
 C
-C     OUTPUT THE LAND/SEA MASK.
+      IF     (MTYPE.EQ.2) THEN
+C
+C       NORTH BOUNDARY IS AN ARCTIC PATCH.
+C
+        DO I= 1,IDM
+          II = IDM-MOD(I-1,IDM)
+          IP(I,JDM) = IP(II,JDM-1)
+          DH(I,JDM) = DH(II,JDM-1)
+        ENDDO
+      ENDIF
+C
+C     OUTPUT THE BATHYMETRY.
 C
       CALL ZAIOPN('NEW', 61)
       CALL ZAIOWR(DH, IP,.FALSE., DHMIN,DHMAX, 61, .FALSE.)
       CALL ZAIOCL(61)
       STOP
 C
- 4101 FORMAT(A79)
- 4102 format('min,max depth = ',2f10.3)
- 4103 format('min,max depth = ',2f12.5)
- 5000 FORMAT(A40)
- 5500 FORMAT(6E13.6)
- 6000 FORMAT(1X,A,2X,A40 //)
  6200 FORMAT(/ 1X,'MIN,MAX I COORDS = ',F8.2,',',F8.2 
      +       / 1X,'MIN,MAX J COORDS = ',F8.2,',',F8.2 /)
  8100 FORMAT(1X,A,': MIN=',F13.4,' MAX=',F13.4,

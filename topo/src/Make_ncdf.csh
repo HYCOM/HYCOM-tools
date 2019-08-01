@@ -34,7 +34,7 @@ ln -s ${NCDF}/include/typesizes.mod .
 #
 # --- netCDF programs
 #
-foreach m ( bathy_01min landsea_01min bathy_30sec landsea_30sec bathy_bedmap bathy_sindhu  latlonmask hycom2mom6 hycom2mom6dx 2mom6 mom6 )
+foreach m ( bathy_01min landsea_01min bathy_30sec landsea_30sec bathy_15sec landsea_15sec bathy_bedmap bathy_sindhu  latlonmask hycom2mom6 hycom2mom6dx 2mom6 mom6 )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"

@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *advect *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *30sec *bedmap *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
+	/bin/rm *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *advect *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *15sec *30sec *bedmap *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
 
 MODS = mod_xc.o mod_za.o wtime.o
 MODN = mod_xc.o mod_za.o wtime.o 
@@ -43,6 +43,9 @@ MOD6 = $(MODN) spherdist.o rotang.o geodesic.o
 #
 # or select one of the programs to make,
 #  e.g. make m2h ARCH=sun >& Make_m2h
+
+bathy_15sec:     $(MODS) bathy_15sec.o   interp.o zh.o
+	$(LD) $(LDFLAGS) bathy_15sec.o   interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_15sec
 
 bathy_30sec:     $(MODS) bathy_30sec.o   interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_30sec.o   interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_30sec
@@ -65,6 +68,9 @@ bathy_caspi:     $(MODS) bathy_caspi.o   interp.o zh.o
 bathy_sindhu:    $(MODS) bathy_sindhu.o  interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_sindhu.o  interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_sindhu
 
+
+landsea_15sec:   $(MODS) landsea_15sec.o interp.o zh.o
+	$(LD) $(LDFLAGS) landsea_15sec.o interp.o zh.o $(MODN) $(EXTRANCDF) -o landsea_15sec
 
 landsea_30sec:   $(MODS) landsea_30sec.o interp.o zh.o
 	$(LD) $(LDFLAGS) landsea_30sec.o interp.o zh.o $(MODN) $(EXTRANCDF) -o landsea_30sec
