@@ -39,7 +39,7 @@ c
      &                             zz(99),zi(0:99),rl(99),
      &                            pnc(99),pns(99)
       real             sigma(99),thk(99),thbase,deniso,thnthk,
-     &                 salmin,frzoff,frzinc,frcrng,
+     &                 salmin,frzoff,frzinc,frcrng,invrsn,
      &                 deqthu,deqthv,onem,qonem,thref,q,
      &                 hicemn,mldij,qk,pk,pnck,pnk,pnimin,pnmax,
      &                 vzero,uzero
@@ -310,92 +310,53 @@ c --- 'salmin' = minimum salinity (optional, default 0.0)
 c --- 'frzoff' = minimum temperature is freezing+frzoff (optional, default -9)
 c --- 'frcrng' = maximum absolute T increment is frcrng*vertical range
 c                 (optional, default 0.0 which turns off the limiter)
+c --- 'invrsn' = remove T inversions within invrsn (m) of the bottom
+c                 (optional, default 0.0 which turns off the removal)
 c --- 'deniso' = isopycnal if layer is within deniso of target density
 c                 (for isoflg>0, large to recover previous behaviour)
+c --- deniso must be last, the rest are optional.
+c
+      salmin =  0.0  !default
+      frzoff = -9.0  !default
+      frcrng =  0.0  !default, turn off frcrng
+      invrsn =  0.0  !default, turn off invrsn
+      do !loop until deniso
+        call blkinr9(q,k,
+     &               'invrsn','("blkinr: ",a6," =",f11.4," m")',
+     &               'salmin','("blkinr: ",a6," =",f11.4," psu")',
+     &               'frzoff','("blkinr: ",a6," =",f11.4," degC")',
+     &               'frcrng','("blkinr: ",a6," =",f11.4," ")',
+     &               'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")',
+     &               'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
+     &               'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
+     &               'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
+     &            '   XXXXXX','("blkinr: ",a6," =",f11.4," ")')
+        if     (k.eq.1) then !invrsn
+          invrsn = q*onem  !pressure units
+        elseif (k.eq.2) then !salmin
+          salmin = q
+        elseif (k.eq.3) then !frzoff
+          frzoff = q
+        elseif (k.eq.4) then !frcrng
+          frcrng = q
+        elseif (k.eq.5) then !deniso
+          deniso = q
+          exit  !deniso is the last option
+        else
+          if(mnproc.eq.1)then
+          write(lp,'(/ a /)')
+     &    'error - unknown input (not salmin,frzoff,frcrng,deniso)'
+          call flush(lp)
+          endif ! end if(mnproc.eq.1) block
+          call xcstop('ncoda_archv_inc2')
+          stop
+        endif !invrsn,salmin,frzoff,ifrcrng,deniso
+      enddo !blkinr9 loop
+c
 c --- 'thnthk' = minimum ratio of thin to thick isopycnal layers (0 to 1)
 c                 (for isoflg>0,  zero to recover previous behaviour)
 c --- 'thbase' = new reference density (sigma units)
 c
-      call blkinr9(q,k,
-     &            'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")',
-     &            'salmin','("blkinr: ",a6," =",f11.4," psu")',
-     &            'frzoff','("blkinr: ",a6," =",f11.4," degC")',
-     &            'frcrng','("blkinr: ",a6," =",f11.4," ")',
-     &            'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &            'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &            'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &            'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &            'XXXXXX','("blkinr: ",a6," =",f11.4," ")')
-
-      if     (k.eq.1) then !deniso
-        deniso =  q
-        salmin =  0.0  !default
-        frzoff = -9.0  !default
-        frcrng =  0.0  !default, turn off frcrng
-      elseif (k.eq.2) then !salmin
-        salmin = q
-        call blkinr9(q,k,
-     &              'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")',
-     &              'frzoff','("blkinr: ",a6," =",f11.4," degC")',
-     &              'frcrng','("blkinr: ",a6," =",f11.4," ")',
-     &              'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &              'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &              'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &              'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &              'XXXXXX','("blkinr: ",a6," =",f11.4," ")',
-     &              'XXXXXX','("blkinr: ",a6," =",f11.4," ")')
-        if     (k.eq.1) then !deniso
-          frzoff = -9.0  !default
-          frcrng =  0.0  !default, turn off frcrng
-          deniso =  q
-        elseif (k.eq.2) then !frzoff
-          frzoff = q
-          call blkinr2(q,k,
-     &                'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")',
-     &                'frcrng','("blkinr: ",a6," =",f11.4," ")')
-          if     (k.eq.1) then !deniso
-            frcrng = 0.0  !default, turn off frcrng
-            deniso = q
-          elseif (k.eq.2) then
-            frcrng =  q
-            call blkinr(deniso,
-     &                 'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")')
-          endif !deniso,frcrng
-        else !frcrng
-          frzoff = -9.0  !default
-          frcrng =  q
-          call blkinr(deniso,
-     &               'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")')
-        endif !deniso,frzoff,frcrng
-      elseif (k.eq.3) then !frzoff
-        salmin =  0.0  !default
-        frzoff =  q
-        call blkinr2(q,k,
-     &              'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")',
-     &              'frcrng','("blkinr: ",a6," =",f11.4," ")')
-        if     (k.eq.1) then !deniso
-          frcrng = 0.0  !default, turn off frcrng
-          deniso = q
-        elseif (k.eq.2) then
-          frcrng =  q
-          call blkinr(deniso,
-     &               'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")')
-        endif !deniso,frcrng
-      elseif (k.eq.4) then !frcrng
-        salmin =  0.0  !default
-        frzoff = -9.0  !default
-        frcrng =  q
-        call blkinr(deniso,
-     &             'deniso','("blkinr: ",a6," =",f11.4," kg/m^3")')
-      else
-        if(mnproc.eq.1)then
-        write(lp,'(/ a /)')
-     &    'error - unknown input (not salmin,frzoff,frcrng,deniso)'
-        call flush(lp)
-        endif ! end if(mnproc.eq.1) block
-        call xcstop('ncoda_archv_inc2')
-        stop
-      endif !salmin,frzoff,deniso
       call blkinr(thnthk,
      &           'thnthk','("blkinr: ",a6," =",f11.4," ")')
       call blkinr(thbase,
@@ -1645,6 +1606,13 @@ c
                 th3d(i,j,k) = SIG_V(tz(k),sz(k),sigver) - thbase
               endif !intflg
 c
+              if     (pz(k-1).gt.pz(kkout)-invrsn .and.
+     &                temp(i,j,k).gt.temp(i,j,k-1)  ) then
+                saln(i,j,k) = saln(i,j,k-1)
+                temp(i,j,k) = temp(i,j,k-1)
+                th3d(i,j,k) = th3d(i,j,k-1)
+              endif !invrsn
+c
               if     (saln(i,j,k).lt.salmin) then
                 saln(i,j,k) = salmin
                 th3d(i,j,k) = SIG_V(temp(i,j,k),
@@ -1712,12 +1680,22 @@ c
             endif  !artype==2
           elseif (ip(i,j).eq.1) then
 c
-c ---       enforce salmin and frzoff where ncoda isn't active
+c ---       enforce invrsn, salmin and frzoff where ncoda isn't active
 c
+            pz(0) = 0.0
+            do k= 1,kkout
+              pz(k) = pz(k-1) + dp(i,j,k)
+            enddo
             mass_h = 0.d0
             mass_n = 0.d0
             do k= 1,kkout
-              mass_h = mass_h + dp(i,j,k)*th3d(i,j,k)
+              mass_h = mass_h  + dp(i,j,k)*th3d(i,j,k)
+              if     (pz(k-1).gt.pz(kkout)-invrsn .and.
+     &                temp(i,j,k).gt.temp(i,j,k-1)  ) then
+                saln(i,j,k) = saln(i,j,k-1)
+                temp(i,j,k) = temp(i,j,k-1)
+                th3d(i,j,k) = th3d(i,j,k-1)
+              endif !invrsn
               if     (saln(i,j,k).lt.salmin) then
                 saln(i,j,k) = salmin
                 th3d(i,j,k) = SIG_V(temp(i,j,k),
