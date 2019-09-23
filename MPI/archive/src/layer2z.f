@@ -1,4 +1,4 @@
-       subroutine layer2z(a,p,az,z,flag,ii,jj,ib,it,jb,jt,kk,kz,itype)
+      subroutine layer2z(a,p,az,z,flag,ii,jj,ib,it,jb,jt,kk,kz,itype)
       implicit none
 c
       integer ii,jj,ib,it,jb,jt,kk,kz,itype
@@ -21,11 +21,12 @@ c       jj    - 2nd dimension of a,p,az
 c       kk    - 3rd dimension of a  (number of layers)
 c       kz    - 3rd dimension of az (number of levels)
 c       itype - interpolation type
-c                 =-2; piecewise quadratic across each layer
-c                 =-1; piecewise linear    across each layer
-c                 = 0; sample the layer spaning each depth
-c                 = 1; linear interpolation between layer centers
-c                 = 2; linear interpolation between layer interfaces
+c                 =-2; piecewise quadratic     across each layer
+c                 =-1; piecewise linear        across each layer
+c                 = 0; sample the layer        spaning each depth
+c                 = 1; linear interpolation    between layer centers
+c                 = 2; linear interpolation    between layer interfaces
+c                 = 3; piecewise cubic hermite between layer centers
 c
 c  3) output arguments:
 c       az    - scalar field in z-space
@@ -52,7 +53,7 @@ c
             do k= 1,kz
               az(i,j,k) = flag  ! land
             enddo
-          elseif (itype.lt.0) then
+          elseif (itype.lt.0 .or. itype.eq.3) then
             do k= 1,kk
               si(k,1) = a(i,j,k)
               pi(k)   = p(i,j,k)
@@ -60,8 +61,10 @@ c
             pi(kk+1) = p(i,j,kk+1)
             if     (itype.eq.-1) then
               call layer2z_plm(si,pi,kk,1,so,z,kz, flag)
-            else
+           elseif (itype.eq.-2) then
               call layer2z_ppm(si,pi,kk,1,so,z,kz, flag)
+            else   !itype.eq. 3
+              call layer2z_pch(si,pi,kk,1,so,z,kz, flag)
             endif
             do k= 1,kz
               az(i,j,k) = so(k,1)
@@ -159,11 +162,12 @@ c       ii    - 1st dimension of a,p,az
 c       jj    - 2nd dimension of a,p,az
 c       kk    - 3rd dimension of a  (number of layers)
 c       itype - interpolation type
-c                 =-2; piecewise quadratic across each layer
-c                 =-1; piecewise linear    across each layer
-c                 =0; sample the layer spaning each depth
-c                 =1; linear interpolation between layer centers
-c                 =2; linear interpolation between layer interfaces
+c                 =-2; piecewise quadratic     across each layer
+c                 =-1; piecewise linear        across each layer
+c                 = 0; sample the layer        spaning each depth
+c                 = 1; linear interpolation    between layer centers
+c                 = 2; linear interpolation    between layer interfaces
+c                 = 3; piecewise cubic hermite between layer centers
 c
 c  3) output arguments:
 c       az    - scalar field
@@ -185,7 +189,7 @@ c
         do i= 1,ii
           if     (a(i,j,1).eq.flag) then
             az(i,j) = flag  ! land
-          elseif (itype.lt.0) then
+          elseif (itype.lt.0 .or. itype.eq.3) then
             do k= 1,kk
               si(k,1) = a(i,j,k)
               pi(k)   = p(i,j,k)
@@ -194,8 +198,10 @@ c
             zo(1)=max(0.0,p(i,j,kk+1)-zbot)
             if     (itype.eq.-1) then
               call layer2z_plm(si,pi,kk,1,so,zo,1, flag)
-            else
+            elseif (itype.eq.-2) then
               call layer2z_ppm(si,pi,kk,1,so,zo,1, flag)
+            else   !itype.eq. 3
+              call layer2z_pch(si,pi,kk,1,so,zo,1, flag)
             endif
             az(i,j) = so(1,1)
           else
@@ -1192,3 +1198,289 @@ c
       enddo !l
       return
       end subroutine ppm
+
+      subroutine layer2z_pch(si,p,kk,ks,
+     &                       sz,z,kz,   flag)
+      implicit none
+c
+      integer kk,ks,kz
+      real    si(kk,ks),p(kk+1),
+     &        sz(kz,ks),z(kz),flag
+c
+c**********
+c*
+c  1) interpolate a set of layered fields to fixed z depths.
+c     method: piecewise cubic hermite interpolation (PCHIP) between cell centers
+c
+c  2) input arguments:
+c       si    - scalar fields in layer space
+c       p     - layer interface depths (non-negative m)
+c                 p(   1) is the surface
+c                 p(kk+1) is the bathymetry
+c       kk    - dimension of si (number of layers)
+c       ks    - dimension of si (number of fields)
+c       z     - target z-level  depths (non-negative m)
+c       flag  - data void (land) marker
+c       kz    - dimension of sz (number of levels)
+c
+c  3) output arguments:
+c       sz    - scalar fields in z-space
+c
+c  4) except at data voids, must have:
+c           p(   1) == zero (surface)
+c           p( l+1) >= p(:,:,l)
+c           p(kk+1) == bathymetry
+c           0 <= z(k) <= z(k+1)
+c     note that z(k) > p(kk+1) implies that az(k)=flag,
+c      since the z-level is then below the bathymetry.
+c
+c  5) Alan J. Wallcraft, COAPS, January 2018.
+c*
+c**********
+c
+      integer i,k,l,lf,ngood
+      real    oldz(kk+1),olds(kk+1)
+c
+      if     (si(1,ks).eq.flag) then
+        do k= 1,kz
+          do i= 1,ks
+            sz(k,i) = flag  !land
+          enddo !i
+        enddo !k
+      else
+        do k= 1,kk
+          oldz(k) = 0.5*(p(k+1)+p(k))
+          if     (p(k+1).eq.p(kk+1)) then  !.true. for k==kk
+            ngood = k
+            exit
+          endif
+        enddo !k
+        oldz(ngood+1) = p(kk+1)
+c
+c ---   loop through scalar fields
+        do i= 1,ks
+          do k= 1,ngood
+            olds(k) = si(k,i)
+          enddo !k
+          olds(ngood+1) = olds(ngood)
+          call pchip(ngood+1,oldz,olds, flag, kz,z,sz(1,i))
+        enddo !i
+      endif
+      return
+      end
+
+      subroutine pchip(nin,xin,yin, flag, nout,xout,yout)
+! 20040924 Rowley, C.
+!   modified somewhat from pchiptest.f from Mike Carnes Sep 2004
+!   AJW: removed gapsiz added flag
+      implicit none
+c
+      integer, intent(in)  :: nin
+      real,    intent(in)  :: xin(nin),yin(nin)
+      real,    intent(in)  :: flag
+      integer, intent(in)  :: nout
+      real,    intent(in)  :: xout(nout)
+      real,    intent(out) :: yout(nout)
+c
+      integer :: k,kk
+      real    :: del(nin),b(nin),c(nin),d(nin)
+      logical :: keepgoing
+      real    :: hh,s
+!
+! PCHIP  Piecewise Cubic Hermite Interpolating Polynomial.
+! X is a row or column vector.  Y is a row or column vector of the same
+! length as X, or a matrix with length(X) columns.
+! YI = PCHIP(X,Y,XI) evaluates an interpolant at the elements of XI.
+! PP = PCHIP(X,Y) returns a piecewise polynomial structure for use by PPVAL.
+!
+! The PCHIP interpolating function, P(x), satisfies:
+!   On each subinterval,  x(k) <= x <= x(k+1),  P(x) is the cubic Hermite
+!     interpolant to the given values and certain slopes at the two endpoints.
+!   Therefore, P(x) interpolates y, i.e., P(x(j)) = y(j), and the first
+!     derivative, P(x), is continuous, but P''(x) is probably not continuous;
+!     there may be jumps at the x(j).
+!   The slopes at the x(j) are chosen in such a way that P(x) is
+!     "shape preserving" and "respects monotonicity". This means that,
+!     on intervals where the data are monotonic, so is P(x);
+!     at points where the data have a local extremum, so does P(x).
+!
+! References:
+!   F. N. Fritsch and R. E. Carlson, "Monotone Piecewise Cubic
+!   Interpolation", SIAM J. Numerical Analysis 17, 1980, 238-246.
+!   David Kahaner, Cleve Moler and Stephen Nash, Numerical Methods
+!   and Software, Prentice Hall, 1988.
+!
+! Find indices of subintervals, x(k) <= u < x(k+1).
+! there must be at least two x values
+!
+c      kk=1
+c      keepgoing=.true.
+c      do k=1,nout
+c        if(u(k).lt.x(1)) then
+c          kk=1
+c        else
+c          dowhile((x(kk+1).lt.u(k)).and.keepgoing) then
+c            if(kk.lt.nin-1) then
+c              kk=kk+1
+c            else
+c              keepgoing=.false.
+c            endif
+c          enddo
+c        endif
+c        ku(k)=kk 
+c        s(k) = u(k) - x(ku(k));
+c      enddo
+
+! Compute slopes and other coefficients.
+!   
+c      write(10,'(a)') 'k,del(k)'
+      do k=1,nin-1
+        del(k)=(yin(k+1)-yin(k))/(xin(k+1)-xin(k));  ! write(10,*) k,del(k)
+      enddo
+c
+      call pchipslopes(nin,xin,yin,del,d);           ! write(10,'(a)') 'k,c,b,d'
+c
+      do k=1,nin-1 
+        hh=xin(k+1)-xin(k)
+        c(k)=(3.*del(k)-2.*d(k)-d(k+1))/hh
+        b(k)=(d(k)-2.*del(k)+d(k+1))/(hh*hh);        ! write(10,*) k,c(k),b(k),d(k)
+      enddo
+
+! Evaluate interpolant.
+c     write(10,'(a)') 'evaluate interpolant'
+c
+      kk=1
+      do k=1,nout
+        if(xout(k).lt.xin(1)) then
+          yout(k)=yin(1)
+        elseif(xout(k).ge.xin(1).and.xout(k).le.xin(nin)) then
+          if(xout(k).eq.xin(nin)) then
+            yout(k)=yin(nin)
+          else
+            do while(xin(kk+1).lt.xout(k))
+              kk=kk+1
+            enddo 
+            if(abs(xout(k)-xin(kk)).lt.0.001) then
+              yout(k)=yin(kk)
+            else
+              s=xout(k)-xin(kk)
+              yout(k)=yin(kk)+s*(d(kk)+s*(c(kk)+s*b(kk)));
+              ! write(10,*) k,kk,s,y(kk),d(kk),c(kk),b(kk)
+            endif
+          endif
+        else
+          yout(k)=flag
+        endif
+      enddo
+c
+      return
+      end subroutine pchip
+
+      subroutine pchipslopes(n,x,y,del,d)
+      implicit none
+c
+      integer, intent(in)    :: n
+      real,    intent(in)    :: x(n),y(n),del(n)
+      real,    intent(inout) :: d(n)
+c      
+      real    :: h(n)
+      real    :: hs,w1,w2,dmax,dmin
+      integer :: k
+      integer :: isign1,isign2
+!
+! PCHIPSLOPES  Derivative values for Piecewise Hermite Cubic Interpolation.
+! d = pchipslopes(x,y,del) computes the first derivatives, d(k) = P'(x(k))'.
+!
+      real, parameter :: thin=1.e-6  !minimum layer thickness
+!
+      do k=1,n
+        d(k)=0.
+      enddo
+!
+!     Special case n=2, use linear interpolation.
+      if(n.eq.2) then
+        d(1) = del(1);
+        d(2) = del(1);
+        return
+      endif
+!
+!  Slopes at interior points.
+!  d(k) = weighted average of del(k-1) and del(k) when they have the same sign.
+!  d(k) = 0 when del(k-1) and del(k) have opposites signs or either is zero.
+!
+      do k=1,n
+        d(k)=0.
+      enddo
+c
+      do k=1,n-1
+        h(k)=max(x(k+1)-x(k),thin)
+      enddo
+c
+      do k=1,n-2
+        if ((del(k).gt.0..and.del(k+1).gt.0.).or.
+     &      (del(k).lt.0..and.del(k+1).lt.0.)    ) then
+          hs=h(k)+h(k+1)
+          w1=(h(k)+hs)/(3.*hs)
+          w2=(hs+h(k+1))/(3.*hs)
+          dmax=max(abs(del(k)),abs(del(k+1)))
+          dmin=min(abs(del(k)),abs(del(k+1)))
+          d(k+1)=dmin/(w1*(del(k)/dmax)+w2*(del(k+1)/dmax))
+        endif
+      enddo
+!
+!  Slopes at end points.
+!  Set d(1) and d(n) via non-centered, shape-preserving three-point formulae.
+      d(1)=((2.*h(1)+h(2))*del(1)-h(1)*del(2))/(h(1)+h(2))
+c
+      isign1=0
+      if(d(1).gt.0..and.del(1).gt.0.) then
+        isign1=1
+      elseif(d(1).lt.0..and.del(1).lt.0.) then
+        isign1=1
+      elseif(d(1).eq.0..and.del(1).eq.0.) then
+        isign1=1
+      endif
+c
+      isign2=0
+      if(del(1).gt.0..and.del(2).gt.0.) then
+        isign2=1
+      elseif(del(1).lt.0..and.del(2).lt.0.) then
+        isign2=1
+      elseif(del(1).eq.0..and.del(2).eq.0.) then
+        isign2=1
+      endif
+c
+      if(isign1.eq.0) then
+        d(1)=0.
+      elseif((isign2.eq.0).and.(abs(d(1)).gt.abs(3.*del(1)))) then
+        d(1)=3.*del(1)
+      endif
+c
+      d(n)=((2.*h(n-1)+h(n-2))*del(n-1)-h(n-1)*del(n-2))/(h(n-1)+h(n-2))
+c      
+      isign1=0
+      if(d(n).gt.0..and.del(n-1).gt.0.) then
+        isign1=1
+      elseif(d(n).lt.0..and.del(n-1).lt.0.) then
+        isign1=1
+      elseif(d(n).eq.0..and.del(n-1).eq.0.) then
+        isign1=1
+      endif
+c
+      isign2=0
+      if(del(n-1).gt.0..and.del(n-2).gt.0.) then
+        isign2=1
+      elseif(del(n-1).lt.0..and.del(n-2).lt.0.) then
+        isign2=1
+      elseif(del(n-1).eq.0..and.del(n-2).eq.0.) then
+        isign2=1
+      endif
+c
+      if(isign1.eq.0) then
+        d(n)=0.
+      elseif((isign2.eq.0).and.(abs(d(n)).gt.abs(3.*del(n-1)))) then
+        d(n)=3.*del(n-1)
+      endif 
+c
+      return
+      end subroutine pchipslopes

@@ -230,10 +230,12 @@ c --- 'inbot ' = read in bot and/or zbot (1=bot,2=zbot,3=bot&zbot)
 c ---              optional, default bot=0.0 and zbot=0.0 (no bottom value)
 c --- 'bot   ' = ignore layers within bot of the bottom
 c --- 'zbot  ' = depth above bottom for bottom value (none for zbot<=0.0)
-c --- 'itype ' = interpolation type (0=sample,1=linear,2=parabolic)
+c --- 'itype ' = interpolation type (0=sample,1=linear,2=parabolic,3=cubic)
 c ---             itype=1 is linear between cell centers    for kz,
 c ---                    but linear across each layer (PLM) for kzi.
 c ---             itype=2 is always parabolic across each layer (PPM).
+c ---             itype=3 is PCHIP  between cell centers    for kz,
+c ---                      and is not currently implemented for kzi.
       call blkini2(i,j,  'inbot ','itype ')  !read inbot  or itype
       if (j.eq.1) then
         if     (i.eq.3) then !bot and zbot
@@ -256,7 +258,7 @@ c ---             itype=2 is always parabolic across each layer (PPM).
         zbot  = 0.0
         itype = i
       endif
-      if     (itype.lt.0 .or. itype.gt.2) then
+      if     (itype.lt.0 .or. itype.gt.3) then
         if(mnproc.eq.1)then
           write(lp,*)
           write(lp,*) 'error - unknown itype'
@@ -293,7 +295,14 @@ c ---     'z     ' = sample depth (follows kz)
           endif
           endif
         enddo !k
-      else
+      else  !zi
+       if     (itype.eq.3) then
+          write(lp,*)
+          write(lp,*) 'error - itype=3 not implemented for zi'
+          write(lp,*)
+          call flush(lp)
+          stop
+        endif
         allocate( zz(kz), zi(kz+1) )
         do k= 1,kz+1
 c ---     'zi    ' = sample-cell interface (follows kzi)
@@ -595,12 +604,18 @@ c
             endif
           enddo !i
         enddo !j
+        amn   = ibads
+        amx   = ibadl
+        call xcmaxr(amn)
+        call xcmaxr(amx)
+        ibads = amn
+        ibadl = amx
         if     (ibads.ne.0) then
         if(mnproc.eq.1)then
           write(lp,*)
           write(lp,*) 'error - wrong bathymetry for this archive file'
-          write(lp,*) 'number of topo sea  mismatches = ',ibads
-          write(lp,*) 'number of topo land mismatches = ',ibadl
+          write(lp,*) 'number of topo sea  mismatches at least = ',ibads
+          write(lp,*) 'number of topo land mismatches at least = ',ibadl
           write(lp,*)
           call flush(lp)
         endif
@@ -611,8 +626,8 @@ c
           write(lp,*)
 *         write(lp,*) 'error - wrong bathymetry for this archive file'
           write(lp,*) 'warning - wrong bathymetry for this archive file'
-          write(lp,*) 'number of topo sea  mismatches = ',ibads
-          write(lp,*) 'number of topo land mismatches = ',ibadl
+          write(lp,*) 'number of topo sea  mismatches at least = ',ibads
+          write(lp,*) 'number of topo land mismatches at least = ',ibadl
           write(lp,*)
           call flush(lp)
         endif
@@ -833,8 +848,8 @@ c
 c --- put vertically averaged t,s values into massless layers
 c
       allocate( ttk(kkin), ssk(kkin), rrk(kkin) )
-      if     (ktr.gt.0) then
-        allocate( trk(kkin,ktr) )
+      if     (ntracr.gt.0) then
+        allocate( trk(kkin,ntracr) )
       endif
 c
       do 70 j=1,jj
