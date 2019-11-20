@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *advect *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *15sec *30sec *bedmap *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
+	/bin/rm *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *advect *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *15sec *30sec *bedmap *RTopo *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
 
 MODS = mod_xc.o mod_za.o wtime.o
 MODN = mod_xc.o mod_za.o wtime.o 
