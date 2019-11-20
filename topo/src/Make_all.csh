@@ -16,7 +16,7 @@ if (! -e ../../config/${ARCH}_setup) then
   exit 1
 endif
 #
-foreach m ( advect bathy_02min bathy_05min hudson landsea_02min landsea_05min \
+foreach m ( advect bathy_02min bathy_05min bathy_RTopo hudson landsea_02min landsea_05min \
             1d 2d batrop biharmonic clip diff edit flat grid_360 hgram \
             landfill landmask latitude lonlat lonlat_2d lpanam map mapsub \
             mercator merge modify onesea onesea-b onesea_fill \
