@@ -788,7 +788,7 @@ c
       endif
             theta(k)=thet
             goto 114  ! archive containing only 1 layer
-          elseif (cline(1:8).ne.'tracer  ' .and.
+          elseif (cline(1:6).ne.'tracer'   .and.
      &            cline(1:8).ne.'viscty  ' .and.
      &            cline(1:8).ne.'t-diff  ' .and.
      &            cline(1:8).ne.'s-diff  '      ) then

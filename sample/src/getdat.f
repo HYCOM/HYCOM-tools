@@ -362,7 +362,7 @@ c
           if     (k.eq.1) then
             do ktr= 1,999
               read (ni,'(a)',end=6) cline
-              if     (cline(1:8).ne.'tracer  ' .and.
+              if     (cline(1:6).ne.'tracer'   .and.
      &                cline(1:8).ne.'viscty  ' .and.
      &                cline(1:8).ne.'t-diff  ' .and.
      &                cline(1:8).ne.'s-diff  '      ) then
@@ -657,7 +657,7 @@ c
           if     (k.eq.1) then
             do ktr= 1,999
               read (ni,'(a)',end=6) cline
-              if     (cline(1:8).ne.'tracer  ' .and.
+              if     (cline(1:6).ne.'tracer'   .and.
      &                cline(1:8).ne.'viscty  ' .and.
      &                cline(1:8).ne.'t-diff  ' .and.
      &                cline(1:8).ne.'s-diff  '      ) then
@@ -923,7 +923,7 @@ c
               read (ni,'(a)',iostat=ios)   cline
               if     (ios.ne.0) then
                 exit !end of input, but loop once more
-              elseif (cline(1:8).ne.'tracer  ' .and.
+              elseif (cline(1:6).ne.'tracer'   .and.
      &                cline(1:8).ne.'viscty  ' .and.
      &                cline(1:8).ne.'t-diff  ' .and.
      &                cline(1:8).ne.'s-diff  '      ) then

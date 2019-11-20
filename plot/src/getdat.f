@@ -602,7 +602,7 @@ c
             call flush(lp)
             theta(k)=thet
             goto 114  ! archive containing only 1 layer
-          elseif (cline(1:8).ne.'tracer  ' .and.
+          elseif (cline(1:6).ne.'tracer'   .and.  !tracer01,...
      &            cline(1:8).ne.'q2      ' .and.
      &            cline(1:8).ne.'q2l     ' .and.
      &            cline(1:8).ne.'viscty  ' .and.
@@ -661,7 +661,7 @@ c
           if     (ktr.le.ntracr) then
             call extrct_p(work,idm,jdm,iorign,jorign, 
      &                    trcr(1,1,2*k,ktr),ii,jj)
-            if     (cline(1:8).ne.'tracer  ') then !visc/diff
+            if     (cline(1:6).ne.'tracer') then !visc/diff
               do j= 1,jj
                 do i= 1,ii
                   if     (trcr(i,j,2*k,ktr).lt.2.0**99) then
