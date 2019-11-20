@@ -44,7 +44,7 @@ foreach f ( cice_restart cice_restart_mask cice_restart_range cice_restart_super
             hycom_sigma hycom_river_anom hycom_ts hycom_wind_date \
             hycom_wind_ymdh hycom_ymdh_wind hycom_yoflat \
             rhos_to_t sigma0_to_sigma2 sigma2_to_sigma0 ts_to_sigma z2zi zi2z \
-            hycom_date_wind hycom_profile2plm hycom_record_size \
+            hycom_date_wind hycom_month_day hycom_profile2plm hycom_record_size \
             hycom_subset_xy hycom_dp0k hycom_dp0k_cm hycom_dp0k_sigma \
             hycom_tideport_diff hycom_tideport_scale )
   touch       ${f}${OS}
