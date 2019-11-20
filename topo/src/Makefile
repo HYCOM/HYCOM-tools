@@ -47,6 +47,9 @@ MOD6 = $(MODN) spherdist.o rotang.o geodesic.o
 bathy_15sec:     $(MODS) bathy_15sec.o   interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_15sec.o   interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_15sec
 
+bathy_RTopo:     $(MODS) bathy_RTopo.o   interp.o zh.o
+	$(LD) $(LDFLAGS) bathy_RTopo.o   interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_RTopo
+
 bathy_30sec:     $(MODS) bathy_30sec.o   interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_30sec.o   interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_30sec
 
