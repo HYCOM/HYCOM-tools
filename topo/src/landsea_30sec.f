@@ -28,7 +28,7 @@ C
       REAL*4,    ALLOCATABLE :: PLON(:,:),PLAT(:,:),XAF(:,:),YAF(:,:)
       REAL*4,    ALLOCATABLE :: DH(:,:)
 C
-      INTEGER*2, ALLOCATABLE :: IZ(:)
+      INTEGER*2, ALLOCATABLE :: IZ(:),IZ2(:,:)
       INTEGER*1, ALLOCATABLE :: LS(:,:)
 C
       REAL*4  YAG(JWI),WKG(JWI),
@@ -37,7 +37,7 @@ C
 C     NETCDF I/O VARIABLES.
 C
       CHARACTER*(256) CFILE
-      INTEGER         ncFID,ncVID
+      INTEGER         ncFID,ncVID,ncSTAT
 C
 C     INTERPOLATION ARRAYS.
 C
@@ -261,33 +261,59 @@ C
         CALL ZHFLSH(6)
         ! open NetCDF file
         call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
-        ! inquire variable ID
-        call ncheck(nf90_inq_varid(ncFID,
-     &                             'z',
-     &                             ncVID))
+        ! 1D (z) or 2D (elevation)
+        ncSTAT = nf90_inq_varid(ncFID,'z',ncVID)
+        if     (ncSTAT.EQ.nf90_noerr) then
+          ALLOCATE( IZ(IWI*JWI90) )
+          call ncheck(nf90_get_var(ncFID,ncVID,IZ))
+          write(6,*) 'IZ.1,1 = ',IZ(1)
+          write(6,*) 'IZ.N,M = ',IZ(IWI*JWI90)
 C
-        ALLOCATE( IZ(IWI*JWI90) )
-        call ncheck(nf90_get_var(ncFID,ncVID,IZ))
-        write(6,*) 'IZ.1,1 = ',IZ(1)
-        write(6,*) 'IZ.N,M = ',IZ(IWI*JWI90)
+C         COPY INTO THE (LARGER) INTERPOLATION ARRAY.
 C
-C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+          I0    =   2
+          J0    = 242
+          MAXSEA =  10.0
+          MAXLND = -10.0
+          DO J= 1,JWI90
+            JJ = JWI90+1-J  !1st point at 90N
+            DO I= 1,IWI
+              IJ = I+(JJ-1)*IWI
+              BTHYI(I0+I,J+J0) = -IZ(IJ)
+              BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
+              BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
+            ENDDO !i
+          ENDDO !j
 C
-        I0    =   2
-        J0    = 242
-        MAXSEA =  10.0
-        MAXLND = -10.0
-        DO J= 1,JWI90
-          JJ = JWI90+1-J  !1st point at 90N
-          DO I= 1,IWI
-            IJ = I+(JJ-1)*IWI
-            BTHYI(I0+I,J+J0) = -IZ(IJ)
-            BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
-            BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
-          ENDDO !i
-        ENDDO !j
+          DEALLOCATE( IZ )
+        ELSE !2D
+          ! inquire variable ID
+          call ncheck(nf90_inq_varid(ncFID,
+     &                               'elevation',
+     &                               ncVID))
+          ALLOCATE( IZ2(IWI,JWI90) )
+          call ncheck(nf90_get_var(ncFID,ncVID,IZ2))
+          write(6,*) 'IZ2.1,1 = ',IZ2(  1,1)
+          write(6,*) 'IZ2.N,M = ',IZ2(IWI,JWI90)
 C
-        DEALLOCATE( IZ )
+C         COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+C
+          I0    =   2
+          J0    = 242
+          MAXSEA =  10.0
+          MAXLND = -10.0
+          DO J= 1,JWI90
+            JJ = JWI90+1-J  !1st point at 90N
+            DO I= 1,IWI
+              IJ = I+(JJ-1)*IWI
+              BTHYI(I0+I,J+J0) = -IZ2(I,J)
+              BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
+              BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
+            ENDDO !i
+          ENDDO !j
+C
+          DEALLOCATE( IZ2 )
+        ENDIF !1D or 2D
       ELSE
         CFILE = ' '
         CALL GETENV('CDF_NAVO',CFILE)
