@@ -316,7 +316,7 @@ C
       call ncheck(nf90_get_var(  ncFIDt,        ncVIDt,ZLEV(:)))
       ! inquire variable ID
       call ncheck(nf90_inq_varid(ncFIDt,
-     &                           'TEMP',
+     &                           'PTEMP',
      &                           ncVIDt))
 C
       CALL GETENV('CDF_SALN',CFILES)
