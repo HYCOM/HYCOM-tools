@@ -1,4 +1,5 @@
-      subroutine putdat(flnm, artype,time,lsteric,icegln,trcout,
+      subroutine putdat(flnm, artype,time,
+     &                  lsteric,icegln,trcout,
      &                  iexpt,iversn,yrflag,kkout, thbase)
       use mod_mom6  ! HYCOM mom6 array interface
       use mod_za    ! HYCOM array I/O interface
@@ -244,25 +245,22 @@ c
         write ( lp,117) 'density ',nstep,time(3),k,coord,xmin,xmax
         call flush( lp)
       endif !sigver==0
-      if(ntracr.gt.0) then
+      if     (trcout) then
         do ktr= 1,ntracr
           call zaiowr(trcr(1,1,k,ktr),ip,.true.,
      &                xmin,xmax, nop, .false.)
-          if     (itrcr_type(ktr).eq.0) then
+          if     (ktr.le.99) then
+c ---       older postprocessing code will not recognise this
+            write(ctype,'(a6,i2.2)') 'tracer',ktr
+          else
             ctype = 'tracer  '
-          elseif (itrcr_type(ktr).eq.1) then
-            ctype = 'viscty  '
-          elseif (itrcr_type(ktr).eq.2) then
-            ctype = 't-diff  '
-          elseif (itrcr_type(ktr).eq.3) then
-            ctype = 's-diff  '
           endif
           write (nop,117) ctype,nstep,time(3),k,coord,xmin,xmax
           call flush(nop)
           write ( lp,117) ctype,nstep,time(3),k,coord,xmin,xmax
           call flush( lp)
-        enddo
-      endif
+        enddo !ktr
+      endif !trcout
  75   continue
 c
  117  format (a8,' =',i11,f11.3,i3,f7.3,1p2e16.7)

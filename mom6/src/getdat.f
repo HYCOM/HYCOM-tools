@@ -863,12 +863,15 @@ c       zto    = total number of vertical layers
 c       tto    = total number of time samples
 c
       character*(NF90_MAX_NAME) :: cD
+      character*(256)           :: flnm_p
+      logical                   :: lexist
       integer  i,ncFID,ncDID,ncVID,ncNID,ncDIDs(nf90_max_var_dims)
+      integer  nc,nc1st,nclst
       integer  nx(4),ny(4)
 c
       i = len_trim(cfile)
       if     (cfile(i-2:i).eq.'.nc') then
-        call nchek('nf90_open',
+        call nchek('nf90_open-rd_dimen',
      &              nf90_open(trim(cfile), nf90_nowrite, ncFID))
 c
         call nchek('nf90_inq_varid',
@@ -902,55 +905,74 @@ c
         call nchek("nf90_close",
      &              nf90_close(ncFID))
       else
-        i = len_trim(cfile)
-*       write(6,'(3a)') "nf90_open(",cfile(1:i-5),","
-        call nchek('nf90_open',
-     &              nf90_open(cfile(1:i-5), nf90_nowrite, ncFID))
+c ---   multiple netCDF files
+        read(cfile(i-8:i-5),*) nc1st
+        read(cfile(i-3:i)  ,*) nclst
+        do nc= nc1st, nclst
+*         write (6,*) 'nc    = ',nc
+          flnm_p = cfile(1:i-9)
+          write(flnm_p(i-8:i-5),'(i4.4)') nc
+          lexist =    nf90_open(trim(flnm_p), nf90_nowrite, ncFID)
+     &                .eq. nf90_noerr
+          if     (.not.lexist) then
+            if     (nc.eq.nclst) then
+              write(6,'(/ 3a /)')
+     &         'error - no input files (',trim(cfile),')'
+              stop
+            endif
+            cycle  !nc loop
+          endif
+          write(6,'(3a)') "nf90_open(",trim(flnm_p),","
+          call nchek('nf90_open-rd_dimen-XXXX',
+     &                nf90_open(trim(flnm_p), nf90_nowrite, ncFID))
 c
-        call nchek('nf90_inq_varid',
-     &              nf90_inq_varid(ncFID, trim(cname), ncVID))
+          call nchek('nf90_inq_varid',
+     &                nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-        call nchek('nf90_inq_variable(ndims)',
-     &              nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
+          call nchek('nf90_inq_variable(ndims)',
+     &                nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
 c
-        if     (ncNID.ne.4) then
-          write(6,'(/ 3a /)')
+          if     (ncNID.ne.4) then
+            write(6,'(/ 3a /)')
      &    'error - variable ',trim(cname),' does not have 4 dimensions'
-          stop
-        endif
+            stop
+          endif
 c
-        call nchek('nf90_inq_variable(dimids)',
-     &              nf90_inquire_variable(ncFID,  ncVID,
-     &                                         dimids=ncDIDs(:ncNID)))
+          call nchek('nf90_inq_variable(dimids)',
+     &                nf90_inquire_variable(ncFID,  ncVID,
+     &                                           dimids=ncDIDs(:ncNID)))
 c
-        call nchek('nf90_inquire_dimension-1',
-     &              nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-        call nchek('nf90_inq_varid',
-     &              nf90_inq_varid(ncFID, trim(cD), ncVID))
-        call nchek('nf90_get_att',
-     &              nf90_get_att(ncFID, ncVID,
-     &                           "domain_decomposition", nx(:)))
-*       write(6,*) 'nx    = ',nx
-        xto = nx(2)
+          call nchek('nf90_inquire_dimension-1',
+     &                nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
+          call nchek('nf90_inq_varid',
+     &                nf90_inq_varid(ncFID, trim(cD), ncVID))
+          call nchek('nf90_get_att',
+     &                nf90_get_att(ncFID, ncVID,
+     &                             "domain_decomposition", nx(:)))
+*         write(6,*) 'nx    = ',nx
+          xto = nx(2)
 c
-        call nchek('nf90_inquire_dimension-2',
-     &              nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-        call nchek('nf90_inq_varid',
-     &              nf90_inq_varid(ncFID, trim(cD), ncVID))
-        call nchek('nf90_get_att',
-     &              nf90_get_att(ncFID, ncVID,
-     &                           "domain_decomposition", ny(:)))
-*       write(6,*) 'ny    = ',ny
-        yto = ny(2)
+          call nchek('nf90_inquire_dimension-2',
+     &                nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
+          call nchek('nf90_inq_varid',
+     &                nf90_inq_varid(ncFID, trim(cD), ncVID))
+          call nchek('nf90_get_att',
+     &                nf90_get_att(ncFID, ncVID,
+     &                             "domain_decomposition", ny(:)))
+*         write(6,*) 'ny    = ',ny
+          yto = ny(2)
 c
-        call nchek('nf90_inquire_dimension-3',
-     &              nf90_inquire_dimension(ncFID, ncDIDs(3), len=zto))
+          call nchek('nf90_inquire_dimension-3',
+     &                nf90_inquire_dimension(ncFID, ncDIDs(3), len=zto))
 c
-        call nchek('nf90_inquire_dimension-4',
-     &              nf90_inquire_dimension(ncFID, ncDIDs(4), len=tto))
+          call nchek('nf90_inquire_dimension-4',
+     &                nf90_inquire_dimension(ncFID, ncDIDs(4), len=tto))
 c
-        call nchek("nf90_close",
-     &              nf90_close(ncFID))
+          call nchek("nf90_close",
+     &                nf90_close(ncFID))
+c ---     found an input file
+          exit  !nc loop
+        enddo !nc
       endif
       return 
       end
@@ -972,7 +994,7 @@ c
 c
       i = len_trim(cfile)
       if     (cfile(i-2:i).eq.'.nc') then
-        call nchek('nf90_open',
+        call nchek('nf90_open-rd_dimen2',
      &              nf90_open(trim(cfile), nf90_nowrite, ncFID))
 c
         call nchek('nf90_inq_varid',
@@ -1005,7 +1027,7 @@ c
       else
         i = len_trim(cfile)
 *       write(6,'(3a)') "nf90_open(",cfile(1:i-5),","
-        call nchek('nf90_open',
+        call nchek('nf90_open-rd_dimen2-0000',
      &              nf90_open(cfile(1:i-5), nf90_nowrite, ncFID))
 c
         call nchek('nf90_inq_varid',
@@ -1069,7 +1091,7 @@ c
 c
       i = len_trim(cfile)
       if     (cfile(i-2:i).eq.'.nc') then
-        call nchek('nf90_open',
+        call nchek('nf90_open-rd_missing',
      &              nf90_open(trim(cfile), nf90_nowrite, ncFID))
 c
         call nchek('nf90_inq_varid',
@@ -1082,8 +1104,8 @@ c
      &              nf90_close(ncFID))
       else
         i = len_trim(cfile)
-*       write(6,'(3a)') "nf90_open(",cfile(1:i-5),","
-        call nchek('nf90_open',
+        write(6,'(3a)') "nf90_open(",cfile(1:i-5),","
+        call nchek('nf90_open-rd_missing-0000',
      &              nf90_open(cfile(1:i-5), nf90_nowrite, ncFID))
 c
         call nchek('nf90_inq_varid',
@@ -1110,7 +1132,7 @@ c  subroutine to read file for horizontal grid (depths only).
 c       n,m  = total horizontal grid dimensions.
 c       h    = depths (+) downward (HYCOM convention)
 c
-      character cline*80
+      character cline*240
       character preambl(5)*79
       real      hmina,hmaxa,hminb,hmaxb
       integer   i,j,ios
@@ -1170,7 +1192,7 @@ c ---   den_mn (for HYCOM this would be sigma2 - thbase)
 c ---   ssh_mn 
 c ---   depth   - not input
 c
-      character cline*80
+      character cline*240
       character preambl(5)*79
       real      hmina,hmaxa,hminb,hmaxb
       integer   i,j,ios
@@ -1249,7 +1271,7 @@ c       plat = latitude (degN)
 c
 c       work is workspace, changed on exit
 c
-      character cline*80
+      character cline*240
       character preambl(5)*79
       real      hmina,hmaxa,hminb,hmaxb
       integer   i,j,ios
@@ -1358,7 +1380,7 @@ c       l    = number of layers.
 c
       integer ncFID,ncVID
 c
-      call nchek('nf90_open',
+      call nchek('nf90_open-rd_vgrid',
      &            nf90_open(trim(cfile), nf90_nowrite, ncFID))
       call nchek('nf90_inq_varid-zt_edges_ocean',
      &            nf90_inq_varid(ncFID,'zt_edges_ocean', ncVID))

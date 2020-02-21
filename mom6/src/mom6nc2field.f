@@ -8,15 +8,12 @@ c --- convert MOM6 p-grid 2-D output to a HYCOM .[ab] file.
 c --- requires the HYCOM regional.grid for the MOM6 domain.
 c
       character*256    flnm_o,flnm_t,name_t
-      logical          larctic
-      integer          i,ia,irec,j,jja,mro
+      logical          larctic,lsymetr
+      integer          i,ia,irec,j,mro
       integer          inirec,increc,maxrec
       integer          yrflag
       real             xmin,xmax,misval
       double precision time3(3)
-c
-c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
-      real, parameter :: spval=2.0**100
 c
       call xcspmd  !input the HYCOM array dimensions
       call zaiost  !initialize HYCOM I/O
@@ -60,16 +57,13 @@ c
       call rd_dimen2(nto,mto,mro, flnm_t,name_t)
       call rd_missing(misval,     flnm_t,name_t)
 c
-      larctic = mto .eq. jdm-1
-      if     (larctic) then
-        jja = jj-1
-      else
-        jja = jj
-      endif
+      lsymetr = mto .eq. jdm-1 .and. nto .eq. idm-1
+      larctic = mto .eq. jdm-1 .and. nto .eq. idm
 c
       write(lp,*) 
       write(lp,*) 'nto,mto = ',nto,mto
       write(lp,*) 'ii,jj   = ',ii, jj
+      write(lp,*) 'lsymetr = ',lsymetr
       write(lp,*) 'larctic = ',larctic
       write(lp,*) 
       write(lp,*) 'misval  = ',misval
@@ -112,24 +106,8 @@ c
         write(lp,*) 'rd_out2nc, fld  = ',minval(f_nc(:,:)),
      &                                   maxval(f_nc(:,:))
         call zhflsh(lp)
-c
-c ---   convert to hycom arrays.
-c
-        do j= 1,jja
-          do i= 1,ii
-            if     (f_nc(i,j).ne.misval) then
-               field(i,j) = f_nc(i,j)
-            else
-               field(i,j) = spval
-            endif
-          enddo !i
-        enddo !j
-        if     (larctic) then  !assume p-grid scalar field
-          do i= 1,ii
-            ia = ii-mod(i-1,ii)
-            field(i,jj) = field(ia,jj-1)
-          enddo !i
-        endif
+C
+        call m2h_p(f_nc,nto,mto,1,misval, field,idm,jdm,lsymetr,larctic)
         write(lp,*) 'convert    fld  = ',minval(field(:,:)),
      &                                   maxval(field(:,:))
 c
@@ -144,3 +122,45 @@ c
         call flush(lp)
       enddo !irec
       end program mom6nc2field
+
+      subroutine m2h_p(f_nc,nto,mto,kk,misval,
+     &                 field,ii,jj, lsymetr,larctic)
+      implicit none
+c
+      logical lsymetr,larctic
+      integer nto,mto,kk,ii,jj
+      real    f_nc(nto,mto,kk),misval,field(ii,jj,kk)
+c
+c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
+      real, parameter :: spval=2.0**100
+c
+c --- convert p-grid mom6 array to hycom.
+c
+      integer i,ia,j,k
+c
+      do k= 1,kk
+        do j= 1,mto
+          do i= 1,nto
+            if     (f_nc(i,j,k).ne.misval) then
+               field(i,j,k) = f_nc(i,j,k)
+            else
+               field(i,j,k) = spval
+            endif
+          enddo !i
+        enddo !j
+        if     (lsymetr) then
+          do i= 1,nto
+            field(i,jj,k) = spval
+          enddo !i
+          do j= 1,jj
+            field(ii,j,k) = spval
+          enddo !j
+        elseif (larctic) then  !p-grid scalar field, mto=jj-1
+          do i= 1,nto
+            ia = nto-mod(i-1,nto)
+            field(i,jj,k) = field(ia,jj-1,k)
+          enddo !i
+        endif !lsymetr:larctic
+      enddo !k
+      return
+      end

@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm -f *.o *.a *.mod M*log *2vgrid *2archv *2field *2field3d *2tide
+	/bin/rm -f *.o *.a *.mod M*log *2vgrid *2archv *2field *2field3d *2tide *2uvfield
 
 MODS      =	mod_mom6.o mod_xc.o mod_za.o wtime.o
 MODM      =	mod_mom6.o mod_xc.o mod_za.o wtime.o mom_eos_wright.o
@@ -62,14 +62,17 @@ mom6nc2archv:       $(MODM) mom6nc2archv.o $(ARCHV_OBJ)
 mom6nc2tide:        $(MODS) mom6nc2tide.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o mom6nc2tide   mom6nc2tide.o   $(ARCHV_OBJ) $(MODS) $(EXTRANCDF)
 
-mom6nc2field:       $(MODS) mom6nc2field.o  $(FIELD_OBJ)
-	$(LD) $(LDFLAGS) -o mom6nc2field  mom6nc2field.o  $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
+mom6nc2field:       $(MODS) mom6nc2field.o    $(FIELD_OBJ)
+	$(LD) $(LDFLAGS) -o mom6nc2field   mom6nc2field.o   $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
 
 mom6nc2field3d:     $(MODS) mom6nc2field3d.o  $(FIELD_OBJ)
 	$(LD) $(LDFLAGS) -o mom6nc2field3d mom6nc2field3d.o $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
 
-mom6nc82field:      $(MODS) mom6nc82field.o $(FIELD_OBJ)
-	$(LD) $(LDFLAGS) -o mom6nc82field mom6nc82field.o $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
+mom6nc2uvfield:     $(MODS) mom6nc2uvfield.o  $(FIELD_OBJ)
+	$(LD) $(LDFLAGS) -o mom6nc2uvfield mom6nc2uvfield.o $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
+
+mom6nc82field:      $(MODS) mom6nc82field.o  $(FIELD_OBJ)
+	$(LD) $(LDFLAGS) -o mom6nc82field  mom6nc82field.o  $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
 
 #
 # --- explicit dependencies for each .[fF] file.
@@ -84,6 +87,8 @@ mom6nc2tide.o:       mom6nc2tide.f       mod_mom6.o mod_za.o
 mom6nc2field.o:      mom6nc2field.f      mod_mom6.o mod_za.o
 
 mom6nc2field3d.o:    mom6nc2field3d.f    mod_mom6.o mod_za.o
+
+mom6nc2uvfield.o:    mom6nc2uvfield.f    mod_mom6.o mod_za.o
 
 mom6nc82field.o:     mom6nc82field.f     mod_mom6.o mod_za.o
 
