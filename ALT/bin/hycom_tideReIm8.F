@@ -291,7 +291,7 @@ C----------------------------------------------------------------
       end do
       WRITE(6,'(a,a)')'Tidal Modes included: ',trim(TIDES)
 c
-      PREAMBL(1) = 'Body Tidal Potential (m)'
+      PREAMBL(1) = 'Tidal SSH (m)'
       WRITE(PREAMBL(2),'(A,A)') 'Tidal Modes included: ',trim(TIDES)
       PREAMBL(3) = ' '
       PREAMBL(4) = ' '
@@ -319,7 +319,7 @@ c
         xmin=minval(F(:,:,9))
         xmax=maxval(F(:,:,9))
         write(22,"(2X,A,': day,span,range =',F12.5,F10.6,1P2E16.7)")
-     &    'tidpot',TT,whrinc/24.d0,xmin,xmax
+     &    'tidssh',TT,whrinc/24.d0,xmin,xmax
 c
 #ifdef ENDIAN_IO
         CALL ENDIAN_SWAP(F(1,1,9),IDM*JDM)
