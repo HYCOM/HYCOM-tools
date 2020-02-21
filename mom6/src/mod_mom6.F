@@ -10,10 +10,10 @@ c --- mto    = 2nd dimension   of mom6
 c --- ii     = 1st dimension   of hycom (=idm)
 c --- jj     = 2nd dimension   of hycom (=jdm)
 c --- kk     = actual  number of layers
-c --- ntracr = number of tracers (always 0 here)
+c --- ntracr = number of tracers
 c
       integer, save :: nto,ii,ii1,ii2,mto,jj,jj1,jj2,kk
-      integer, save :: ntracr = 0
+      integer, save :: ntracr
 c
 c --- input file names
 c
@@ -40,7 +40,7 @@ c
 c --- hycom arrays:
 c
       real,    save, allocatable, dimension (:,:,:,:) ::
-     &   trcr !never allocated
+     &   trcr
 c
       real,    save, allocatable, dimension (:,:,:) :: 
      &   u,v,temp,saln,th3d, dp, ke
@@ -62,9 +62,6 @@ c
      &   ip,iq,iu,iv,
      &   ip0
 c
-      integer, save, allocatable, dimension (:)     ::
-     &   itrcr_type !never allocated
-c
 c --- module subroutines
 c
       contains
@@ -76,7 +73,7 @@ c --- initialize allocatable arrays.
 c
 c     mom6 arrays
 c
-      allocate(  s_nc(nto,mto,kk) )
+      allocate(  s_nc(nto,mto,kk+1) )  !+1 for interface tracers
 c
       allocate(  f_nc(nto,mto) )
 c
@@ -96,11 +93,14 @@ c
       allocate(   saln(ii,jj,kk) )
       allocate(   th3d(ii,jj,kk) )
       allocate(     dp(ii,jj,kk) )
-      allocate(     ke(ii,jj,kk) )
+      allocate(     ke(ii,jj,kk) )  !may not be needed
+c
+      if     (ntracr.gt.0) then
+        allocate( trcr(ii,jj,kk,ntracr) )
+      endif
 c
       allocate(  ubaro(ii,jj) )
       allocate(  vbaro(ii,jj) )
-      allocate( kebaro(ii,jj) )
       allocate(  montg(ii,jj) )
       allocate(  srfht(ii,jj) )
       allocate( steric(ii,jj) )
@@ -111,13 +111,14 @@ c
       allocate(  thmix(ii,jj) )
       allocate(   umix(ii,jj) )
       allocate(   vmix(ii,jj) )
-      allocate(  kemix(ii,jj) )
       allocate(   pmne(ii,jj) )
       allocate( salflx(ii,jj) )
       allocate( surflx(ii,jj) )
       allocate( covice(ii,jj) )
       allocate( thkice(ii,jj) )
       allocate( temice(ii,jj) )
+      allocate( kebaro(ii,jj) )
+      allocate(  kemix(ii,jj) )
 c
       allocate( depths(0:ii,0:jj) )
       allocate(    ip0(0:ii,0:jj) )
