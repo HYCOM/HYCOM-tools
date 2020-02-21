@@ -194,6 +194,14 @@ c --- array allocation
 c
       call plot_alloc
 c
+c --- required for native u or v output
+      allocate(   qlon(ii,jj) )
+      allocate(   qlat(ii,jj) )
+      allocate(   ulon(ii,jj) )
+      allocate(   ulat(ii,jj) )
+      allocate(   vlon(ii,jj) )
+      allocate(   vlat(ii,jj) )
+c
       allocate(  uflux(ii,jj) )
       allocate(  vflux(ii,jj) )
       allocate(  strmf(ii,jj) )
@@ -1644,7 +1652,7 @@ c ---               Rotate from Xward and Yward to Eastward
      &                'u_barotropic_velocity',      ! ncdf name
      &                ' ',                          ! ncdf standard_name
      &                'm/s',                        ! units
-     &                k,ltheta, frmt,-ioin)
+     &                k,ltheta, frmt,ioin)          ! ioin -ve
         endif !ioin
 c
 c ---   'bvvio ' = baro. v-velocity I/O unit (0 no I/O, -ve on v-grid for NCOM)
@@ -1743,7 +1751,7 @@ c
      &                'v_barotropic_velocity',      ! ncdf name
      &                ' ',                          ! ncdf standard_name
      &                'm/s',                        ! units
-     &                k,ltheta, frmt,-ioin)
+     &                k,ltheta, frmt,ioin)          ! ioin -ve
         endif !ioin
 c
 c ---   'bspio ' = baro. speed I/O unit (0 no I/O)
@@ -2211,14 +2219,14 @@ c ---               Rotate from Xward and Yward to Eastward
      &                'u_baroclinic_velocity',       ! ncdf name
      &                ' ',                           ! ncdf standard_name
      &                'm/s',                         ! units
-     &                kf,kl,ltheta, frmt,-ioin)
+     &                kf,kl,ltheta, frmt,ioin)       ! ioin -ve
           else !total velocity
           call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' u-veloc.',                   ! plot name
      &                'u_velocity',                  ! ncdf name
      &                ' ',                           ! ncdf standard_name
      &                'm/s',                         ! units
-     &                kf,kl,ltheta, frmt,-ioin)
+     &                kf,kl,ltheta, frmt,ioin)       ! ioin -ve
           endif
         endif
 c
@@ -2322,14 +2330,14 @@ c ---               Rotate from Xward and Yward to Northward
      &                'v_baroclinic_velocity',    ! ncdf name
      &                ' ',                        ! ncdf standard_name
      &                'm/s',                      ! units
-     &                kf,kl,ltheta, frmt,-ioin)
+     &                kf,kl,ltheta, frmt,ioin)    ! ioin -ve
           else !total velocity
           call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
      &                ' v-veloc.',                ! plot name
      &                'v_velocity',               ! ncdf name
      &                ' ',                        ! ncdf standard_name
      &                'm/s',                      ! units
-     &                kf,kl,ltheta, frmt,-ioin)
+     &                kf,kl,ltheta, frmt,ioin)    ! ioin -ve
           endif
         endif
 c
