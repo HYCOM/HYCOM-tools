@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod M*log *tspt *port *port2 *port3 *_lm *vel *mn *mn2 *mn3 *2p0
+	/bin/rm *.o *.a *.mod M*log *tspt *port *port2 *port3 *_lm *_baro *vel *mn *mn2 *mn3 *2p0
 
 MODS =	mod_trans.o mod_xc.o mod_za.o wtime.o
 OBJS =	blkin.o geopar.o getdat.o zh.o
@@ -58,6 +58,9 @@ transport3:      $(MODS) transport3.o            $(OBJS)
 transport3_lm:   $(MODS) transport3_lm.o         $(OBJS)
 	$(LD) $(LDFLAGS) transport3_lm.o $(MODS) $(OBJS) -o transport3_lm
 
+transport_baro:  $(MODS) transport_baro.o            $(OBJS)
+	$(LD) $(LDFLAGS) transport_baro.o    $(MODS) $(OBJS) -o transport_baro
+
 transp_mn:       $(MODS) transp_mn.o             $(OBJS)
 	$(LD) $(LDFLAGS) transp_mn.o     $(MODS) $(OBJS) -o transp_mn
 
@@ -69,6 +72,9 @@ transp_mn3:      $(MODS) transp_mn3.o            $(OBJS)
 
 transp_mn_2p0:   $(MODS) transp_mn_2p0.o         $(OBJS)
 	$(LD) $(LDFLAGS) transp_mn_2p0.o $(MODS) $(OBJS) -o transp_mn_2p0
+
+barotspt:                barotspt.o              blkin.o zh.o
+	$(LD) $(LDFLAGS) barotspt.o              blkin.o zh.o -o barotspt
 
 meantspt:                meantspt.o              blkin.o zh.o
 	$(LD) $(LDFLAGS) meantspt.o              blkin.o zh.o -o meantspt
@@ -92,7 +98,11 @@ transp_mn_2p0.o: transp_mn_2p0.f $(MODS)
 geopar.o:        geopar.f     $(MODS)
 getdat.o:        getdat.f     $(MODS)
 
+transport_lm.o:   transport_lm.f   $(MODS)
+transport_baro.o: transport_baro.f $(MODS)
+
 blkin.o:     blkin.f
+barotspt.o:  barotspt.f
 meantspt.o:  meantspt.f
 mergetspt.o: mergetspt.f
 wtime.o:     wtime.F

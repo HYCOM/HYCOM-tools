@@ -19,7 +19,7 @@ endif
 #
 # --- programs
 #
-foreach m ( baro_vel transport transport2 transport3 transport3_lm transp_mn transp_mn2 transp_mn3 transp_mn_2p0 meantspt mergetspt )
+foreach m ( baro_vel transport transport2 transport3 transport3_lm transport_baro transp_mn transp_mn2 transp_mn3 transp_mn_2p0 barotspt meantspt mergetspt )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"
