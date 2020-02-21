@@ -1,16 +1,16 @@
-      subroutine buoflx(bf, mask, hf,sf,sst,sss,n,m, itype)
+      subroutine buoflx(bf, mask, hf,wf,sst,sss,n,m, itype)
       implicit none
 c
       integer                 :: n,m,itype
       integer, dimension(n,m) :: mask
-      real,    dimension(n,m) :: bf, hf,sf,sst,sss
+      real,    dimension(n,m) :: bf, hf,wf,sst,sss
 c
 c --- calculate buoyancy flux.
 c
       real, parameter :: flag = 2.0**100
 c
       integer i,j
-      real    dsgds,dsgdt,g,thref,spcifh
+      real    dsgds,dsgdt,g,thref,spcifh,sf
 c
 c-----------------------------------------------------------------------------
 c
@@ -67,7 +67,8 @@ c
           do i= 1,n
             if     (mask(i,j).ne.0) then
               dsgds   = dsigds(sst(i,j),sss(i,j))
-              bf(i,j) = g*thref*(dsgds*sf(i,j)*thref)
+              sf      = -wf(i,j)*sss(i,j)
+              bf(i,j) = g*thref*(dsgds*sf*thref)
             else
               bf(i,j)=flag
             endif
@@ -82,7 +83,8 @@ c
             if     (mask(i,j).ne.0) then
               dsgds   = dsigds(sst(i,j),sss(i,j))
               dsgdt   = dsigdt(sst(i,j),sss(i,j))
-              bf(i,j) = g*thref*(dsgds*sf(i,j)*thref) +
+              sf      = -wf(i,j)*sss(i,j)
+              bf(i,j) = g*thref*(dsgds*sf     *thref) +
      &                  g*thref*(dsgdt*hf(i,j)*thref/spcifh)
             else
               bf(i,j)=flag

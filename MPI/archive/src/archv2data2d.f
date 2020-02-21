@@ -624,11 +624,11 @@ c ---     ke = 0.5*( std(u)**2 + std(v)**2 )
      &                    /spcifh/max(0.1,dpbl(i,j))    ! deg/day
           strend(i,j)=salflx(i,j)*thref*8.64E4
      &                           /max(0.1,dpbl(i,j))    ! psu/day
-          emnp(  i,j)=wtrflx(i,j)                       ! kg/m^2/s
+          emnp(  i,j)=-wtrflx(i,j)                      ! kg/m^2/s into the atmos
         else  ! std.dev, archive
           ttrend(i,j)=flag
           strend(i,j)=flag
-          emnp(  i,j)=wtrflx(i,j)                       ! kg/m^2/s
+          emnp(  i,j)=-wtrflx(i,j)                      ! kg/m^2/s into the atmos
         endif
         if     (covice(i,j).eq.0.0) then
           thkice(i,j)= 0.0
@@ -939,8 +939,17 @@ c ---   'strio ' = surf. saln trend I/O unit (0 no I/O)
       elseif (i.eq.2) then
 c ---   'tbfio ' = temp buoyancy flux I/O unit (0 no I/O)
         if (ioin.gt.0) then
-          call buoflx(util1, ip, surflx,salflx,
-     &                           temp(1,1,1),saln(1,1,1),ii,jj, 1)
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+c               using the serial buoflx for each i,j is not efficient
+                call buoflx(util1(i,j),ip(i,j),surflx(i,j),wtrflx(i,j),
+     &                      temp(i,j,1),saln(i,j,1),1,1, 1)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' temp. bouy. flux ',         ! plot name
      &                'surface_t_bouyancy_flux',    ! ncdf name
@@ -951,8 +960,17 @@ c ---   'tbfio ' = temp buoyancy flux I/O unit (0 no I/O)
 c ---   'sbfio ' = saln buoyancy flux I/O unit (0 no I/O)
         call blkini(ioin,'sbfio ')
         if (ioin.gt.0) then
-          call buoflx(util1, ip, surflx,salflx,
-     &                           temp(1,1,1),saln(1,1,1),ii,jj, 2)
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+c               using the serial buoflx for each i,j is not efficient
+                call buoflx(util1(i,j),ip(i,j),surflx(i,j),wtrflx(i,j),
+     &                      temp(i,j,1),saln(i,j,1),1,1, 2)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' saln. bouy. flux ',         ! plot name
      &                'surface_s_bouyancy_flux',    ! ncdf name
@@ -963,8 +981,17 @@ c ---   'sbfio ' = saln buoyancy flux I/O unit (0 no I/O)
 c ---   'abfio ' = tot. buoyancy flux I/O unit (0 no I/O)
         call blkini(ioin,'abfio ')
         if (ioin.gt.0) then
-          call buoflx(util1, ip, surflx,salflx,
-     &                           temp(1,1,1),saln(1,1,1),ii,jj, 3)
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+c               using the serial buoflx for each i,j is not efficient
+                call buoflx(util1(i,j),ip(i,j),surflx(i,j),wtrflx(i,j),
+     &                      temp(i,j,1),saln(i,j,1),1,1, 3)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' total bouy. flux ',         ! plot name
      &                'surface_bouyancy_flux',      ! ncdf name

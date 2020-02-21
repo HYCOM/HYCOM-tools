@@ -535,11 +535,11 @@ c ---     ke = 0.5*( std(u)**2 + std(v)**2 )
      &                    /spcifh/max(0.1,dpbl(i,j))    ! deg/day
           strend(i,j)=salflx(i,j)*thref*8.64E4
      &                           /max(0.1,dpbl(i,j))    ! psu/day
-          emnp(  i,j)=wtrflx(i,j)                       ! kg/m^2/s
+          emnp(  i,j)=-wtrflx(i,j)                      ! kg/m^2/s into the atmos
         else  ! std.dev, archive
           ttrend(i,j)=flag
           strend(i,j)=flag
-          emnp(  i,j)=wtrflx(i,j)                       ! kg/m^2/s
+          emnp(  i,j)=-wtrflx(i,j)                      ! kg/m^2/s into the atmos
         endif
         if     (covice(i,j).eq.0.0) then
           thkice(i,j)= 0.0
@@ -852,7 +852,7 @@ c ---   'strio ' = surf. saln trend I/O unit (0 no I/O)
       elseif (i.eq.2) then
 c ---   'tbfio ' = temp buoyancy flux I/O unit (0 no I/O)
         if (ioin.gt.0) then
-          call buoflx(util1, ip, surflx,salflx,
+          call buoflx(util1, ip, surflx,wtrflx,
      &                           temp(1,1,1),saln(1,1,1),ii,jj, 1)
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' temp. bouy. flux ',         ! plot name
@@ -864,7 +864,7 @@ c ---   'tbfio ' = temp buoyancy flux I/O unit (0 no I/O)
 c ---   'sbfio ' = saln buoyancy flux I/O unit (0 no I/O)
         call blkini(ioin,'sbfio ')
         if (ioin.gt.0) then
-          call buoflx(util1, ip, surflx,salflx,
+          call buoflx(util1, ip, surflx,wtrflx,
      &                           temp(1,1,1),saln(1,1,1),ii,jj, 2)
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' saln. bouy. flux ',         ! plot name
@@ -876,7 +876,7 @@ c ---   'sbfio ' = saln buoyancy flux I/O unit (0 no I/O)
 c ---   'abfio ' = tot. buoyancy flux I/O unit (0 no I/O)
         call blkini(ioin,'abfio ')
         if (ioin.gt.0) then
-          call buoflx(util1, ip, surflx,salflx,
+          call buoflx(util1, ip, surflx,wtrflx,
      &                           temp(1,1,1),saln(1,1,1),ii,jj, 3)
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &                ' total bouy. flux ',         ! plot name

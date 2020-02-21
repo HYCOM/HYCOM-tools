@@ -702,7 +702,7 @@ c
         do j= 1,jj
           do i= 1,ii
             if     (saln(i,j,k).lt.2.0**99) then
-              wtrflx(i,j) = salflx(i,j)/max(saln(i,j,k),0.001)
+              wtrflx(i,j) = -salflx(i,j)/max(saln(i,j,k),0.001)
             endif
           enddo
         enddo
