@@ -30,6 +30,7 @@ c
         if     (sigtyp.ne.st_old) then
           write(6,'(2a)') '#    p.dens   saln   p.temp_7t  p.temp_9t',
      &                                        ' p.temp_17t p.temp_12t'
+          st_old = sigtyp
         endif
         if     (sigtyp.eq.0) then
           do n= 1,4

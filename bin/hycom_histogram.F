@@ -493,9 +493,6 @@ C
           SUMPCM = SUMPC
           SUMPC  = SUMPC + SUMH(JZ)
           IF     (SUMPC.GE.PCTILE(I)) THEN
-            IF     (JZ.EQ.1) THEN  !can't calculate
-              EXIT
-            ENDIF
             Q = (SUMPC-PCTILE(I))/(SUMPC-SUMPCM)
             WRITE(6,'(A,F6.1,A,F11.4)')
      &        '## ',PCTILE(I),' percentil =',HMIN+JZ*HINC+(1.0-Q)*HINC
