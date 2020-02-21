@@ -16,7 +16,7 @@ c
       integer     i,j,isec,ifrst,ilast,l,npf,npi,npl
       character*3 char3
 c
-      logical   lfatal,lfatalp,lprint,lprold
+      logical   lfatal,lfatalp,lprint,lprold,linput
       integer   nports,kdport(mp),
      &          ifport(mp),ilport(mp),jfport(mp),jlport(mp),lnport(mp)
 c
@@ -112,7 +112,11 @@ c
         open(unit=99,file='ports.input')
 c
 c ---   'nports' = number of boundary port sections.
-        call blkini(nports,'nports')
+        call blkini_test(nports,'nports',linput)
+        if     (.not.linput) then
+c ---     skipped sports
+          call blkini(nports,'nports')
+        endif
         write(6,*)
         if     (nports.lt.0 .or. nports.gt.mp) then
           write(6,*) 
@@ -367,6 +371,27 @@ c
      +                      ' but should be ',cvar
         write(6,*) 
         stop
+      endif
+      return
+ 6000 format('blkini: ',a6,' =',i6)
+      end
+      subroutine blkini_test(ivar,cvar,linput)
+      implicit none
+c
+      integer     ivar
+      character*6 cvar
+      logical     linput
+c
+c     read in one integer value from stdin
+c     linput is .true.  on return if the read is     successful
+c     linput is .false. on return if the read is not successful
+c
+      character*6 cvarin
+c
+      read(99,*) ivar,cvarin
+      linput = cvar.eq.cvarin
+      if     (linput) then
+        write(6,6000) cvarin,ivar
       endif
       return
  6000 format('blkini: ',a6,' =',i6)
