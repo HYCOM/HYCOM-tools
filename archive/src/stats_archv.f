@@ -20,7 +20,7 @@ c
       double precision time3(3),time,year
       double precision area,onemm,sum1,sum2,sum3,sum4,sum5,sum6,
      &                 sum1a,sum2a,sum3a,sum4a,sum5a
-      real             smn1,smx1,utotp,vtotp
+      real             smn1,smx1,smn2,smx2,utotp,vtotp
 c
       integer   thflag
       common/th/thflag
@@ -200,13 +200,19 @@ c
       sum1 =  0.d0
       smn1 =  huge(smn1)
       smx1 = -huge(smx1)
+      sum2 =  0.d0
+      smn2 =  huge(smn2)
+      smx2 = -huge(smx2)
       do j= 1,jja
         do i= 1,ii
           if     (ip(i,j).eq.1) then
             area = area + scp2(i,j)
-            sum1 = sum1 + scp2(i,j)*srfht(i,j)
-            smn1 = min( smn1,       srfht(i,j) )
-            smx1 = max( smx1,       srfht(i,j) )
+            sum1 = sum1 + scp2(i,j)* srfht(i,j)
+            smn1 = min( smn1,        srfht(i,j) )
+            smx1 = max( smx1,        srfht(i,j) )
+            sum2 = sum2 + scp2(i,j)*steric(i,j)
+            smn2 = min( smn2,       steric(i,j) )
+            smx2 = max( smx2,       steric(i,j) )
           endif !ip
         enddo !i
       enddo !j
@@ -222,14 +228,37 @@ c
      &  nstep,c_ydh,
      &  sum1/(area*1.d-3*onemm),smn1/(1.d-3*onemm),smx1/(1.d-3*onemm)
       call flush(lp)
+      if     (lsteric) then
+      write (11,'(i9,a,
+     &              '' mean    S.SSH (mm):'',f8.2,
+     &              ''  ('',1pe8.1,'' to '',e8.1,'')'')')
+     &  nstep,c_ydh,
+     &  sum2/(area*1.d-3*onemm),smn2/(1.d-3*onemm),smx2/(1.d-3*onemm)
+      write (lp,'(i9,a,
+     &              '' mean    S.SSH (mm):'',f8.2,
+     &              ''  ('',1pe8.1,'' to '',e8.1,'')'')')
+     &  nstep,c_ydh,
+     &  sum2/(area*1.d-3*onemm),smn2/(1.d-3*onemm),smx2/(1.d-3*onemm)
+      write (11,'(i9,a,
+     &              '' mean SSH-SSSH (mm):'',f8.2)')
+     &  nstep,c_ydh,
+     &  (sum1-sum2)/(area*1.d-3*onemm)
+      write (lp,'(i9,a,
+     &              '' mean SSH-SSSH (mm):'',f8.2)')
+     &  nstep,c_ydh,
+     &  (sum1-sum2)/(area*1.d-3*onemm)
+      call flush(lp)
+      endif !lsteric
 c
       sum1 =  0.d0
       sum2 =  0.d0
+      sum3 =  0.d0
       do j= 1,jja
         do i= 1,ii
           if     (ip(i,j).eq.1) then
             sum1 = sum1 + scp2(i,j)*surflx(i,j)
             sum2 = sum2 + scp2(i,j)*wtrflx(i,j)
+            sum3 = sum3 + scp2(i,j)*salflx(i,j)/35.0  !nominal water flux
           endif !ip
         enddo !i
       enddo !j
@@ -251,7 +280,15 @@ c
      &  nstep,c_ydh,
      &  -(sum2*1.0D-3*7.0D0*8.64D7)/area  !P-E in mm/week
       call flush(lp)
-c
+      write (11, '(i9,a,
+     &    '' mean SFLUX (mm/wk):'',f8.2)')
+     &  nstep,c_ydh,
+     &  -(sum3*1.0D-3*7.0D0*8.64D7)/area  !Salt Flux as nominal water flux in mm/week
+      write (lp, '(i9,a,
+     &    '' mean SFLUX (mm/wk):'',f8.2)')
+     &  nstep,c_ydh,
+     &  -(sum3*1.0D-3*7.0D0*8.64D7)/area  !Salt Flux as nominal water flux in mm/week
+      call flush(lp)
 c
       if     (icegln) then  !sea ice
         sum1 =  0.d0
