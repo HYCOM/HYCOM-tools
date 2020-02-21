@@ -278,7 +278,7 @@ c
         write(lp,'(a)')       cline(1:len_trim(cline))
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
-        call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
+        call getfld(  work, ni, hminb,hmaxb, .false.,lrange)  !surflx or oneta
       endif
       if     (cline(1:8).ne.'oneta   ') then
         oneta(:,:) = 1.0
@@ -290,8 +290,17 @@ c
         write(lp,'(a)')       cline(1:len_trim(cline))
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
-        call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
-      endif
+        call getfld(  work, ni, hminb,hmaxb, .false.,lrange)  !surflx or mnoneta
+        if     (cline(1:8).eq.'mnoneta ') then
+c ---     discard mn oneta
+          write(lp,'("skip   ",a)') cline(1:8)
+          read (ni,'(a)',end=6) cline
+          write(lp,'(a)')       cline(1:len_trim(cline))
+          i = index(cline,'=')
+          read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
+          call getfld(  work, ni, hminb,hmaxb, .false.,lrange)  !surflx
+        endif !mnoneta
+      endif !oneta
       call extrct_p(work,idm,jdm,iorign,jorign, 
      &              surflx,ii,jj)
       write(lp,'("input  ",a," into ",a)') cline(1:8),'surflx  '
