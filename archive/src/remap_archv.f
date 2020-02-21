@@ -9,8 +9,8 @@ c --- Not all layer structures that can be described here will produce
 c --- sensible archives.  They will usually be ok if the "new" fixed
 c --- (minimum) depth of an interface is no shallower than the "old".
 c
-      character label*81,text*18,flnm_i*240,flnm_o*240
-      logical   initl,trcout,lsteric,icegln
+      character label*81,text*18,flnm_i*240,flnm_o*240,flnm_k*240
+      logical   initl,trcout,lsteric,icegln,vskmap
 c
       integer          artype,iexpt,iversn,yrflag
       integer          i,ia,ibad,j,ja,k,k2,kkin,kkout,l,n,newtop
@@ -23,9 +23,10 @@ c
      &                 uz(999),vz(999),tz(999),sz(999),rz(999),
      &                 p1(0:999),pz(0:999)
       real             sigma(999),thbase,depthu,depthv,onem,qonem
+      real             hmina,hmaxa
       double precision time3(3),time,year
 c
-      real, allocatable :: pout(:,:,:)
+      real, allocatable :: pout(:,:,:),skm(:,:,:)
 c
       data trcout/.false./  ! must be .false. (no tracer remapping)
       data initl /.true. /
@@ -39,6 +40,7 @@ c
 c
 c --- 'flnm_i' = name of original archive file
 c --- 'flnm_o' = name of target   archive file
+c --- 'flnm_k' = name of skmap file, or NONE for constant skmap(k)
 c --- 'iexpt ' = experiment number x10  (000=from archive file)
 c --- 'yrflag' = days in year flag (0=360J16,1=366J16,2=366J01,3=actual)
 c --- 'idm   ' = longitudinal array size
@@ -47,10 +49,13 @@ c --- 'kdmold' = original number of layers
 c --- 'kdmnew' = target   number of layers
 c
       read (*,'(a)') flnm_i
-      write (lp,'(2a)') ' input file: ',flnm_i(1:len_trim(flnm_i))
+      write (lp,'(2a)') ' input file: ',trim(flnm_i)
       call flush(lp)
       read (*,'(a)') flnm_o
-      write (lp,'(2a)') 'output file: ',flnm_o(1:len_trim(flnm_o))
+      write (lp,'(2a)') 'output file: ',trim(flnm_o)
+      read (*,'(a)') flnm_o
+      write (lp,'(2a)') 'skmap  file: ',trim(flnm_k)
+      vskmap = trim(flnm_k).ne.'NONE'
       call flush(lp)
       call blkini(iexpt, 'iexpt ')
       call blkini(yrflag,'yrflag')
@@ -69,6 +74,30 @@ c
       iorign = 1
       jorign = 1
 c
+c --- array allocation
+c
+      kk    = 0
+      kkmax = max(kkin,kkout)
+      call plot_alloc
+c
+      dpthfil = 'regional.depth'
+c
+      do j=1,jj
+        do i=1,ii
+          p(i,j,1)=0.
+        enddo
+      enddo
+c
+c --- land masks.
+c
+      call bigrid(depths)
+c
+      do j= 1,jj
+        do i= 1,ii
+          depths(i,j) = depths(i,j)*onem
+        enddo
+      enddo
+c
 c --- 'newtop' = kdmnew-kdmold iff only new layers added at top 
       call blkini2(i,j,  'newtop','nhybrd')  !read newtop or nhybrd
       write(lp,*)
@@ -79,6 +108,13 @@ c --- 'newtop' = kdmnew-kdmold iff only new layers added at top
       else
         newtop = 0  !default
         nhybrd = i
+      endif
+c
+      if      (newtop.ne.0 .and. vskmap) then
+        write(lp,'(/ a /)')
+     &    'error - skmap input not allowed for newtop > 0'
+        call flush(lp)
+        stop
       endif
 c
 c --- 'nhybrd' = new number of hybrid levels (0=all isopycnal)
@@ -205,10 +241,42 @@ c
 c
 c --- new layer structure
 c
+      if     (vskmap) then
+        allocate( skm(idm,jdm,0:kkout) )
+c
+        skm(:,:,0) = 0.0
+        call zaiopf(flnm_k,'old', 9)
+      endif
+c
       skmap(0) = 0.0
 c
       write(lp,*)
       do k=1,kkout
+        if     (vskmap) then
+          call zaiord(skm(1,1,k),ip,.false., hmina,hmaxa, 9)
+          write(lp,'(/ a,2f10.4 /)')
+     &        'kkmap range = ',hmina,hmaxa
+          call flush(lp)
+c
+          if     (hmaxa.gt.kkin) then
+            write(lp,'(/ a /)')
+     &        'error - maximum skmap is kdmold'
+            call flush(lp)
+            stop
+          endif
+          do j= 1,jdm
+            do i = 1,idm
+              if     (ip(i,j).eq.1 .and.
+     &                skm(i,j,k).lt.skm(i,j,k-1)) then
+                write(lp,'(/ a,2i5,a /)')
+     &            'error  - input skmap(',i,j,') is not non-decreasing'
+                call flush(lp)
+                stop
+              endif
+            enddo !i
+          enddo !j
+        endif !vskmap
+c
 c ---   'skmap ' = interface k (out) is interface skmap (in), can be a fraction
 c ---               skmap is optional, default is simplest mapping from input
 c ---   'sigma ' = layer k (out) reference density (sigma units)
@@ -240,7 +308,7 @@ c
           stop
         elseif (skmap(k).lt.skmap(k-1)) then
           write(lp,'(/ a /)')
-     &      'error - skmap in nor non-decreasing'
+     &      'error - skmap is not non-decreasing'
           call flush(lp)
           stop
         endif
@@ -254,6 +322,9 @@ c
           endif
         endif
       enddo !k (out)
+      if     (vskmap) then
+        call zaiocl(9)
+      endif
       skmap(kkout) = kkin
       write(lp,*)
       do k=1,kkout
@@ -364,20 +435,6 @@ c
         ds0k(k)=0.0
       enddo
 c
-c --- array allocation
-c
-      kk    = 0
-      kkmax = max(kkin,kkout)
-      call plot_alloc
-c
-      dpthfil = 'regional.depth'
-c
-      do j=1,jj
-        do i=1,ii
-          p(i,j,1)=0.
-        enddo
-      enddo
-c
 c --- read the archive file, from "*.[ab]".
 c
       kk = kkin
@@ -391,16 +448,6 @@ c
         call flush(lp)
         stop
       endif
-c
-c --- land masks.
-c
-      call bigrid(depths)
-c
-      do j= 1,jj
-        do i= 1,ii
-          depths(i,j) = depths(i,j)*onem
-        enddo
-      enddo
 c
 c --- check that bathymetry is consistent with this archive.
 c
@@ -457,19 +504,34 @@ c ---       minimum output depths (sigma-Z only).
      &                            depths(i,j))
 c ---         interface depths from the input
               if    (k.gt.newtop) then
-                k2 = nint(skmap(k))
-                if     (abs(skmap(k)-k2).lt.0.01) then
-                  pout(i,j,k+1) = max(pout(i,j,k+1),p(i,j,k2+1))
+                if     (vskmap) then
+                  k2 = nint(skm(i,j,k))
+                  if     (abs(skm(i,j,k)-k2).lt.0.01) then
+                    pout(i,j,k+1) = max(pout(i,j,k+1),p(i,j,k2+1))
+                  else
+                    if    (skm(i,j,k).gt.k2) then
+                      k2 = k2+1
+                    endif
+                    s2 = k2-skm(i,j,k)  !non-negative
+                    pout(i,j,k+1) = max(pout(i,j,k+1),
+     &                                       s2 *p(i,j,k2)  +
+     &                                  (1.0-s2)*p(i,j,k2+1) )
+                  endif !skm is int:else
                 else
-                  if    (skmap(k).gt.k2) then
-                    k2 = k2+1
-                  endif
-                  s2 = k2-skmap(k)  !non-negative
-                  pout(i,j,k+1) = max(pout(i,j,k+1),
-     &                                     s2 *p(i,j,k2)  +
-     &                                (1.0-s2)*p(i,j,k2+1) )
-                endif
-              endif
+                  k2 = nint(skmap(k))
+                  if     (abs(skmap(k)-k2).lt.0.01) then
+                    pout(i,j,k+1) = max(pout(i,j,k+1),p(i,j,k2+1))
+                  else
+                    if    (skmap(k).gt.k2) then
+                      k2 = k2+1
+                    endif
+                    s2 = k2-skmap(k)  !non-negative
+                    pout(i,j,k+1) = max(pout(i,j,k+1),
+     &                                       s2 *p(i,j,k2)  +
+     &                                  (1.0-s2)*p(i,j,k2+1) )
+                  endif !skmap is int:else
+                endif !vskmap:else
+              endif !k>newtop
             enddo !k
             pout(i,j,kkout+1)=depths(i,j)
           endif
