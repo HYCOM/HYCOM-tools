@@ -956,32 +956,32 @@ C
      &          '(3a)'
             ELSE
               WRITE(CFORMAT,'(a,i2,a)')
-     &          '(3a,',NTRC,'a)'
+     &          '(3a,',NTRC,'(a,i2.2))'
             ENDIF
             IF     (NDIFO.EQ.0) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth',
-     &            ('  tracer',KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRC)
             ELSEIF (NDIFO.EQ.1) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty',
-     &            ('  tracer',KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRC)
             ELSEIF (NDIFO.EQ.2) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty  t-diff',
-     &            ('  tracer',KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRC)
             ELSEIF (NDIFO.EQ.3) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty  t-diff  s-diff',
-     &            ('  tracer',KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRC)
             ENDIF
 C
             IF     (NTRC.EQ.0) THEN
@@ -1139,4 +1139,5 @@ C
             CLOSE(IU)
           ENDIF
       ENDDO !I
+      CALL EXIT(0)
       END

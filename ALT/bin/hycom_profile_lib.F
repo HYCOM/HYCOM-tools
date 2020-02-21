@@ -272,7 +272,7 @@ C
           CYCLE
         ELSEIF (CLINE(1:8).EQ.'s-diff  ') THEN
           CYCLE
-        ELSEIF (CLINE(1:8).NE.'tracer  ') THEN
+        ELSEIF (CLINE(1:6).NE.'tracer')   THEN  !tracerXX, XX=01:99
           EXIT
         ENDIF
       ENDDO
