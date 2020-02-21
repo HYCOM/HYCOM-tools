@@ -416,7 +416,7 @@ c
      &            nf90_inq_varid(ncfileID,"tile",
      &                                  varID))
       call nchek("nf90_put_var-tile",
-     &            nf90_put_var(ncfileID,varID,tile))
+     &            nf90_put_var(ncfileID,varID,trim(tile)))
 c
       ! close NetCDF file
       call nchek("nf90_close",

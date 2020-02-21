@@ -94,35 +94,11 @@ c
       enddo
 c
 c --- handle all region types (nreg = closed:0; periodic:2; arctic:3)
+c --- arctic treated as periodic
 c
-      if     (sum(ip(1:idm-1,jdm)).ne.0) then
-c
-c ---   arctic dipole patch.
-c
-        if     (luniform) then  !.true.
-          if     (npe.ne.1 .and. mod(npe,2).ne.0) then
-            write(6,'(/ a /)')
-     &        'error - pan-am grid must have npe even'
-            call zhflsh(6)
-            stop
-          endif
-        else
-          write(6,'(/ a /)')
-     &      'error - pan-am grid must use equal-size tiles'
-          call zhflsh(6)
-          stop
-        endif
-        do i= 1,idm
-          ic = idm+1-i
-          ip(i,    0) = 0
-          ip(i,jdm+1) = ip(ic,jdm-2)
-        enddo
-        nreg = 3  ! arctic
-      else
-        ip(:,    0) = 0
-        ip(:,jdm+1) = 0
-        nreg = 0  ! closed or periodic
-      endif  !luniform
+      ip(:,    0) = 0
+      ip(:,jdm+1) = 0
+      nreg = 0  ! closed or periodic
 c
       if     (sum(ip(idm,:)).ne.0) then
 c
@@ -261,26 +237,24 @@ c
 c
 c ---   optionally discard all-land tiles.
 c
-        if     (ldiscard) then
-          ispx(:,:) = 0
-          iipx(:,:) = 0
-          nmpe = mpe*npe-nskip
-          do k= 1,nmpe
-            read(5,*) i,j
+        do j= 1,mpe
+          do i= 1,npe
             ispx(i,j) = ispt(i,j)
             iipx(i,j) = iipe(i,j)
+          enddo
+        enddo
+        if     (ldiscard) then
+          nmpe = mpe*npe-nskip
+          do k= 1,nskip
+            read(5,*) i,j
+            ispx(i,j) = 0
+            iipx(i,j) = 0
 *           write(6,'(a,5i5,i8)') 'pe,tile,sea = ',
 *    &        nmpe,ispt(i,j),ispt(i,j)+iipe(i,j)-1,
 *    &             jspt(  j),jspt(  j)+jjpe(  j)-1,nsea
           enddo !k
         else
           nmpe = mpe*npe
-          do j= 1,mpe
-            do i= 1,npe
-              ispx(i,j) = ispt(i,j)
-              iipx(i,j) = iipe(i,j)
-            enddo
-          enddo
         endif !ldiscard:else
       endif !luniform
 c
