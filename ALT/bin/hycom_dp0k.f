@@ -12,7 +12,7 @@ C --- 'dp00x'  = z-level spacing maximum thickness (m)
 C --- 'dp00f'  = z-level spacing stretching factor (1.0=const.spacing)
 C
       INTEGER K,K01,KDM
-      REAL    DP00,DP00F,DPK,DPS,DP00X,Z00
+      REAL    DP00,DP00F,DPK,DPM,DPS,DP00X,Z00
 C
       READ(5,*) KDM
       IF     (KDM.LT.0) THEN
@@ -27,16 +27,18 @@ C
       READ(5,*) DP00X
       READ(5,*) DP00F
 C
+      DPK = DP00
       DPS = Z00
       DO K= 1,KDM
+        DPM = DPK
         DPK = MIN(DP00X,DP00*DP00F**(K-1))
         DPS = DPS + DPK
-        WRITE(6,'(F9.4,A,I4,2A,F10.4)')
+        WRITE(6,'(F9.4,A,I4,2A,F10.4,A,F7.4)')
      &    DPK,
      &    " 'dp0k  ' = layer",
      &    K+K01-1,
      &    " deep    z-level spacing minimum thickness (m)",
      &    "              TOTAL:",
-     &    DPS
+     &    DPS,"  RATIO:",DPK/DPM
       ENDDO !k
       END
