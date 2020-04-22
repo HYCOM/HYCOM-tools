@@ -54,7 +54,7 @@ foreach f ( tsp_to_insitu hycom_profile_insitu_wright )
   touch       ${f}${OS}
   /bin/rm -f  ${f}${OS}
 end
-foreach f ( cice_range hycom_accumulate hycom_cfl \
+foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_crosscorr hycom_crosscorr_lag hycom_join \
             track_histogram unf42hycom unf82hycom hycom2raw hycom2raw8 hycom2unf4 hycom2unf8 \
             hycom_1st_isopyc hycom_arctic hycom_arctic_ok hycom_bandmask \

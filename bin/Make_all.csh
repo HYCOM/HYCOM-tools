@@ -156,7 +156,7 @@ end
 $FC $FFLAGS -c hycom_endian_io.F
 $CC $CFLAGS -c parse.c
 #
-foreach f ( cice_range hycom_accumulate hycom_cfl \
+foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_crosscorr hycom_crosscorr_lag hycom_join \
             track_histogram unf42hycom unf82hycom hycom2raw hycom2raw8 hycom2unf4 hycom2unf8 \
             hycom_1st_isopyc hycom_arctic hycom_arctic_ok hycom_bandmask \
