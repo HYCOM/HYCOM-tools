@@ -20,7 +20,7 @@ C
 C
       INTEGER   KSIGMA
       REAL*4    XAMAX,XAMIN,YAMAX,YAMIN
-      REAL*4    TSEAIN(IWI,JWI),SSEAIN(IWI,JWI),RSEAIN(IWI,JWI),
+      REAL*4    TSEAIN(IWI,JWI),SSEAIN(IWI,JWI),RSEAIN(IWI,JWI),PTEMP,
      +          ZLEV(KWI)
       CHARACTER PREAMBL(5)*79
 C
@@ -28,6 +28,7 @@ C     NETCDF I/O VARIABLES.
 C
       CHARACTER*(256) CFILED,CFILET,CFILES
       INTEGER         ncFIDd,ncVIDd,ncFIDt,ncVIDt,ncFIDs,ncVIDs
+      LOGICAL         CALC_PTEMP
 C
 C     INTERPOLATION ARRAYS.
 C
@@ -94,15 +95,20 @@ C                   =0; NO DIAGNOSTIC PRINTOUT
 C
 C 4)  INPUT:
 C        ON UNIT  5: NAMELIST /AFTITL/, /AFTIME/
-C        netCDF NATIVE Sig0 CLIM FILE (ENV.VAR. CDF_DENS), SEE (5).
-C        netCDF NATIVE PotT CLIM FILE (ENV.VAR. CDF_TEMP), SEE (5).
 C        netCDF NATIVE S    CLIM FILE (ENV.VAR. CDF_SALN), SEE (5).
+C        netCDF NATIVE PotT CLIM FILE (ENV.VAR. CDF_TEMP), SEE (5).
+C         
 C     OUTPUT:
 C        ON UNIT 11:    UNFORMATTED MODEL    CLIM FILE, SEE (6).
 C        ON UNIT 12:    UNFORMATTED MODEL    CLIM FILE, SEE (6).
 C        ON UNIT 13:    UNFORMATTED MODEL    CLIM FILE, SEE (6).
 C
-C 5)  THE INPUT CLIM FIELDS, VIA NetCDF, ARE ON THE 'NATIVE' LAT-LON
+C 5)  NetCDF fields:
+C       CDF_SALN "SALT":  Salinity
+C       CDF_TEMP "PTEMP": Assume potential temperature. (Default)
+C                "TEMP":  Assume in-situ temperature and calculate PotT in-line
+C
+C     THE INPUT CLIM FIELDS, VIA NetCDF, ARE ON THE 'NATIVE' LAT-LON
 C      GRID, STARTING AT THE POINT 'XFIN' EAST AND 'YFIN' NORTH WITH 
 C      'YFIN' NORTH WITH GRIDSIZE 'DXIN' BY 'DYIN' DEGREES.  THE
 C      INPUT ARRAY SIZE IS 'IWI' BY 'JWI', AND THERE ARE NO REPEATED
@@ -315,9 +321,20 @@ C
       call ncheck(nf90_inq_varid(ncFIDt,'depth',ncVIDt))
       call ncheck(nf90_get_var(  ncFIDt,        ncVIDt,ZLEV(:)))
       ! inquire variable ID
-      call ncheck(nf90_inq_varid(ncFIDt,
-     &                           'PTEMP',
-     &                           ncVIDt))
+      if (nf90_inq_varid(ncFIDt,'PTEMP',ncVIDt) == nf90_noerr) then
+        call ncheck(nf90_inq_varid(ncFIDt,
+     &                             'PTEMP',
+     &                             ncVIDt))
+        CALC_PTEMP = .false.
+      else
+        call ncheck(nf90_inq_varid(ncFIDt,
+     &                             'TEMP',
+     &                             ncVIDt))
+        CALC_PTEMP = .true.
+        write(6,*)
+        write(6,*)'NOTE: Assume in-situ temperature TEMP. ',
+     &            'Calculate potential temperature PTEMP.'
+      endif
 C
       CALL GETENV('CDF_SALN',CFILES)
       WRITE(6,*)
@@ -426,6 +443,18 @@ C
         call ncheck(nf90_get_var(ncFIDs,ncVIDs,
      &                           SSEAIN(:,:),
      &                           (/ 1,1,KREC /) ))
+C
+C       CALCULATE POTENTIAL TEMPERATURE FROM IN-SITU TEMPERATURE
+C
+        if (CALC_PTEMP) then
+          DO 301 J= 1,JWI
+            DO 302 I= 1,IWI
+              call POTMP(ZLEV(KREC),TSEAIN(I,J),SSEAIN(I,J),0.0,PTEMP)
+              TSEAIN(I,J)=PTEMP
+  302       CONTINUE
+  301     CONTINUE
+          
+        endif
 C
 C       COPY INTO THE (LARGER) INTERPOLATION ARRAYS.
 C
@@ -1104,3 +1133,94 @@ c
         stop
       end if
       end subroutine ncheck
+
+      SUBROUTINE POTMP(PRESS,TEMP,S,RP,POTEMP)
+C
+C     SIO Oceanographic Data Facility CTD subroutines 07/30/86
+C       http://sam.ucsd.edu/sio210/propseawater/ppsw_fortran/ppsw_fortran.htm
+C
+C     TITLE:
+C     *****
+C
+C       POTMP  -- CALCULATE POTENTIAL TEMPERATURE FOR AN ARBITRARY
+C                 REFERENCE PRESSURE
+C
+C     PURPOSE:
+C     *******
+C
+C       TO CALCULATE POTENTIAL TEMPERATURE
+C
+C       REF: N.P. FOFONOFF
+C            DEEP SEA RESEARCH
+C            IN PRESS NOV 1976
+C
+C     PARAMETERS:
+C     **********
+C
+C       PRESS  -> PRESSURE IN DECIBARS
+C       TEMP   -> TEMPERATURE IN CELSIUS DEGREES
+C       S      -> SALINITY PSS 78
+C       RP     -> REFERENCE PRESSURE IN DECIBARS
+C                 (0.0 FOR THE QUANTITY THETA)
+C       POTEMP <- POTENTIAL TEMPERATURE (DEG C)
+C
+        REAL*4 PRESS,TEMP,S,RP,POTEMP
+C
+C     VARIABLES:
+C     *********
+C
+         INTEGER I,J,N
+         REAL*4 DP,P,Q,R1,R2,R3,R4,R5,S1,T,X
+C
+C     CODE:
+C     ****
+C
+      S1 = S-35.0
+      P  = PRESS
+      T  = TEMP
+C
+      DP = RP - P
+      N  = IFIX(ABS(DP)/1000.) + 1
+      DP = DP/FLOAT(N)
+C
+      DO 10 I=1,N
+         DO 20 J=1,4
+C
+            R1 = ((-2.1687E-16*T+1.8676E-14)*T-4.6206E-13)*P
+            R2 = (2.7759E-12*T-1.1351E-10)*S1
+            R3 = ((-5.4481E-14*T+8.733E-12)*T-6.7795E-10)*T
+            R4 = (R1+(R2+R3+1.8741E-8))*P+(-4.2393E-8*T+1.8932E-6)*S1
+            R5 = R4+((6.6228E-10*T-6.836E-8)*T+8.5258E-6)*T+3.5803E-5
+C
+            X  = DP*R5
+C
+            GO TO (100,200,300,400),J
+C
+  100       CONTINUE
+            T = T+.5*X
+            Q = X
+            P = P + .5*DP
+            GO TO 20
+C
+  200       CONTINUE
+            T = T + .29298322*(X-Q)
+            Q = .58578644*X + .121320344*Q
+            GO TO 20
+C
+  300       CONTINUE
+            T = T + 1.707106781*(X-Q)
+            Q = 3.414213562*X - 4.121320344*Q
+            P = P + .5*DP
+            GO TO 20
+C
+  400       CONTINUE
+            T = T + (X-2.0*Q)/6.0
+  20      CONTINUE
+  10    CONTINUE
+C
+        POTEMP = T
+        RETURN
+C
+C       END POTMP
+C
+        END SUBROUTINE POTMP
