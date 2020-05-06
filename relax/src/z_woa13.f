@@ -21,7 +21,7 @@ C
       INTEGER   KSIGMA
       REAL*4    XAMAX,XAMIN,YAMAX,YAMIN
       REAL*4    TSEAIN(IWI,JWI),SSEAIN(IWI,JWI),RSEAIN(IWI,JWI),PTEMP,
-     +          ZLEV(KWI)
+     +          ZLEV(KWI),PRESS
       CHARACTER PREAMBL(5)*79
 C
 C     NETCDF I/O VARIABLES.
@@ -447,9 +447,10 @@ C
 C       CALCULATE POTENTIAL TEMPERATURE FROM IN-SITU TEMPERATURE
 C
         if (CALC_PTEMP) then
+          call depth2pres(ZLEV(KREC),PRESS)
           DO 301 J= 1,JWI
             DO 302 I= 1,IWI
-              call POTMP(ZLEV(KREC),TSEAIN(I,J),SSEAIN(I,J),0.0,PTEMP)
+              call POTMP(PRESS,TSEAIN(I,J),SSEAIN(I,J),0.0,PTEMP)
               TSEAIN(I,J)=PTEMP
   302       CONTINUE
   301     CONTINUE
@@ -1184,43 +1185,69 @@ C
       DP = DP/FLOAT(N)
 C
       DO 10 I=1,N
-         DO 20 J=1,4
+        DO 20 J=1,4
 C
-            R1 = ((-2.1687E-16*T+1.8676E-14)*T-4.6206E-13)*P
-            R2 = (2.7759E-12*T-1.1351E-10)*S1
-            R3 = ((-5.4481E-14*T+8.733E-12)*T-6.7795E-10)*T
-            R4 = (R1+(R2+R3+1.8741E-8))*P+(-4.2393E-8*T+1.8932E-6)*S1
-            R5 = R4+((6.6228E-10*T-6.836E-8)*T+8.5258E-6)*T+3.5803E-5
+          R1 = ((-2.1687E-16*T+1.8676E-14)*T-4.6206E-13)*P
+          R2 = (2.7759E-12*T-1.1351E-10)*S1
+          R3 = ((-5.4481E-14*T+8.733E-12)*T-6.7795E-10)*T
+          R4 = (R1+(R2+R3+1.8741E-8))*P+(-4.2393E-8*T+1.8932E-6)*S1
+          R5 = R4+((6.6228E-10*T-6.836E-8)*T+8.5258E-6)*T+3.5803E-5
 C
-            X  = DP*R5
+          X  = DP*R5
 C
-            GO TO (100,200,300,400),J
+          GO TO (100,200,300,400),J
 C
-  100       CONTINUE
-            T = T+.5*X
-            Q = X
-            P = P + .5*DP
-            GO TO 20
+  100     CONTINUE
+          T = T+.5*X
+          Q = X
+          P = P + .5*DP
+          GO TO 20
 C
-  200       CONTINUE
-            T = T + .29298322*(X-Q)
-            Q = .58578644*X + .121320344*Q
-            GO TO 20
+  200     CONTINUE
+          T = T + .29298322*(X-Q)
+          Q = .58578644*X + .121320344*Q
+          GO TO 20
 C
-  300       CONTINUE
-            T = T + 1.707106781*(X-Q)
-            Q = 3.414213562*X - 4.121320344*Q
-            P = P + .5*DP
-            GO TO 20
+  300     CONTINUE
+          T = T + 1.707106781*(X-Q)
+          Q = 3.414213562*X - 4.121320344*Q
+          P = P + .5*DP
+          GO TO 20
 C
-  400       CONTINUE
-            T = T + (X-2.0*Q)/6.0
-  20      CONTINUE
-  10    CONTINUE
+  400     CONTINUE
+          T = T + (X-2.0*Q)/6.0
+  20    CONTINUE
+  10  CONTINUE
 C
-        POTEMP = T
-        RETURN
+      POTEMP = T
+      RETURN
 C
-C       END POTMP
+C     END POTMP
 C
-        END SUBROUTINE POTMP
+      END SUBROUTINE POTMP
+
+      subroutine depth2pres(depth,prsdb)
+C     calculate pressure in decibars from depth in meters
+C
+C     Modified from:
+C     SIO Oceanographic Data Facility CTD subroutines 07/30/86
+C       http://sam.ucsd.edu/sio210/propseawater/ppsw_fortran/ppsw_fortran.htm
+C
+C       ref: journ. physical ocean.,vol 11 no. 4, april, 1981
+C            (saunders)
+C
+      real  grav,prsdb,depth
+      real*8  dd,dg,dh,da,db,dc
+C     (convert depth to pressure):
+      grav = 9.806
+      dd = dble(depth)
+      dg = dble(grav*0.1)
+      da = 2.42d-13*dd
+      db = dd*(1.13135d-7+2.2e-6*dg)-1.0
+      dc = dg*dd
+      dc = 1.0285d0*dc
+      prsdb  = 0.0
+      if (da.ne.0.0) then
+        prsdb=sngl((-db-dsqrt(db*db-4.0d0*da*dc))/(da+da))
+      endif
+      end subroutine depth2pres
