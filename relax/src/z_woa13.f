@@ -1,11 +1,12 @@
       PROGRAM TSZINT
-      USE MOD_ZA  ! HYCOM array I/O interface
-      USE netcdf  ! NetCDF fortran 90 interface
+      USE MOD_ZA   ! HYCOM array I/O interface
+      USE netcdf   ! NetCDF fortran 90 interface
+      USE mod_ppsw ! SEA-WATER functions from WHOI CTD group
       IMPLICIT NONE
 C
 C     DEFINE INPUT CLIMATOLOGY GRID.
 C
-C     SETUP FOR 0.25 DEGREE WOA13 HIGH RES. GLOBAL CLIMATOLOGY.
+C     SETUP FOR 0.25 DEGREE WOA13 and WOA18 HIGH RES. GLOBAL CLIMATOLOGY.
 C
       INTEGER    IWI,JWI,KWI
       REAL*4     XFIN,YFIN,DXIN,DYIN
@@ -20,8 +21,8 @@ C
 C
       INTEGER   KSIGMA
       REAL*4    XAMAX,XAMIN,YAMAX,YAMIN
-      REAL*4    TSEAIN(IWI,JWI),SSEAIN(IWI,JWI),RSEAIN(IWI,JWI),PTEMP,
-     +          ZLEV(KWI),PRESS
+      REAL*4    TSEAIN(IWI,JWI),SSEAIN(IWI,JWI),RSEAIN(IWI,JWI),
+     +          ZLEV(KWI),PRESS,LAT
       CHARACTER PREAMBL(5)*79
 C
 C     NETCDF I/O VARIABLES.
@@ -77,6 +78,7 @@ C     /AFFLAG/
 C        ICTYPE -  INPUT FILE TYPE
 C                   =3; POTENTIAL TEMPERATURE AND SALINITY
 C                   =4; POTENTIAL TEMPERATURE AND SALINITY, UNSTABLE
+C                   =5; POTENTIAL TEMPERATURE AND SALINITY, STABLE
 C        SIGVER - EQUATION OF STATE TYPE
 C                   =1-2; 7-term
 C                   =3-4; 9-term
@@ -118,6 +120,9 @@ C     ALL CLIMATOLOGY FIELDS MUST BE DEFINED AT EVERY GRID POINT,
 C      INCLUDING LAND AND BELOW THE OCEAN FLOOR.
 C
 C     IF ICTYPE=4, DON'T INFORCE STABLE DENSITY STRATIFICATION AND
+C      USE A SALINITY DEPENDENT FREEZING POINT.
+C
+C     IF ICTYPE=5, INFORCE STABLE DENSITY STRATIFICATION AND
 C      USE A SALINITY DEPENDENT FREEZING POINT.
 C
 C 6)  THE OUTPUT CLIMS ARE AT EVERY GRID POINT OF THE MODEL'S 'P' GRID.
@@ -447,11 +452,11 @@ C
 C       CALCULATE POTENTIAL TEMPERATURE FROM IN-SITU TEMPERATURE
 C
         if (CALC_PTEMP) then
-          call depth2pres(ZLEV(KREC),PRESS)
           DO 301 J= 1,JWI
+            LAT=YFIN+(J-1)*DYIN
+            PRESS=p80(ZLEV(KREC),LAT)
             DO 302 I= 1,IWI
-              call POTMP(PRESS,TSEAIN(I,J),SSEAIN(I,J),0.0,PTEMP)
-              TSEAIN(I,J)=PTEMP
+              TSEAIN(I,J)=theta(SSEAIN(I,J),TSEAIN(I,J),PRESS,0.0)
   302       CONTINUE
   301     CONTINUE
           
@@ -534,20 +539,21 @@ C
 C
 C       INTERPOLATE FROM NATIVE TO MODEL CLIM GRIDS.
 C       ALSO INFORCE A STABLE DENSITY PROFILE.
-C       ASSUME ICE FORMS (I.E. MIN SST) AT -1.8 DEGC.
+C       ASSUME ICE FORMS (I.E. MIN SST) AT -1.8 DEGC (ICTYPE=3)
+C        OR -0.054*S (ICTYPE=4,5)
 C
+        IF     (INTERP.EQ.0) THEN
+          CALL LINEAR(TM,XAF,YAF,IDM,IDM,JDM,
+     +                TSEAI,IWI+4,IWI+4,JWI+4)
+          CALL LINEAR(SM,XAF,YAF,IDM,IDM,JDM,
+     +                SSEAI,IWI+4,IWI+4,JWI+4)
+        ELSE
+          CALL CUBSPL(TM,XAF,YAF,IDM,IDM,JDM,
+     +                TSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
+          CALL CUBSPL(SM,XAF,YAF,IDM,IDM,JDM,
+     +                SSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
+        ENDIF
         IF     (ICTYPE.EQ.3) THEN
-          IF     (INTERP.EQ.0) THEN
-            CALL LINEAR(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4)
-            CALL LINEAR(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4)
-          ELSE
-            CALL CUBSPL(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-            CALL CUBSPL(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-          ENDIF
           IF     (KREC.EQ.1) THEN
             DO J= 1,JDM
               DO I= 1,IDM
@@ -557,18 +563,7 @@ C
               ENDDO
             ENDDO
           ENDIF
-        ELSEIF (ICTYPE.EQ.4) THEN
-          IF     (INTERP.EQ.0) THEN
-            CALL LINEAR(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4)
-            CALL LINEAR(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4)
-          ELSE
-            CALL CUBSPL(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-            CALL CUBSPL(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-          ENDIF
+        ELSEIF (ICTYPE.EQ.4 .or. ICTYPE.EQ.5) THEN
           IF     (KREC.EQ.1) THEN
             DO J= 1,JDM
               DO I= 1,IDM
@@ -699,7 +694,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_7term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -731,7 +726,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_7term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -763,7 +758,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_9term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -795,7 +790,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_9term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -830,7 +825,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_17term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -880,7 +875,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_17term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -930,7 +925,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA4_17term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -977,7 +972,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_12term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -1009,7 +1004,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_12term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -1041,7 +1036,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA4_12term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -1135,119 +1130,3 @@ c
       end if
       end subroutine ncheck
 
-      SUBROUTINE POTMP(PRESS,TEMP,S,RP,POTEMP)
-C
-C     SIO Oceanographic Data Facility CTD subroutines 07/30/86
-C       http://sam.ucsd.edu/sio210/propseawater/ppsw_fortran/ppsw_fortran.htm
-C
-C     TITLE:
-C     *****
-C
-C       POTMP  -- CALCULATE POTENTIAL TEMPERATURE FOR AN ARBITRARY
-C                 REFERENCE PRESSURE
-C
-C     PURPOSE:
-C     *******
-C
-C       TO CALCULATE POTENTIAL TEMPERATURE
-C
-C       REF: N.P. FOFONOFF
-C            DEEP SEA RESEARCH
-C            IN PRESS NOV 1976
-C
-C     PARAMETERS:
-C     **********
-C
-C       PRESS  -> PRESSURE IN DECIBARS
-C       TEMP   -> TEMPERATURE IN CELSIUS DEGREES
-C       S      -> SALINITY PSS 78
-C       RP     -> REFERENCE PRESSURE IN DECIBARS
-C                 (0.0 FOR THE QUANTITY THETA)
-C       POTEMP <- POTENTIAL TEMPERATURE (DEG C)
-C
-        REAL*4 PRESS,TEMP,S,RP,POTEMP
-C
-C     VARIABLES:
-C     *********
-C
-         INTEGER I,J,N
-         REAL*4 DP,P,Q,R1,R2,R3,R4,R5,S1,T,X
-C
-C     CODE:
-C     ****
-C
-      S1 = S-35.0
-      P  = PRESS
-      T  = TEMP
-C
-      DP = RP - P
-      N  = IFIX(ABS(DP)/1000.) + 1
-      DP = DP/FLOAT(N)
-C
-      DO 10 I=1,N
-        DO 20 J=1,4
-C
-          R1 = ((-2.1687E-16*T+1.8676E-14)*T-4.6206E-13)*P
-          R2 = (2.7759E-12*T-1.1351E-10)*S1
-          R3 = ((-5.4481E-14*T+8.733E-12)*T-6.7795E-10)*T
-          R4 = (R1+(R2+R3+1.8741E-8))*P+(-4.2393E-8*T+1.8932E-6)*S1
-          R5 = R4+((6.6228E-10*T-6.836E-8)*T+8.5258E-6)*T+3.5803E-5
-C
-          X  = DP*R5
-C
-          GO TO (100,200,300,400),J
-C
-  100     CONTINUE
-          T = T+.5*X
-          Q = X
-          P = P + .5*DP
-          GO TO 20
-C
-  200     CONTINUE
-          T = T + .29298322*(X-Q)
-          Q = .58578644*X + .121320344*Q
-          GO TO 20
-C
-  300     CONTINUE
-          T = T + 1.707106781*(X-Q)
-          Q = 3.414213562*X - 4.121320344*Q
-          P = P + .5*DP
-          GO TO 20
-C
-  400     CONTINUE
-          T = T + (X-2.0*Q)/6.0
-  20    CONTINUE
-  10  CONTINUE
-C
-      POTEMP = T
-      RETURN
-C
-C     END POTMP
-C
-      END SUBROUTINE POTMP
-
-      subroutine depth2pres(depth,prsdb)
-C     calculate pressure in decibars from depth in meters
-C
-C     Modified from:
-C     SIO Oceanographic Data Facility CTD subroutines 07/30/86
-C       http://sam.ucsd.edu/sio210/propseawater/ppsw_fortran/ppsw_fortran.htm
-C
-C       ref: journ. physical ocean.,vol 11 no. 4, april, 1981
-C            (saunders)
-C
-      real  grav,prsdb,depth
-      real*8  dd,dg,dh,da,db,dc
-C     (convert depth to pressure):
-      grav = 9.806
-      dd = dble(depth)
-      dg = dble(grav*0.1)
-      da = 2.42d-13*dd
-      db = dd*(1.13135d-7+2.2e-6*dg)-1.0
-      dc = dg*dd
-      dc = 1.0285d0*dc
-      prsdb  = 0.0
-      if (da.ne.0.0) then
-        prsdb=sngl((-db-dsqrt(db*db-4.0d0*da*dc))/(da+da))
-      endif
-      end subroutine depth2pres
