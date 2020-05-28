@@ -30,6 +30,9 @@ simplest case these are:
 # rules.
 #
 
+.f90.o:
+	$(FC)             $(FCFFLAGS) -c $*.f90
+
 .c.o:
 	$(CC) $(CPPFLAGS) $(CCFLAGS)  -c $*.c
 
