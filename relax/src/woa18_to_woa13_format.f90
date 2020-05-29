@@ -17,8 +17,8 @@ program woa18_to_woa13_format
     if (pgm(1:2)=='-h' .or. pgm(1:3)=='--h') then
       call getarg(0,pgm)
       write(0,*)'Reformat WOA18 data similar to WOA13_v2.tgz'
-      write(0,*)'  1) Monthly data (MM=01..12) padded with quarter data (MM=13..16) for deeper layers'
-      write(0,*)'  2) Interpolate over land. Ugly looking plots but needed for HYCOM relax fields'
+      write(0,*)'  1) Monthly data (MM=01..12) padded with quarterly data (MM=13..16) for deeper layers'
+      write(0,*)'  2) Interpolate over land. Ugly looking plots but needed for HYCOM relax fields using z_woa13'
       write(0,*)''
       write(0,*)"USAGE:  "//trim(pgm)//" (NO-arguments, but run in the same directory as input files)"
       write(0,*)"        "//trim(pgm)//" --help"
@@ -259,7 +259,6 @@ subroutine nc_check(cnf90,status)
   if (status /= nf90_noerr) then
     call getarg(0,pgm)
     write(6,'(a)')''
-    write(6,'(a)')'> '//trim(pgm)//' --help'
     call execute_command_line(trim(pgm)//' --help')
     write(6,'(a)')''
     write(6,'(a)')'ERROR from NetCDF library'
