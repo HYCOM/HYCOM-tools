@@ -17,10 +17,11 @@ program woa18_to_woa13_format
     if (pgm(1:2)=='-h' .or. pgm(1:3)=='--h') then
       call getarg(0,pgm)
       write(0,*)'Reformat WOA18 data similar to WOA13_v2.tgz'
-      write(0,*)'  1) Monthly data padded with quarter data for deeper layers'
-      write(0,*)'  2) Interpolate over land. Ugly plots but needed for HYCOM relax fields'
+      write(0,*)'  1) Monthly data (MM=01..12) padded with quarter data (MM=13..16) for deeper layers'
+      write(0,*)'  2) Interpolate over land. Ugly looking plots but needed for HYCOM relax fields'
       write(0,*)''
       write(0,*)"USAGE:  "//trim(pgm)//" (NO-arguments, but run in the same directory as input files)"
+      write(0,*)"        "//trim(pgm)//" --help"
       write(0,*)''
       write(0,*)'Input:  woa18_decav_s<MM>_04.nc'
       write(0,*)'        woa18_decav_t<MM>_04.nc'
@@ -31,6 +32,8 @@ program woa18_to_woa13_format
       write(0,*)'  https://data.nodc.noaa.gov/woa/WOA18/DATA/salinity/netcdf/decav/0.25/'
       write(0,*)'  https://data.nodc.noaa.gov/woa/WOA18/DATA/temperature/netcdf/decav/0.25/'
       write(0,*)''
+      write(0,*)'WOA18 info:'
+      write(0,*)'  https://www.nodc.noaa.gov/OC5/woa18/'
 !      write(0,*)'Mads Hvid Ribergaard, DMI'
       call exit(1)
     endif
@@ -40,7 +43,7 @@ program woa18_to_woa13_format
   
   ! Quarter fields
   fname='woa18_decav_s16_04.nc'
-  call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+  call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
   call nc_check('nc inquire',nf90_inquire_variable(ncid,varid,dimids=dims(:4)))
   call nc_check('nc dim',    nf90_inquire_dimension(ncid,dims(1),len=nx))
@@ -50,7 +53,7 @@ program woa18_to_woa13_format
 
   ! Monthly fields
   fname='woa18_decav_s01_04.nc'
-  call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+  call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
   call nc_check('nc inquire',nf90_inquire_variable(ncid,varid,dimids=dims(:4)))
   call nc_check('nc dim',    nf90_inquire_dimension(ncid,dims(1),len=nx))
@@ -63,7 +66,7 @@ program woa18_to_woa13_format
 
   !-- Read stationary fields: lon,lat,depth --------------------------+
   fname='woa18_decav_s16_04.nc'
-  call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+  call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'lon',varid))
   call nc_check('nc get_var',nf90_get_var(ncid,varid,lon(:)))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'lat',varid))
@@ -101,7 +104,7 @@ program woa18_to_woa13_format
     ! Surface: Monthly
     write(fname,'(a,i2.2,a)')'woa18_decav_s',mm,'_04.nc'
     write(*,*)'Read: ',trim(fname)
-    call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+    call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
     do z=1,nz1
       call nc_check('nc get_var',nf90_get_var(ncid,varid,dat(:,:,z),(/ 1,1,z,1 /)))
@@ -116,7 +119,7 @@ program woa18_to_woa13_format
     ! Bottom: Quarterly
     write(fname,'(a,i2.2,a)')'woa18_decav_s',qq,'_04.nc'
     write(*,*)'Read: ',trim(fname)
-    call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+    call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
     do z=nz1+1,nz
       call nc_check('nc get_var',nf90_get_var(ncid,varid,dat(:,:,z),(/ 1,1,z /)))
@@ -129,7 +132,7 @@ program woa18_to_woa13_format
     !-- Write: NetCDF file -- 
     write(fname,'(a,i2.2,a)')'WOA18_SALT_m',mm,'.nc'
     write(*,*)'Write: ',trim(fname)
-    call nc_check('nc create',nf90_create(trim(fname), nf90_clobber, ncid))
+    call nc_check('nc create: '//trim(fname),nf90_create(trim(fname), nf90_clobber, ncid))
     call nc_check('nc def nx',nf90_def_dim(ncid,'lon',nx, nxid))
     call nc_check('nc def ny',nf90_def_dim(ncid,'lat',ny, nyid))
     call nc_check('nc def nz',nf90_def_dim(ncid,'depth',nz, nzid))
@@ -171,7 +174,7 @@ program woa18_to_woa13_format
     ! Surface: Monthly
     write(fname,'(a,i2.2,a)')'woa18_decav_t',mm,'_04.nc'
     write(*,*)'Read: ',trim(fname)
-    call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+    call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'t_an',varid))
     do z=1,nz1
       call nc_check('nc get_var',nf90_get_var(ncid,varid,dat(:,:,z),(/ 1,1,z /)))
@@ -186,7 +189,7 @@ program woa18_to_woa13_format
     ! Bottom: Quarterly
     write(fname,'(a,i2.2,a)')'woa18_decav_t',qq,'_04.nc'
     write(*,*)'Read: ',trim(fname)
-    call nc_check('nc open',   nf90_open(trim(fname), nf90_nowrite, ncid))
+    call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'t_an',varid))
     do z=nz1+1,nz
       call nc_check('nc get_var',nf90_get_var(ncid,varid,dat(:,:,z),(/ 1,1,z /)))
@@ -199,7 +202,7 @@ program woa18_to_woa13_format
     !-- Write: NetCDF file -- 
     write(fname,'(a,i2.2,a)')'WOA18_TEMP_m',mm,'.nc'
     write(*,*)'Write: ',trim(fname)
-    call nc_check('nc create',nf90_create(trim(fname), nf90_clobber, ncid))
+    call nc_check('nc create: '//trim(fname),nf90_create(trim(fname), nf90_clobber, ncid))
     call nc_check('nc def nx',nf90_def_dim(ncid,'lon',nx, nxid))
     call nc_check('nc def ny',nf90_def_dim(ncid,'lat',ny, nyid))
     call nc_check('nc def nz',nf90_def_dim(ncid,'depth',nz, nzid))
@@ -222,7 +225,7 @@ program woa18_to_woa13_format
     call nc_check('nc enddef', nf90_enddef(ncid))
     call nc_check('nc close',nf90_close(ncid))
 
-    call nc_check('nc open',   nf90_open(trim(fname), nf90_write, ncid))
+    call nc_check('nc open: '//trim(fname),nf90_open(trim(fname), nf90_write, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'lon',varid))
     call nc_check('nc put lon',nf90_put_var(ncid,varid,lon))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'lat',varid))
@@ -251,11 +254,17 @@ subroutine nc_check(cnf90,status)
 
   character*(*), intent(in) :: cnf90
   integer,       intent(in) :: status
+  character(len=199) :: pgm
 
   if (status /= nf90_noerr) then
-    write(6,'(/a)')   'error from NetCDF library'
-    write(6,'(a/)')   trim(cnf90)
-    write(6,'(a/)')   trim(nf90_strerror(status))
+    call getarg(0,pgm)
+    write(6,'(a)')''
+    write(6,'(a)')'> '//trim(pgm)//' --help'
+    call execute_command_line(trim(pgm)//' --help')
+    write(6,'(a)')''
+    write(6,'(a)')'ERROR from NetCDF library'
+    write(6,'(a)')trim(cnf90)
+    write(6,'(a)')trim(nf90_strerror(status))
     stop
   end if
 end subroutine nc_check
@@ -325,5 +334,5 @@ subroutine fillmiss(dat,nx,ny,nz,FillValue)
   enddo ! k
   
 end subroutine fillmiss
-  
+
 end program woa18_to_woa13_format
