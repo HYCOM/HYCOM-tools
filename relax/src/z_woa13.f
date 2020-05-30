@@ -1,11 +1,12 @@
       PROGRAM TSZINT
-      USE MOD_ZA  ! HYCOM array I/O interface
-      USE netcdf  ! NetCDF fortran 90 interface
+      USE MOD_ZA   ! HYCOM array I/O interface
+      USE netcdf   ! NetCDF fortran 90 interface
+      USE mod_ppsw ! SEA-WATER functions from WHOI CTD group
       IMPLICIT NONE
 C
 C     DEFINE INPUT CLIMATOLOGY GRID.
 C
-C     SETUP FOR 0.25 DEGREE WOA13 HIGH RES. GLOBAL CLIMATOLOGY.
+C     SETUP FOR 0.25 DEGREE WOA13 and WOA18 HIGH RES. GLOBAL CLIMATOLOGY.
 C
       INTEGER    IWI,JWI,KWI
       REAL*4     XFIN,YFIN,DXIN,DYIN
@@ -21,13 +22,14 @@ C
       INTEGER   KSIGMA
       REAL*4    XAMAX,XAMIN,YAMAX,YAMIN
       REAL*4    TSEAIN(IWI,JWI),SSEAIN(IWI,JWI),RSEAIN(IWI,JWI),
-     +          ZLEV(KWI)
+     +          ZLEV(KWI),PRESS,LAT
       CHARACTER PREAMBL(5)*79
 C
 C     NETCDF I/O VARIABLES.
 C
       CHARACTER*(256) CFILED,CFILET,CFILES
       INTEGER         ncFIDd,ncVIDd,ncFIDt,ncVIDt,ncFIDs,ncVIDs
+      LOGICAL         CALC_PTEMP
 C
 C     INTERPOLATION ARRAYS.
 C
@@ -76,6 +78,7 @@ C     /AFFLAG/
 C        ICTYPE -  INPUT FILE TYPE
 C                   =3; POTENTIAL TEMPERATURE AND SALINITY
 C                   =4; POTENTIAL TEMPERATURE AND SALINITY, UNSTABLE
+C                   =5; POTENTIAL TEMPERATURE AND SALINITY, STABLE
 C        SIGVER - EQUATION OF STATE TYPE
 C                   =1-2; 7-term
 C                   =3-4; 9-term
@@ -94,15 +97,20 @@ C                   =0; NO DIAGNOSTIC PRINTOUT
 C
 C 4)  INPUT:
 C        ON UNIT  5: NAMELIST /AFTITL/, /AFTIME/
-C        netCDF NATIVE Sig0 CLIM FILE (ENV.VAR. CDF_DENS), SEE (5).
-C        netCDF NATIVE PotT CLIM FILE (ENV.VAR. CDF_TEMP), SEE (5).
 C        netCDF NATIVE S    CLIM FILE (ENV.VAR. CDF_SALN), SEE (5).
+C        netCDF NATIVE PotT CLIM FILE (ENV.VAR. CDF_TEMP), SEE (5).
+C         
 C     OUTPUT:
 C        ON UNIT 11:    UNFORMATTED MODEL    CLIM FILE, SEE (6).
 C        ON UNIT 12:    UNFORMATTED MODEL    CLIM FILE, SEE (6).
 C        ON UNIT 13:    UNFORMATTED MODEL    CLIM FILE, SEE (6).
 C
-C 5)  THE INPUT CLIM FIELDS, VIA NetCDF, ARE ON THE 'NATIVE' LAT-LON
+C 5)  NetCDF fields:
+C       CDF_SALN "SALT":  Salinity
+C       CDF_TEMP "PTEMP": Assume potential temperature. (Default)
+C                "TEMP":  Assume in-situ temperature and calculate PotT in-line
+C
+C     THE INPUT CLIM FIELDS, VIA NetCDF, ARE ON THE 'NATIVE' LAT-LON
 C      GRID, STARTING AT THE POINT 'XFIN' EAST AND 'YFIN' NORTH WITH 
 C      'YFIN' NORTH WITH GRIDSIZE 'DXIN' BY 'DYIN' DEGREES.  THE
 C      INPUT ARRAY SIZE IS 'IWI' BY 'JWI', AND THERE ARE NO REPEATED
@@ -112,6 +120,9 @@ C     ALL CLIMATOLOGY FIELDS MUST BE DEFINED AT EVERY GRID POINT,
 C      INCLUDING LAND AND BELOW THE OCEAN FLOOR.
 C
 C     IF ICTYPE=4, DON'T INFORCE STABLE DENSITY STRATIFICATION AND
+C      USE A SALINITY DEPENDENT FREEZING POINT.
+C
+C     IF ICTYPE=5, INFORCE STABLE DENSITY STRATIFICATION AND
 C      USE A SALINITY DEPENDENT FREEZING POINT.
 C
 C 6)  THE OUTPUT CLIMS ARE AT EVERY GRID POINT OF THE MODEL'S 'P' GRID.
@@ -315,9 +326,20 @@ C
       call ncheck(nf90_inq_varid(ncFIDt,'depth',ncVIDt))
       call ncheck(nf90_get_var(  ncFIDt,        ncVIDt,ZLEV(:)))
       ! inquire variable ID
-      call ncheck(nf90_inq_varid(ncFIDt,
-     &                           'PTEMP',
-     &                           ncVIDt))
+      if (nf90_inq_varid(ncFIDt,'PTEMP',ncVIDt) == nf90_noerr) then
+        call ncheck(nf90_inq_varid(ncFIDt,
+     &                             'PTEMP',
+     &                             ncVIDt))
+        CALC_PTEMP = .false.
+      else
+        call ncheck(nf90_inq_varid(ncFIDt,
+     &                             'TEMP',
+     &                             ncVIDt))
+        CALC_PTEMP = .true.
+        write(6,*)
+        write(6,*)'NOTE: Assume in-situ temperature TEMP. ',
+     &            'Calculate potential temperature PTEMP.'
+      endif
 C
       CALL GETENV('CDF_SALN',CFILES)
       WRITE(6,*)
@@ -427,6 +449,19 @@ C
      &                           SSEAIN(:,:),
      &                           (/ 1,1,KREC /) ))
 C
+C       CALCULATE POTENTIAL TEMPERATURE FROM IN-SITU TEMPERATURE
+C
+        if (CALC_PTEMP) then
+          DO 301 J= 1,JWI
+            LAT=YFIN+(J-1)*DYIN
+            PRESS=p80(ZLEV(KREC),LAT)
+            DO 302 I= 1,IWI
+              TSEAIN(I,J)=theta(SSEAIN(I,J),TSEAIN(I,J),PRESS,0.0)
+  302       CONTINUE
+  301     CONTINUE
+          
+        endif
+C
 C       COPY INTO THE (LARGER) INTERPOLATION ARRAYS.
 C
         DO 310 J= 1,JWI
@@ -504,20 +539,21 @@ C
 C
 C       INTERPOLATE FROM NATIVE TO MODEL CLIM GRIDS.
 C       ALSO INFORCE A STABLE DENSITY PROFILE.
-C       ASSUME ICE FORMS (I.E. MIN SST) AT -1.8 DEGC.
+C       ASSUME ICE FORMS (I.E. MIN SST) AT -1.8 DEGC (ICTYPE=3)
+C        OR -0.054*S (ICTYPE=4,5)
 C
+        IF     (INTERP.EQ.0) THEN
+          CALL LINEAR(TM,XAF,YAF,IDM,IDM,JDM,
+     +                TSEAI,IWI+4,IWI+4,JWI+4)
+          CALL LINEAR(SM,XAF,YAF,IDM,IDM,JDM,
+     +                SSEAI,IWI+4,IWI+4,JWI+4)
+        ELSE
+          CALL CUBSPL(TM,XAF,YAF,IDM,IDM,JDM,
+     +                TSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
+          CALL CUBSPL(SM,XAF,YAF,IDM,IDM,JDM,
+     +                SSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
+        ENDIF
         IF     (ICTYPE.EQ.3) THEN
-          IF     (INTERP.EQ.0) THEN
-            CALL LINEAR(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4)
-            CALL LINEAR(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4)
-          ELSE
-            CALL CUBSPL(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-            CALL CUBSPL(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-          ENDIF
           IF     (KREC.EQ.1) THEN
             DO J= 1,JDM
               DO I= 1,IDM
@@ -527,18 +563,7 @@ C
               ENDDO
             ENDDO
           ENDIF
-        ELSEIF (ICTYPE.EQ.4) THEN
-          IF     (INTERP.EQ.0) THEN
-            CALL LINEAR(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4)
-            CALL LINEAR(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4)
-          ELSE
-            CALL CUBSPL(TM,XAF,YAF,IDM,IDM,JDM,
-     +                  TSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-            CALL CUBSPL(SM,XAF,YAF,IDM,IDM,JDM,
-     +                  SSEAI,IWI+4,IWI+4,JWI+4, IBD, FXI,FYI,WQSEA3,WK)
-          ENDIF
+        ELSEIF (ICTYPE.EQ.4 .or. ICTYPE.EQ.5) THEN
           IF     (KREC.EQ.1) THEN
             DO J= 1,JDM
               DO I= 1,IDM
@@ -669,7 +694,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_7term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -701,7 +726,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_7term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -733,7 +758,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_9term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -765,7 +790,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_9term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -800,7 +825,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_17term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -850,7 +875,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_17term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -900,7 +925,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA4_17term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -947,7 +972,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA0_12term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -979,7 +1004,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA2_12term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -1011,7 +1036,7 @@ C
 C
       INCLUDE '../../include/stmt_fns_SIGMA4_12term.h'
 C
-      IF     (ICTYPE.EQ.3) THEN
+      IF     (ICTYPE.EQ.3 .or. ICTYPE.EQ.5) THEN
         DO J= 1,JW
           DO I= 1,IW
             RSEA(I,J) =    SIG( R8(TSEA(I,J)), R8(SSEA(I,J)) )
@@ -1104,3 +1129,4 @@ c
         stop
       end if
       end subroutine ncheck
+

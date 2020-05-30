@@ -7,8 +7,11 @@
 #
 
 .SUFFIXES: 
-.SUFFIXES: .c .F .f .o
+.SUFFIXES: .c .F .f .o .f90
 
+.f90:
+	@echo "Must have an explicit rule for" $*
+	@exit 1
 .F:
 	@echo "Must have an explicit rule for" $*
 	@exit 1
@@ -34,6 +37,7 @@ clean:
 	/bin/rm *.o *.a *.mod *.inc M*log *at *pf *noaa *s *u *u2 *gdem3 *gdem4 *gdem42 *woa *woa13 *density *cer *st *ve *fy *km *field *xi *xv bottom *_linear
 
 MODS = mod_xc.o mod_za.o wtime.o
+MODA = $(MODS) mod_ppsw.o
 LIBS = blkdat.o interp.o zh.o
 LIBN = blkdat.o interp.o zh.o $(EXTRANCDF)
 
@@ -70,8 +74,11 @@ z_woa_med78:     $(MODS) z_woa_med78.o           $(LIBS)
 z_woa_tracer:    $(MODS) z_woa_tracer.o          $(LIBS)
 	$(LD) $(LDFLAGS) z_woa_tracer.o  $(MODS) $(LIBN) -o z_woa_tracer
 
-z_woa13:         $(MODS) z_woa13.o               $(LIBS)
-	$(LD) $(LDFLAGS) z_woa13.o       $(MODS) $(LIBN) -o z_woa13
+woa18_to_woa13_format:   woa18_to_woa13_format.o
+	$(LD) $(LDFLAGS) woa18_to_woa13_format.o $(EXTRANCDF) -o woa18_to_woa13_format
+
+z_woa13:         $(MODA) z_woa13.o               $(LIBS)
+	$(LD) $(LDFLAGS) z_woa13.o       $(MODA) $(LIBN) -o z_woa13
 
 sst_woa:         $(MODS) sst_woa.o               $(LIBS)
 	$(LD) $(LDFLAGS) sst_woa.o       $(MODS) $(LIBN) -o sst_woa
