@@ -138,7 +138,7 @@ C
       CHARACTER*240 CFILE1,CFILEO
       LOGICAL      LSPVAL
       INTEGER      IDM,JDM,NPAD,IDMS,JDMS,I1,J1
-      REAL*4       SPVAL
+      REAL*8       SPVAL
       REAL*4       A4(IDM,JDM),PAD(NPAD)
       REAL*8       A8(IDMS,JDMS)
 C
