@@ -22,7 +22,7 @@ endif
 foreach m ( hycomarchv botlay_archv conv_archv hybgen_archv mrgl_archv \
             ncoda_archv ncoda_archv_inc ncoda_archv_inc2 \
             remap_archv remaph_archv remapi_archv \
-            insitu_archv steric_archv stats_archv trim_archv \
+            insitu_archv potden_archv steric_archv stats_archv trim_archv \
             archt2archv archv2data2d archv2data2b archv2data2t archv2data3z \
             archv2datasf archv2datasfl archv2datasfz \
             archv2ncombc archv2restart \

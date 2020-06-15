@@ -4637,6 +4637,12 @@ c
               navo_code = 15
               scale_f   = 0.001
               add_off   = 20.0
+            elseif (namec.eq.'water_ptemp') then
+              namecv    = namec
+              namelv    = 'Water Potential Temperature'
+              navo_code = 0
+              scale_f   = 0.001
+              add_off   = 20.0
             elseif (namec.eq.'salinity') then
               namecv    = namec
               namelv    = 'Salinity'
@@ -4875,6 +4881,12 @@ c
               namecv    = namec
               namelv    = 'Water Temperature'
               navo_code = 15
+              scale_f   = 0.001
+              add_off   = 20.0
+            elseif (namec.eq.'water_ptemp') then
+              namecv    = namec
+              namelv    = 'Water Potential Temperature'
+              navo_code = 0
               scale_f   = 0.001
               add_off   = 20.0
             elseif (namec.eq.'salinity') then

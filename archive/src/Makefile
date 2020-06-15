@@ -37,6 +37,7 @@ MODS     =	mod_plot.o mod_xc.o mod_za.o               wtime.o
 MODM     =      mod_plot.o mod_xc.o mod_za.o               wtime.o mom_eos_wright.o
 MODB     =	mod_plot.o mod_xc.o mod_za.o mod_zb.o      wtime.o
 MODZ     =	mod_plot.o mod_xc.o mod_za.o mod_zb.o      wtime.o mod_ppsw.o
+MODG     =	mod_plot.o mod_xc.o mod_za.o mod_zb.o      wtime.o mod_ppsw.o
 MODR     =	mod_plot.o mod_xc.o mod_za.o mod_restart.o wtime.o
 
 DATAX_OBJ = 	bigrid.o           blkin.o    \
@@ -63,24 +64,13 @@ ARCHV_OBJ = 	bigrid.o blkin.o  \
 
 ARCHT_OBJ = 	          zh.o    dum_gks.o 
 
-ARCHV_SRC = 	hycomarchv.f \
-                conv_archv.f trim_archv.f mrgl_archv.f cooperhaines_archv.f \
-		botlay_archv.f \
-                hybgen_archv.f     \
-                hybgen_archv_old.f \
-                ncoda_archv.f     \
-                ncoda_archv_inc.f \
-                ncoda_archv_inc2.f \
-                remap_archv.f remaph_archv.f remapi_archv.f \
-                f2d_archv.f     \
-                stats_archv.f   \
-                insitu_archv.f  \
-                steric_archv.f  \
-                field2data.f   field2data3z.f \
-                archt2archv.f  archv2data2b.f \
-                archv2data2d.f archv2data2t.f  archv2data3z.f \
-                archv2datasf.f archv2datasfl.f archv2datasfz.f \
-                archv2oam.f    archv2oam_m.f   archv2restart.f putdat.f
+ARCHG_OBJ = 	bigrid.o blkin.o  \
+		extrct.o          fordate.o \
+                getdat_nc.o       getdepth.o putdat.o \
+		indxi.o  indxj.o             psmoo.o  \
+		zebra.o   zh.o    dum_gks.o 
+
+NCDFG_OBJ = 	$(ARCHG_OBJ) horout_nc.o
 
 #
 # --- executables.
@@ -218,11 +208,17 @@ f2d_archv:          $(MODS) f2d_archv.o    $(ARCHV_OBJ)
 insitu_archv:       $(MODM) insitu_archv.o $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o insitu_archv insitu_archv.o $(MODM) $(ARCHV_OBJ)
 
+potden_archv:       $(MODM) potden_archv.o $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o potden_archv potden_archv.o $(MODS) $(ARCHV_OBJ)
+
 steric_archv:       $(MODS) steric_archv.o $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o steric_archv steric_archv.o $(MODS) $(ARCHV_OBJ)
 
 stats_archv:        $(MODS) stats_archv.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o stats_archv  stats_archv.o  $(MODS) $(ARCHV_OBJ)
+
+gofs_ptemp:         $(MODS) gofs_ptemp.o   $(NCDFG_OBJ)
+	$(LD) $(LDFLAGS) -o gofs_ptemp  gofs_ptemp.o $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
 
 #
 # --- explicit dependencies for each .[fF] file.
@@ -238,6 +234,7 @@ archv2restart.o: archv2restart.f mod_plot.o mod_za.o mod_restart.o
 
 hycomarchv.o:    hycomarchv.f    mod_plot.o mod_za.o
 botlay_archv.o:  botlay_archv.f  mod_plot.o mod_za.o
+gofs_ptemp.o:    gofs_ptemp.f    mod_plot.o mod_za.o
 mrgl_archv.o:    mrgl_archv.f    mod_plot.o mod_za.o
 trim_archv.o:    trim_archv.f    mod_plot.o mod_za.o
 remap_archv.o:   remap_archv.f   mod_plot.o mod_za.o
@@ -250,7 +247,8 @@ ncoda_archv.o:      ncoda_archv.f      mod_plot.o mod_za.o
 ncoda_archv_inc.o:  ncoda_archv_inc.f  mod_plot.o mod_za.o
 ncoda_archv_inc2.o: ncoda_archv_inc2.f mod_plot.o mod_za.o
 
-insitu_archv.o:     steric_archv.f     mod_plot.o mod_za.o mom_eos_wright.o
+insitu_archv.o:     insitu_archv.f     mod_plot.o mod_za.o mom_eos_wright.o
+potden_archv.o:     potden_archv.f     mod_plot.o mod_za.o
 steric_archv.o:     steric_archv.f     mod_plot.o mod_za.o
 
 restart2archv.o: restart2archv.f mod_plot.o mod_za.o mod_restart.o
