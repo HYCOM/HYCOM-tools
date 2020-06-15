@@ -481,7 +481,8 @@ C
 C     CHECK FOR AN ARCTIC BIPOLAR PATCH
 C
       LARCTIC = PLON(3*IDM/4+1,JDM-1).EQ.PLON(IDM/4,JDM) .AND.
-     &          PLAT(3*IDM/4+1,JDM-1).EQ.PLAT(IDM/4,JDM)
+     &          PLAT(3*IDM/4+1,JDM-1).EQ.PLAT(IDM/4,JDM) .AND.
+     &          JDM.GT.6
 C
       WRITE(6,*) 
       WRITE(6,*) 'LARCTIC = ',LARCTIC
