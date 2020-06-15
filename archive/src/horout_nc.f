@@ -1571,7 +1571,7 @@ c
      &                                   "UNCLASSIFIED"))
                 call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                   "distribution_statement",
-     &      "Approved for public release. Distribution unlimited."))
+     &      "Approved for public release; distribution unlimited."))
                 call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                   "downgrade_date",
      &                                   "not applicable"))
@@ -4257,7 +4257,7 @@ c
      &                                   "UNCLASSIFIED"))
                 call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                   "distribution_statement",
-     &      "Approved for public release. Distribution unlimited."))
+     &      "Approved for public release; distribution unlimited."))
                 call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                   "downgrade_date",
      &                                   "not applicable"))
