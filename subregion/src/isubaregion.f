@@ -819,7 +819,9 @@ c ---   mask == 2 for land to be extrapolated to ocean.
 c
       integer, allocatable :: mm(:,:,:)
 c
+      logical doland
       integer i,ii,ip0,ip1,ipass,j,jj,ki,kj,nleft,nup
+      integer ifj,ilj
       real    sa,ss
 c
       logical lfirst
@@ -847,13 +849,21 @@ c
         write(6,'(/a,6i5/)')
      &    'landfill - m,n,if,il,jf,jl =',m,n,if,il,jf,jl
       endif
+      doland = .false.  !only extrapolate where mm==2
       do ipass= 1,n+m
         ip0   = mod(ipass+1,2)
         ip1   = mod(ipass,  2)
         nup   = 0
         nleft = 0
         do j= jf,jl
-          do i= iv(j,1),iv(j,2)
+          if     (doland) then
+            ifj = max(if-1,1)
+            ilj = min(il+1,m)
+          else
+            ifj = iv(j,1)
+            ilj = iv(j,2)
+          endif
+          do i= ifj,ilj
             if     (mm(i,j,ip0).eq.2) then
               sa = 0.0
               ss = 0.0
@@ -886,19 +896,46 @@ c
               else
                 nleft = nleft + 1
               endif
-            endif
+            elseif (doland .and. mm(i,j,ip0).eq.0) then
+              sa = 0.0
+              ss = 0.0
+              do kj= -1,1
+                jj = j+kj
+                do ki= -1,1
+                  ii = i+ki
+                  if     (mm(ii,jj,ip0).eq.1) then
+                    sa = sa + s(ki,kj)*a(ii,jj)
+                    ss = ss + s(ki,kj)
+                  endif
+                enddo
+              enddo
+              if     (ss.ne.0.0) then
+c
+c               at least one ocean point within stencil.
+c
+                a( i,j)     = sa/ss
+                mm(i,j,ip1) = 1
+              endif
+            endif  !mm=2:doland&mm=0
           enddo
         enddo
         if     (lfirst) then
-          write(6,'(a,i4,a,i6,a,i6,a)')
+          write(6,'(a,i5,a,i6,a,i6,a)')
      &      'landfill: pass',ipass,
      &      ' filled in',nup,
      &      ' points, with',nleft,' still to fill'
           call flush(6)
         endif
-        if     (nup.eq.0) then
+        if     (nup.eq.0 .and. nleft.eq.0) then
           exit
-        endif
+        elseif (nup.eq.0 .and. .not.doland) then  !nleft>0
+          doland = .true.  !extrapolate where mm==2 or mm==0
+          if     (lfirst) then
+            write(6,'(a)')
+     &        ' switching to extrapolation of all land points'
+            call flush(6)
+          endif
+        endif  !nup
         mm(if:il,jf:jl,ip0) = mm(if:il,jf:jl,ip1)
       enddo  ! ipass=1,...
       if     (lfirst) then
