@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod M*log M*_?? ?? M*_[k]pc *fc *const *curl *diff *extend *fit *magstress *mm5 *nc *offset *scale *rivers *riv_mon *riv_hf *runoff *corr *zero *monthly *interp *shift *add *climo *diurnal *table *sal *core *barom *margin *wd stoch
+	/bin/rm -f *.o *.a *.mod M*log M*_?? ?? M*_[k]pc *fc *const *curl *diff *extend *fit *magstress *mm5 *nc *offset *scale *rivers *riv_mon *riv_hf *runoff *corr *zero *monthly *interp *shift *add *climo *diurnal *table *sal *core *barom *margin *wd stoch
 
 MODS = mod_xc.o mod_za.o wtime.o
 LIBS = interp.o zh.o
