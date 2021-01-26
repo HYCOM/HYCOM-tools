@@ -125,8 +125,6 @@ c
       data      cmonth/'Jan','Feb','Mar','Apr','May','Jun',
      &                 'Jul','Aug','Sep','Oct','Nov','Dec'/
 c
-c
-c
 c        initialization.
 c
         l = len_trim(frmt)
@@ -603,8 +601,6 @@ c
       character cmonth(12)*3
       data      cmonth/'Jan','Feb','Mar','Apr','May','Jun',
      &                 'Jul','Aug','Sep','Oct','Nov','Dec'/
-c
-c
 c
 c        initialization.
 c
@@ -1175,8 +1171,14 @@ c     the array  filename is taken from environment variable FORxxxA,
 c      where xxx = io, with default fort.xxxa
 c     the NetCDF filename is taken from environment variable CDFxxx,
 c      where xxx = io, with no default.
+c     the NetCDF deflation level (if any) is taken from environment
+c      variable CDF_DEFLATE.
 c     the NetCDF title and institution are taken from environment
 c      variables CDF_TITLE and CDF_INST.
+c     NAVO convention: public release notice turned on by environment
+c      variable CDF_PUBLIC.
+c     NAVO convention: hours since analysis is taken from environment
+c      variable CDF_TAU.
 c
 c     Supported I/O types are:
 c       frmt=='NetCDF'        for NetCDF I/O,
@@ -1211,6 +1213,7 @@ c
       character*81,     save :: labeli  = ' '
       character*81,     save :: label   = ' '
       integer,          save :: iotype  = -1
+      integer,          save :: deflate =  0
       double precision, save :: date    = 0.d0
       double precision, save :: cell    = 0.d0
       logical,          save :: laxis
@@ -1305,6 +1308,17 @@ c
           call flush(lp)
           stop
         endif
+c
+c       deflation level
+c
+        ncenv = ' '
+        call getenv('CDF_DEFLATE',ncenv)
+        if     (ncenv.eq.' ') then
+          deflate = 0
+        else
+          read(ncenv,*) deflate
+        endif
+        write(lp,*) 'deflate  = ',deflate
 c
 c       initialize labeli.
 c
@@ -1910,12 +1924,22 @@ c
      &                               "axis","X"))
             call ncheck(nf90_def_var(ncfileID,"Latitude",  nf90_float,
      &                               (/pXDimID, pYDimID/), pLatVarID))
+           if     (deflate.gt.0) then
+              call ncheck(nf90_def_var_deflate(ncfileID,pLatVarID,
+     &                                         shuffle=1,deflate=1,
+     &                                         deflate_level=deflate))
+            endif
             call ncheck(nf90_put_att(ncfileID,pLatVarID,
      &                               "standard_name","latitude"))
             call ncheck(nf90_put_att(ncfileID,pLatVarID,
      &                               "units","degrees_north"))
             call ncheck(nf90_def_var(ncfileID,"Longitude", nf90_float,
      &                               (/pXDimID, pYDimID/), pLonVarID))
+            if     (deflate.gt.0) then
+              call ncheck(nf90_def_var_deflate(ncfileID,pLonVarID,
+     &                                         shuffle=1,deflate=1,
+     &                                         deflate_level=deflate))
+            endif
             call ncheck(nf90_put_att(ncfileID,pLonVarID,
      &                               "standard_name","longitude"))
             call ncheck(nf90_put_att(ncfileID,pLonVarID,
@@ -2075,6 +2099,11 @@ c
      &                                 label(33:55)//label(73:81)))
             endif
           endif !NAVO:else
+          if     (deflate.gt.0) then
+            call ncheck(nf90_def_var_deflate(ncfileID,VarID,
+     &                                       shuffle=1,deflate=1,
+     &                                       deflate_level=deflate))
+          endif
           ! leave def mode
           call ncheck(nf90_enddef(ncfileID))
           ! write data into coordinate variables
@@ -2331,6 +2360,11 @@ c
      &                                 label(33:55)//label(73:81)))
             endif
           endif !NAVO:else
+          if     (deflate.gt.0) then
+            call ncheck(nf90_def_var_deflate(ncfileID,VarID,
+     &                                       shuffle=1,deflate=1,
+     &                                       deflate_level=deflate))
+          endif
           ! leave define mode
           call ncheck(nf90_enddef(ncfileID))
           ! get varID and write to array
@@ -2405,8 +2439,14 @@ c     the array  filename is taken from environment variable FORxxxA,
 c      where xxx = io, with default fort.xxxa
 c     the NetCDF filename is taken from environment variable CDFxxx,
 c      where xxx = io, with no default.
+c     the NetCDF deflation level (if any) is taken from environment
+c      variable CDF_DEFLATE.
 c     the NetCDF title and institution are taken from environment
 c      variables CDF_TITLE and CDF_INST.
+c     NAVO convention: public release notice turned on by environment
+c      variable CDF_PUBLIC.
+c     NAVO convention: hours since analysis is taken from environment
+c      variable CDF_TAU.
 c
 c     Supported I/O types are:
 c       frmt=='NetCDF'        for NetCDF I/O,
@@ -2440,6 +2480,7 @@ c
       character*81,     save :: labeli  = ' '
       character*81,     save :: label   = ' '
       integer,          save :: iotype  = -1
+      integer,          save :: deflate =  0
       double precision, save :: date    = 0.d0
       double precision, save :: cell    = 0.d0
       logical,          save :: laxis
@@ -2510,6 +2551,17 @@ c
           call flush(lp)
           stop
         endif
+c
+c       deflation level
+c
+        ncenv = ' '
+        call getenv('CDF_DEFLATE',ncenv)
+        if     (ncenv.eq.' ') then
+          deflate = 0
+        else
+          read(ncenv,*) deflate
+        endif
+        write(lp,*) 'deflate  = ',deflate
 c
 c       initialize labeli.
 c
@@ -2924,12 +2976,22 @@ c
      &                               "axis","X"))
             call ncheck(nf90_def_var(ncfileID,"Latitude",  nf90_float,
      &                               (/pXDimID, pYDimID/), pLatVarID))
+           if     (deflate.gt.0) then
+              call ncheck(nf90_def_var_deflate(ncfileID,pLatVarID,
+     &                                         shuffle=1,deflate=1,
+     &                                         deflate_level=deflate))
+            endif
             call ncheck(nf90_put_att(ncfileID,pLatVarID,
      &                               "standard_name","latitude"))
             call ncheck(nf90_put_att(ncfileID,pLatVarID,
      &                               "units","degrees_north"))
             call ncheck(nf90_def_var(ncfileID,"Longitude", nf90_float,
      &                               (/pXDimID, pYDimID/), pLonVarID))
+            if     (deflate.gt.0) then
+              call ncheck(nf90_def_var_deflate(ncfileID,pLonVarID,
+     &                                         shuffle=1,deflate=1,
+     &                                         deflate_level=deflate))
+            endif
             call ncheck(nf90_put_att(ncfileID,pLonVarID,
      &                               "standard_name","longitude"))
             call ncheck(nf90_put_att(ncfileID,pLonVarID,
@@ -2986,6 +3048,11 @@ c
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
      &                 trim(name)//label(51:55)//label(73:81)))
+          endif
+          if     (deflate.gt.0) then
+            call ncheck(nf90_def_var_deflate(ncfileID,VarID,
+     &                                       shuffle=1,deflate=1,
+     &                                       deflate_level=deflate))
           endif
           ! leave def mode
           call ncheck(nf90_enddef(ncfileID))
@@ -3107,6 +3174,11 @@ c
      &                               "long_name",
      &                 trim(name)//label(51:55)//label(73:81)))
           endif
+          if     (deflate.gt.0) then
+            call ncheck(nf90_def_var_deflate(ncfileID,VarID,
+     &                                       shuffle=1,deflate=1,
+     &                                       deflate_level=deflate))
+          endif
           ! leave define mode
           call ncheck(nf90_enddef(ncfileID))
           ! inquire variable ID
@@ -3161,8 +3233,14 @@ c     the array  filename is taken from environment variable FORxxxA,
 c      where xxx = io, with default fort.xxxa
 c     the NetCDF filename is taken from environment variable CDFxxx,
 c      where xxx = io, with no default.
+c     the NetCDF deflation level (if any) is taken from environment
+c      variable CDF_DEFLATE.
 c     the NetCDF title and institution are taken from environment
 c      variables CDF_TITLE and CDF_INST.
+c     NAVO convention: public release notice turned on by environment
+c      variable CDF_PUBLIC.
+c     NAVO convention: hours since analysis is taken from environment
+c      variable CDF_TAU.
 c
 c     Supported I/O types are:
 c       frmt=='NetCDF'        for NetCDF I/O,
@@ -3198,6 +3276,7 @@ c
       character*81,     save :: labeli  = ' '
       character*81,     save :: label   = ' '
       integer,          save :: iotype  = -1
+      integer,          save :: deflate =  0
       double precision, save :: date    = 0.d0
       double precision, save :: cell    = 0.d0
       logical,          save :: laxis
@@ -3295,6 +3374,17 @@ c
           stop
         endif
 c
+c       deflation level
+c
+        ncenv = ' '
+        call getenv('CDF_DEFLATE',ncenv)
+        if     (ncenv.eq.' ') then
+          deflate = 0
+        else
+          read(ncenv,*) deflate
+        endif
+        write(lp,*) 'deflate  = ',deflate
+c
 c       initialize labeli.
 c
         if     (yrflag.eq.0) then
@@ -3305,7 +3395,7 @@ c
           year  = 365.25d0
         endif
         call fordate(time3(3),yrflag, iyear,month,iday,ihour)
-        write(lp,*) 'ihour =',ihour
+        write(lp,*) 'ihour    =',ihour
         date    = (iday + 100 * month + 10000 * iyear) +
      &            (time3(3)-int(time3(3)))
         if     (artype.eq.1) then
@@ -3915,12 +4005,22 @@ c
      &                               "axis","X"))
             call ncheck(nf90_def_var(ncfileID,"Latitude",  nf90_float,
      &                               (/pXDimID, pYDimID/), pLatVarID))
+           if     (deflate.gt.0) then
+              call ncheck(nf90_def_var_deflate(ncfileID,pLatVarID,
+     &                                         shuffle=1,deflate=1,
+     &                                         deflate_level=deflate))
+            endif
             call ncheck(nf90_put_att(ncfileID,pLatVarID,
      &                               "standard_name","latitude"))
             call ncheck(nf90_put_att(ncfileID,pLatVarID,
      &                               "units","degrees_north"))
             call ncheck(nf90_def_var(ncfileID,"Longitude", nf90_float,
      &                               (/pXDimID, pYDimID/), pLonVarID))
+            if     (deflate.gt.0) then
+              call ncheck(nf90_def_var_deflate(ncfileID,pLonVarID,
+     &                                         shuffle=1,deflate=1,
+     &                                         deflate_level=deflate))
+            endif
             call ncheck(nf90_put_att(ncfileID,pLonVarID,
      &                               "standard_name","longitude"))
             call ncheck(nf90_put_att(ncfileID,pLonVarID,
@@ -4035,6 +4135,11 @@ c
      &                   trim(name)//label(51:55)//label(73:81)))
             endif
           endif !NAVO:else
+          if     (deflate.gt.0) then
+            call ncheck(nf90_def_var_deflate(ncfileID,VarID,
+     &                                       shuffle=1,deflate=1,
+     &                                       deflate_level=deflate))
+          endif
           ! leave def mode
           call ncheck(nf90_enddef(ncfileID))
           ! write data into coordinate variables
@@ -4256,6 +4361,11 @@ c
      &                   trim(name)//label(51:55)//label(73:81)))
             endif
           endif !NAVO:else
+          if     (deflate.gt.0) then
+            call ncheck(nf90_def_var_deflate(ncfileID,VarID,
+     &                                       shuffle=1,deflate=1,
+     &                                       deflate_level=deflate))
+          endif
           ! leave define mode
           call ncheck(nf90_enddef(ncfileID))
           if (iotype.eq.-5) then !NAVO
