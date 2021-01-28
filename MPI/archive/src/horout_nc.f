@@ -1318,7 +1318,7 @@ c
         else
           read(ncenv,*) deflate
         endif
-        write(lp,*) 'deflate  = ',deflate
+        write(lp,*) 'deflate  =',deflate
 c
 c       initialize labeli.
 c
@@ -2439,6 +2439,9 @@ c     the array  filename is taken from environment variable FORxxxA,
 c      where xxx = io, with default fort.xxxa
 c     the NetCDF filename is taken from environment variable CDFxxx,
 c      where xxx = io, with no default.
+c     the NetCDF vertical chunking is taken from environment
+c      variable CDF_KCHUNK.  If not defined or 0 the default chunking
+c      is used, and a value greater than kl-kf+1 is set to kl-kf+1.
 c     the NetCDF deflation level (if any) is taken from environment
 c      variable CDF_DEFLATE.
 c     the NetCDF title and institution are taken from environment
@@ -2472,6 +2475,7 @@ c
 c
       logical          :: lopen
       integer          :: i,j,k,l
+      integer          :: ichunk,jchunk
       integer, save    :: iyear,month,iday,ihour,
      &                    iyrms,monms,idms,ihrms
       real             :: hmin(999),hmax(999),alon
@@ -2480,6 +2484,7 @@ c
       character*81,     save :: labeli  = ' '
       character*81,     save :: label   = ' '
       integer,          save :: iotype  = -1
+      integer,          save :: kchunk  =  0
       integer,          save :: deflate =  0
       double precision, save :: date    = 0.d0
       double precision, save :: cell    = 0.d0
@@ -2552,6 +2557,18 @@ c
           stop
         endif
 c
+c       vertical dimension chunking
+c
+        ncenv = ' '
+        call getenv('CDF_KCHUNK',ncenv)
+        if     (ncenv.eq.' ') then
+          kchunk = 0
+        else
+          read(ncenv,*) kchunk
+          kchunk = min( kchunk, kl-kf+1 )
+        endif
+        write(lp,*) 'kchunk   =',kchunk
+c
 c       deflation level
 c
         ncenv = ' '
@@ -2561,7 +2578,7 @@ c
         else
           read(ncenv,*) deflate
         endif
-        write(lp,*) 'deflate  = ',deflate
+        write(lp,*) 'deflate  =',deflate
 c
 c       initialize labeli.
 c
@@ -3021,10 +3038,22 @@ c
      &                                 "coordinates",
      &                                 "Longitude Latitude Date"))
             endif
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk,1/)))
+            endif
           else !MERSEA
             call ncheck(nf90_def_var(ncfileID,trim(namec),nf90_float,
      &                               (/pLonDimID, pLatDimID, lyrDimID/),
      &                               varID))
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk/)))
+            endif
           endif
           if     (names.ne." ") then
             call ncheck(nf90_put_att(ncfileID,varID,
@@ -3145,10 +3174,22 @@ c
      &                                 "coordinates",
      &                                 "Longitude Latitude Date"))
             endif
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk,1/)))
+            endif
           else !MERSEA
             call ncheck(nf90_def_var(ncfileID,trim(namec),nf90_float,
      &                               (/pLonDimID, pLatDimID, lyrDimID/),
      &                               varID))
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk/)))
+            endif
           endif
           if     (names.ne." ") then
             call ncheck(nf90_put_att(ncfileID,varID,
@@ -3233,6 +3274,9 @@ c     the array  filename is taken from environment variable FORxxxA,
 c      where xxx = io, with default fort.xxxa
 c     the NetCDF filename is taken from environment variable CDFxxx,
 c      where xxx = io, with no default.
+c     the NetCDF vertical chunking is taken from environment
+c      variable CDF_KCHUNK.  If not defined or 0 the default
+c      chunking is used, and a value greater than kz is set to kz.
 c     the NetCDF deflation level (if any) is taken from environment
 c      variable CDF_DEFLATE.
 c     the NetCDF title and institution are taken from environment
@@ -3264,6 +3308,7 @@ c
 c
       logical          :: lopen
       integer          :: i,j,k,l
+      integer          :: ichunk,jchunk
       integer, save    :: iyear,month,iday,ihour,
      &                    iyrms,monms,idms,ihrms
       real             :: hmin(999),hmax(999),alon
@@ -3276,6 +3321,7 @@ c
       character*81,     save :: labeli  = ' '
       character*81,     save :: label   = ' '
       integer,          save :: iotype  = -1
+      integer,          save :: kchunk  =  0
       integer,          save :: deflate =  0
       double precision, save :: date    = 0.d0
       double precision, save :: cell    = 0.d0
@@ -3383,7 +3429,19 @@ c
         else
           read(ncenv,*) deflate
         endif
-        write(lp,*) 'deflate  = ',deflate
+        write(lp,*) 'deflate  =',deflate
+c
+c       vertical dimension chunking
+c
+        ncenv = ' '
+        call getenv('CDF_KCHUNK',ncenv)
+        if     (ncenv.eq.' ') then
+          kchunk = 0
+        else
+          read(ncenv,*) kchunk
+          kchunk = min( kchunk, kz )
+        endif
+        write(lp,*) 'kchunk   =',kchunk
 c
 c       initialize labeli.
 c
@@ -4050,6 +4108,12 @@ c
      &                                 "coordinates",
      &                                 "Longitude Latitude Date"))
             endif
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk,1/)))
+            endif
           elseif (iotype.eq.-5) then !NAVO
             namelv = ''  !default is no long name
             if     (namec.eq.'u') then
@@ -4090,6 +4154,12 @@ c
      &                               (/pLonDimID, pLatDimID,
      &                                 lyrDimID, MTDimID/),
      &                               varID))
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,2, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk,1/)))
+            endif
             if     (namelv.ne." ") then
               call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",trim(namelv)))
@@ -4098,6 +4168,12 @@ c
             call ncheck(nf90_def_var(ncfileID,trim(namec),nf90_float,
      &                            (/pLonDimID, pLatDimID, lyrDimID/),
      &                               varID))
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk/)))
+            endif
           endif
           if     (names.ne." ") then
             call ncheck(nf90_put_att(ncfileID,varID,
@@ -4276,6 +4352,12 @@ c
      &                                 "coordinates",
      &                                 "Longitude Latitude Date"))
             endif
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk,1/)))
+            endif
           elseif (iotype.eq.-5) then !NAVO
             namelv = ''  !default is no long name
             if     (namec.eq.'u') then
@@ -4316,6 +4398,12 @@ c
      &                               (/pLonDimID, pLatDimID,
      &                                 lyrDimID, MTDimID/),
      &                               varID))
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,2, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk,1/)))
+            endif
             if     (namelv.ne." ") then
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",trim(namelv)))
@@ -4324,6 +4412,12 @@ c
             call ncheck(nf90_def_var(ncfileID,trim(namec),nf90_float,
      &                            (/pLonDimID, pLatDimID, lyrDimID/),
      &                               varID))
+            if     (kchunk.gt.0) then
+              call horout_chunk(ii,jj,kchunk,4, lp, ichunk,jchunk)
+              call ncheck(nf90_def_var_chunking(ncfileID,VarID,
+     &                                          NF90_CHUNKED,
+     &                                  (/ichunk,jchunk,kchunk/)))
+            endif
           endif
           if     (names.ne." ") then
             call ncheck(nf90_put_att(ncfileID,varID,
@@ -4416,8 +4510,31 @@ c
       return
       end
 
-
-
+      subroutine horout_chunk(ii,jj,kchunk,nb, lp, ichunk,jchunk)
+      implicit none
+c
+      integer, intent(in ) :: ii,jj,kchunk,nb,lp
+      integer, intent(out) :: ichunk,jchunk
+c
+c     return 3-d chunksizes assuming kchunk for the vertical
+c     nb is the number of bytes per element
+c
+      integer mxchunk,nchunk,nchunk2
+c
+      mxchunk = 4*1024*1024
+c     nchunk  = (ii*jj*kchunk*nb+mxchunk)/mxchunk
+      mxchunk = (mxchunk+kchunk*nb)/(kchunk*nb)  !to prevent integer overflow
+      nchunk  = (ii*jj+mxchunk)/mxchunk
+      nchunk2 = sqrt(nchunk+0.1)+1.0
+*     write(lp,*) 'nchunk  = ',nchunk
+*     write(lp,*) 'nchunk2 = ',nchunk2
+      ichunk  = (ii+nchunk2)/nchunk2
+      jchunk  = (jj+nchunk2)/nchunk2
+      write(lp,*) 'ichunk   =',ichunk
+      write(lp,*) 'jchunk   =',jchunk
+      write(lp,*) 'kchunk   =',kchunk
+      write(lp,*) 'chunk siz=',ichunk*jchunk*kchunk*nb
+      end subroutine horout_chunk
 
       subroutine nchek(cnf90,status)
       use mod_xc   ! HYCOM communication API
@@ -4535,4 +4652,3 @@ c
       hmin = hhmin
       hmax = hhmax
       end subroutine ncrange_1d
-
