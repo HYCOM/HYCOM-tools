@@ -227,6 +227,7 @@ c
               endif !sshflg
             enddo !k
 c
+            oneta(i,j) = 1.0 + pbaro(i,j)/p(i,j,kk+1)
             montg(i,j) = psikk(i,j,1)+
      &          ( p(i,j,kk+1)*(thkk(i,j,1)-thstar(kk))
      &            -pbaro(i,j)*(thstar(kk)+thbase) )*thref**2
