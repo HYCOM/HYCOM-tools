@@ -305,7 +305,7 @@ c
 c
       integer, intent(in) :: iweight
 c
-c --- add an archive sqaured to the mean.
+c --- add an archive squared to the mean.
 c --- layer quantities weighted by layer thickness (i.e. by dw).
 c
       integer i,im,j,jm,k,ktr
@@ -339,13 +339,23 @@ c
             else
               im = ii
             endif
+c ---       depthu is either depths(i,j) or depths(i-1,j)
+            if     (depths(i,j).eq.depths(im,j)) then
+              onetaw_u(i,j) = 0.5*(onetaw(i,j)+onetaw(im,j))
+            elseif (depths(i,j).eq.depthu(i,j)) then
+              onetaw_u(i,j) =      onetaw(i,j)
+            else
+              onetaw_u(i,j) =                  onetaw(im,j)
+            endif
             do k= 1,kk
               swk = s*max(0.0,
      &                    min(depthu(i,j),
      &                        0.5*(p(i,j,k+1)+p(im,j,k+1))) -
      &                    min(depthu(i,j),
-     &                        0.5*(p(i,j,k  )+p(im,j,k  )))  )
-              u_m(i,j,k) = u_m(i,j,k) + u(i,j,k)**2 * swk
+     &                        0.5*(p(i,j,k  )+p(im,j,k  )))  )*
+     &              onetaw_u(i,j)
+              dpu_m(i,j,k) = dpu_m(i,j,k) +               swk
+                u_m(i,j,k) =   u_m(i,j,k) + u(i,j,k)**2 * swk
             enddo
           endif !iu
 c
@@ -358,13 +368,23 @@ c
             else
               jm = jj
             endif
+c ---       depthv is either depths(i,j) or depths(i,j-1)
+            if     (depths(i,j).eq.depths(i,jm)) then
+              onetaw_v(i,j) = 0.5*(onetaw(i,j)+onetaw(i,jm))
+            elseif (depths(i,j).eq.depthv(i,j)) then
+              onetaw_v(i,j) =      onetaw(i,j)
+            else
+              onetaw_v(i,j) =                  onetaw(i,jm)
+            endif
             do k= 1,kk
               swk = s*max(0.0,
      &                    min(depthv(i,j),
      &                        0.5*(p(i,j,k+1)+p(i,jm,k+1))) -
      &                    min(depthv(i,j),
-     &                        0.5*(p(i,j,k  )+p(i,jm,k  )))  )
-              v_m(i,j,k) = v_m(i,j,k) + v(i,j,k)**2 * swk
+     &                        0.5*(p(i,j,k  )+p(i,jm,k  )))  )*
+     &              onetaw_v(i,j)
+              dpv_m(i,j,k) = dpv_m(i,j,k) +               swk
+                v_m(i,j,k) =   v_m(i,j,k) + v(i,j,k)**2 * swk
             enddo
           endif !iv
 c
