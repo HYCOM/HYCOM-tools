@@ -986,7 +986,8 @@ c ---     convert to vbaro + v.prime (if necessary)
       endif !debug
 c
       if     (tmljmp.gt.0.0) then
-        call mixlay(dpmixl,temp,saln,p,spval,ii,jj,kk, tmljmp)
+        call mixlay(dpmixl,temp,saln,p,spval,ii,jj,kk,
+     &              itest,jtest, tmljmp)
         if     (name_o.eq.'NOME') then
           dpbl(:,:) = dpmixl(:,:)
         endif
@@ -1834,10 +1835,11 @@ c
       return
       end
 
-      subroutine mixlay(mld,temp,saln,p,flag,ii,jj,kk, tmljmp)
+      subroutine mixlay(mld,temp,saln,p,flag,ii,jj,kk,
+     &                  itest,jtest, tmljmp)
       implicit none
 c
-      integer ii,jj,kk
+      integer ii,jj,kk, itest,jtest
       real    mld(ii,jj),
      &        temp(ii,jj,kk),saln(ii,jj,kk),p(ii,jj,kk+1),flag,tmljmp
 c
@@ -1878,20 +1880,17 @@ c
       parameter (ldebug_dpmixl=.true. )
 c
       integer i,j,k,lp
-      integer itest,jtest
-      real    qonem
+      real    onemm,qonem
       real    zgrid(kk+1),thloc(kk),dp(kk),prsk,sigmlj,z
-      REAL    thsur,thtop,thjmp(kk)
-      REAL    alfadt,betads
+      real    thsur,thtop,thjmp(kk)
+      real    alfadt,betads
 c
       include '../../include/stmt_fns_SIGMA0_17term.h'
 c
       lp = 6
 c
-      itest = ii/2
-      jtest = jj/2
-c
-      qonem  = 1.0/9806.0  !pressure units
+      onemm = 0.001*9806.0
+      qonem =   1.0/9806.0  !pressure units
 c
       do j= 1,jj
         do i= 1,ii
@@ -1930,8 +1929,8 @@ c
               thloc(k) = thloc(k-1)-alfadt-betads
               zgrid(k) = -0.5*(p(i,j,k+1) + p(i,j,k))
                  dp(k) =       p(i,j,k+1) - p(i,j,k)
-              zgrid(k) = min( zgrid(k), zgrid(k-1) - 0.001 ) !negative
-                 dp(k) = max(    dp(k), 0.001 )
+              zgrid(k) = min( zgrid(k), zgrid(k-1) - onemm ) !negative
+                 dp(k) = max(    dp(k), onemm )
             enddo !k
             zgrid(kk+1) = -p(i,j,kk+1)
 c
