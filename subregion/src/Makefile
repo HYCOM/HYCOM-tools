@@ -29,7 +29,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod *.inc M*log *pog *ion *nam *grid *arche *field *gmap *gmapi *count
+	/bin/rm -f *.o *.a *.mod *.inc M*log *pog *ion *nam *grid *arche *field *gmap *gmapi *count
 
 MODS = mod_xc.o mod_za.o mod_zb.o wtime.o zh.o
 

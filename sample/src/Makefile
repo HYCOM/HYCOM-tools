@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod M*log *tspt *port *port2 *port3 *_lm *_baro *vel *mn *mn2 *mn3 *2p0
+	/bin/rm -f *.o *.a *.mod M*log *tspt *port *port2 *port3 *_lm *_baro *vel *mn *mn2 *mn3 *2p0
 
 MODS =	mod_trans.o mod_xc.o mod_za.o wtime.o
 OBJS =	blkin.o geopar.o getdat.o zh.o

@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod M*log *mnsq *std *diff *wsum
+	/bin/rm -f *.o *.a *.mod M*log *mnsq *std *diff *wsum
 
 MODS     =	mod_mean.o mod_mean_esmf.o mod_xc.o mod_za.o wtime.o zh.o
 

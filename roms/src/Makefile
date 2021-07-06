@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod M*log *grid
+	/bin/rm -f *.o *.a *.mod M*log *grid
 
 MODS = mod_xc.o mod_za.o wtime.o
 LIBS = zh.o
