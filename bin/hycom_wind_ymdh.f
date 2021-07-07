@@ -42,14 +42,16 @@ c
 c
       if (yrflag.eq.3) then
         if     (mod(iyear,4).eq.0) then
-          k = 3
+          k = 3  !leap year
         else
-          k = 2
+          k = 2  !standard year
         endif
+      elseif (yrflag.eq.4) then
+        k = 2  !365-day year
       elseif (yrflag.eq.0) then
-        k = 1
+        k = 1  !360-day year
       else
-        k = 3
+        k = 3  !366-day year
       endif
       do m= 1,12
         if     (jday.ge.month0(m,  k) .and.

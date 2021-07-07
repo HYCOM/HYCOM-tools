@@ -1,6 +1,6 @@
 #
 # --- create HYCOM related netCDF executables.
-# --- run after Make_all.com
+# --- run after Make_all.csh
 #
 set echo
 #
@@ -31,7 +31,7 @@ if ($OS == "Linux") then
   setenv OS LinuxIF
 endif
 #
-# --- the following are extracted from hycom/ALL/config/*_setup
+# --- the following are extracted from HYCOM-tools/config/*_setup
 #
 switch ($OS)
 case 'LinuxPGF':
@@ -95,14 +95,10 @@ foreach f ( hycom2nc hycom_binning_nc hycom_scrip_nc )
   /bin/ln -s  ${f}_${OS} ${f}
 end
 #
+# --- hycom_profile_lib.o, from Make_all.csh, might be new
+#
 foreach f ( hycom_profile2z_nc hycom_profile2s_nc hycom_seaice_nc )
-  if ( ! -e ${f}_${OS} ) then
-    $FC $FFLAGS ${f}.F hycom_profile_lib.o hycom_endian_io.o parse.o ${EXTRANCDF} -o ${f}_${OS}
-  else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then
-    $FC $FFLAGS ${f}.F hycom_profile_lib.o hycom_endian_io.o parse.o ${EXTRANCDF} -o ${f}_${OS}
-  else
-    echo "${f}_${OS} is already up to date"
-  endif
+  $FC $FFLAGS ${f}.F hycom_profile_lib.o hycom_endian_io.o parse.o ${EXTRANCDF} -o ${f}_${OS}
   touch       ${f}
   /bin/rm -f  ${f}
   chmod a+rx  ${f}_${OS}

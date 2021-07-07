@@ -12,7 +12,7 @@ if ($OS == "Linux") then
   setenv OS LinuxIF
 endif
 #
-# --- the following are extracted from hycom/ALL/config/*_setup
+# --- the following are extracted from HYCOM-tools/config/*_setup
 #
 switch ($OS)
 case 'LinuxPGF':
@@ -200,20 +200,34 @@ end
 #
 # --- archive reading programs, may additionally need hycom_profile_lib.o
 #
-$FC $FFLAGS -c hycom_profile_lib.F
-#
-foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
-            hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
-            hycom_profile_stokes hycom_bad_velocity )
-  if ( ! -e ${f}_${OS} ) then
+if (! -e hycom_profile_lib.o  ) then
+  $FC $FFLAGS -c hycom_profile_lib.F
+  foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
+              hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
+              hycom_profile_stokes hycom_bad_velocity )
     $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
-  else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then
+  end
+else if ( -f `find hycom_profile_lib.F -prune -newer hycom_profile_lib.o` ) then
+  $FC $FFLAGS -c hycom_profile_lib.F
+  foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
+              hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
+              hycom_profile_stokes hycom_bad_velocity )
     $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
-  else
-    echo "${f}_${OS} is already up to date"
-  endif
+  end
+else
+  foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
+              hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
+              hycom_profile_stokes hycom_bad_velocity )
+    if ( ! -e ${f}_${OS} ) then
+      $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then
+      $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    else
+      echo "${f}_${OS} is already up to date"
+    endif
+  end
   touch       ${f}
   /bin/rm -f  ${f}
   chmod a+rx  ${f}_${OS}
   /bin/ln -s  ${f}_${OS} ${f}
-end
+endif
