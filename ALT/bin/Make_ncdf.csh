@@ -28,6 +28,7 @@ if ($OS == "Linux") then
 # setenv OS XC30
 # setenv OS LinuxPGF
 # setenv OS LinuxGF
+# setenv OS LinuxAIF
   setenv OS LinuxIF
 endif
 #
@@ -49,6 +50,14 @@ case 'LinuxIF':
 	setenv FLIBS	""
 	setenv CC	"icc"
 	setenv CFLAGS	"-traceback -xHost -O"
+	breaksw
+case 'LinuxAIF':
+#       compile for Intel compiler and AMD processors
+	setenv FC	"ifort"
+	setenv FFLAGS	"-traceback -march=core-avx2 -O3 -fp-model precise -ftz -align array64byte -convert big_endian -assume byterecl -warn nogeneral -diag-disable 10212"
+	setenv FLIBS	""
+	setenv CC	"icc"
+	setenv CFLAGS	"-traceback -O"
 	breaksw
 case 'LinuxGF':
 #       compile for gfortran

@@ -8,7 +8,7 @@ set echo
 /bin/rm -f *.mod
 /bin/rm -f *.inc
 #
-foreach OS ( .exe _LinuxGF _LinuxIF _LinuxPGF _XC30 _AIX )
+foreach OS ( .exe _LinuxGF _LinuxIF _LinuxAIF _LinuxPGF _XC30 _AIX )
 #start OS
 foreach f ( clim_stat wind_stat wind_stat_check \
             wind_stat_range wind_stat_range2 wind_stat_range4 wind_stat_range5 \
@@ -23,7 +23,7 @@ end
 #end OS
 end
 #
-foreach OS ( "" _LinuxGF _LinuxIF _LinuxPGF _XC30 _AIX )
+foreach OS ( "" _LinuxGF _LinuxIF _LinuxAIF _LinuxPGF _XC30 _AIX )
 #start OS
 foreach f ( echo2 endian )
   touch       ${f}${OS}
@@ -57,7 +57,7 @@ end
 foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_crosscorr hycom_crosscorr_lag hycom_join \
             track_histogram unf42hycom unf82hycom hycom2raw hycom2raw8 hycom2unf4 hycom2unf8 \
-            hycom_1st_isopyc hycom_arctic hycom_arctic_ok hycom_bandmask \
+            hycom_1st_isopyc hycom_arctic hycom_arctic_ok hycom_bad_velocity hycom_bandmask \
             hycom_binning hycom_binning_fld hycom_bouflx hycom_clip hycom_count \
             hycom_diurnal hycom_eddy_center hycom_expr hycom_extent2ice \
             hycom_extract hycom_fill hycom_fill_sm \
