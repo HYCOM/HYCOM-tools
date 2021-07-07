@@ -534,8 +534,8 @@ c
      &                 sin(pang(i,jlat))*fluxubt
               fluxs  (i,j,1) = fluxs  (i,j,2)
               fluxsbt(i,j,1) = fluxsbt(i,j,2)
-              fluxs  (i,j,2) = fluxm  /dp(i,jlat,k)
-              fluxsbt(i,j,2) = fluxmbt/dp(i,jlat,k)
+              fluxs  (i,j,2) = fluxm  /max(dp(i,jlat,k),onecm)
+              fluxsbt(i,j,2) = fluxmbt/max(dp(i,jlat,k),onecm)
               sum2(j) = sum2(j) + fluxm
               sum3(j) = sum3(j) + fluxmbt
               sum4(j) = sum4(j) + fluxm  *spcifh*temp(i,jlat,k)/thref
