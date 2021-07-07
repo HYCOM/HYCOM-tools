@@ -21,9 +21,10 @@ c
       character ctrc_title(99)*80,ctrc_units(99)*80,
      &          ctrc_lname(99)*80,ctrc_sname(99)*80
       logical   lcell,ltheta,smooth,lsteric,icegln,lperiod,baclin,
-     &          xyward,lpvel
+     &          xyward,lpvel,intfwv
 c
       integer          artype,iexpt,iversn,kkin,yrflag,mxlflg
+      integer          itest,jtest
       real             bot,zbot,dudxdn,dudxup,dvdydn,dvdyup,dbar
       double precision time3(3)
       double precision dsumth,dsumdp
@@ -146,9 +147,16 @@ c
 c ---   'smooth' = smooth the layered fields
         call blkinl(smooth,'smooth')
 c
+c ---   'intfwv' = calculate layer w-vel at interfaces  (0=no:DEFAULT,1=yes)
 c ---   'baclin' = extract baroclinic velocity (0=total:DEFAULT,1=baroclinic)
 c ---   'xyward' = output original unrotated velocities (0=no:DEFAULT,1=yes)
-        call blkini3(i,j,  'baclin','xyward','iorign')  !read one of three
+        call blkini4(i,j,  'baclin','xyward','iorign','intfwv')  !read 1 of 4 
+        if (j.eq.4) then 
+          intfwv = i.eq.1  !interface vs layer center w-vel
+          call blkini3(i,j,  'baclin','xyward','iorign')  !read 1 of 3 
+        else
+          intfwv = .false. !layer center w-vel
+        endif
         if (j.eq.1) then
           baclin = i.eq.1  !baroclinic, vs total, velocity
           call blkini2(i,j,  'xyward','iorign')  !read one of two
@@ -190,6 +198,8 @@ c ---   The size of the subgrid is determined by ii,jj.
      &    ' ...',iorign+ii-1,'j =',jorign,' ...',jorign+jj-1
         call flush(lp)
 c
+c --- 'itest ' = longitudinal sampled test point (optional, default 0)
+c --- 'jtest ' = latitudinal  sampled test point (optional, default 0)
 c --- 'inbot ' = read in bot and/or zbot (1=bot,2=zbot,3=bot&zbot)
 c ---              optional, default bot=0.0 and zbot=0.0 (no bottom value)
 c --- 'bot   ' = ignore layers within bot of the bottom
@@ -200,26 +210,31 @@ c ---                    but linear across each layer (PLM) for kzi.
 c ---             itype=2 is always parabolic across each layer (PPM).
 c ---             itype=3 is PCHIP  between cell centers    for kz,
 c ---                      and is not currently implemented for kzi.
-      call blkini2(i,j,  'inbot ','itype ')  !read inbot  or itype
-      if (j.eq.1) then
+      itest = 0
+      jtest = 0
+      bot   = 0.0
+      zbot  = 0.0
+      call blkini3(i,j, 'inbot ','itype ','itest ')  !read itest, inbot or itype
+      if     (j.eq.3) then !itest
+        itest  = i
+        call blkini(jtest, 'jtest ')
+        call blkini2(i,j, 'inbot ','itype ')  !read inbot or itype
+      endif
+      if     (j.eq.1) then !inbot
         if     (i.eq.3) then !bot and zbot
           call blkinr(bot,   
      &               'bot   ','("blkinr: ",a6," =",f11.4," m")')
           call blkinr(zbot,   
      &               'zbot  ','("blkinr: ",a6," =",f11.4," m")')
         elseif (i.eq.2) then !zbot only
-          bot   = 0.0
           call blkinr(zbot,   
      &               'zbot  ','("blkinr: ",a6," =",f11.4," m")')
         else !bot only (default)
           call blkinr(bot,   
      &               'bot   ','("blkinr: ",a6," =",f11.4," m")')
-          zbot  = 0.0
         endif
         call blkini(itype,'itype ')
-      else
-        bot   = 0.0
-        zbot  = 0.0
+      else  !itype
         itype = i
       endif
       if     (itype.lt.0 .or. itype.gt.3) then
@@ -253,6 +268,13 @@ c ---     'z     ' = sample depth (follows kz)
           endif
         enddo !k
       else !lcell
+        if     (intfwv) then
+          write(lp,*)
+          write(lp,*) 'error - intfwv=.true. not implemented for zi'
+          write(lp,*)
+          call flush(lp)
+          stop
+        endif
         if     (itype.eq.3) then
           write(lp,*)
           write(lp,*) 'error - itype=3 not implemented for zi'
@@ -664,12 +686,31 @@ c --- fluid vertical velocity
             dvdydn=
      &            (v(i  ,j+1,1)*scvx(i  ,j+1)-v(i,j,1)*scvx(i,j))
      &        /(scpx(i,j)*scpy(i,j))
-            w(i,j,1)=0.5*dp(i,j,1)*(dudxdn+dvdydn)
+            if     (intfwv) then
+              w(i,j,1)=    dp(i,j,1)*(dudxdn+dvdydn)  !interface
+            else
+              w(i,j,1)=0.5*dp(i,j,1)*(dudxdn+dvdydn)  !layer center
+            endif
           else
             w(i,j,1) = flag
           endif
         enddo
       enddo
+      if     (itest.gt.0) then
+        i=itest
+        j=jtest
+        if     (intfwv) then
+          write(lp,'(a,i3,f10.4,f11.7)')
+     &      'wn: ',0,0.0,0.0
+          write(lp,'(a,i3,f10.4,f11.7)')
+     &      'wn: ',1,dp(i,j,1),w(i,j,1)
+        else
+          write(lp,'(a,i3,f10.4,f11.7)')
+     &      'wn: ',1,0.5*dp(i,j,1),w(i,j,1)
+          write(lp,'(a,i3,f10.4,f11.7)')
+     &      'wn: ',k,0.5*(p(i,j,k)+p(i,j,k+1)),w(i,j,k)
+        endif
+      endif !test
       do k= 2,kkin
         do j= 1,jj-1
           do i= 1,ii-1
@@ -724,12 +765,20 @@ c --- fluid vertical velocity
      &              (v(i  ,j+1,k  )*scvx(i  ,j+1)-
      &               v(i  ,j  ,k  )*scvx(i  ,j  ))
      &              /(scpx(i,j)*scpy(i,j))
-              w(i,j,k)=w(i,j,k-1)+0.5*(dp(i,j,k-1)*(dudxup+dvdyup)+
-     &                                 dp(i,j,k  )*(dudxdn+dvdydn)-
-     &                  (u(i  ,j  ,k)-u(i  ,j  ,k-1))*dpdx(i  ,j  )-
-     &                  (u(i+1,j  ,k)-u(i+1,j  ,k-1))*dpdx(i+1,j  )-
-     &                  (v(i  ,j  ,k)-v(i  ,j  ,k-1))*dpdy(i  ,j  )-
-     &                  (v(i  ,j+1,k)-v(i  ,j+1,k-1))*dpdy(i  ,j+1))
+              if     (intfwv) then
+                w(i,j,k)=w(i,j,k-1)+0.5*(2.0*dp(i,j,k)*(dudxdn+dvdydn)-
+     &                    (u(i  ,j  ,k)-u(i  ,j  ,k-1))*dpdx(i  ,j  )-
+     &                    (u(i+1,j  ,k)-u(i+1,j  ,k-1))*dpdx(i+1,j  )-
+     &                    (v(i  ,j  ,k)-v(i  ,j  ,k-1))*dpdy(i  ,j  )-
+     &                    (v(i  ,j+1,k)-v(i  ,j+1,k-1))*dpdy(i  ,j+1) )
+              else
+                w(i,j,k)=w(i,j,k-1)+0.5*(dp(i,j,k-1)*(dudxup+dvdyup)+
+     &                                   dp(i,j,k  )*(dudxdn+dvdydn)-
+     &                    (u(i  ,j  ,k)-u(i  ,j  ,k-1))*dpdx(i  ,j  )-
+     &                    (u(i+1,j  ,k)-u(i+1,j  ,k-1))*dpdx(i+1,j  )-
+     &                    (v(i  ,j  ,k)-v(i  ,j  ,k-1))*dpdy(i  ,j  )-
+     &                    (v(i  ,j+1,k)-v(i  ,j+1,k-1))*dpdy(i  ,j+1) )
+              endif
             else
               w(i,j,k) = flag
             endif
@@ -741,20 +790,38 @@ c --- fluid vertical velocity
         do j= 1,jj
           w(ii,j ,k) = flag
         enddo
-      enddo
+        if     (itest.gt.0) then
+          i=itest
+          j=jtest
+          if     (intfwv) then
+            write(lp,'(a,i3,f10.4,f11.7)')
+     &        'wn: ',k,p(i,j,k+1),w(i,j,k)
+          else
+            write(lp,'(a,i3,f10.4,f11.7)')
+     &        'wn: ',k,0.5*(p(i,j,k)+p(i,j,k+1)),w(i,j,k)
+          endif
+        endif !test
+      enddo !k
 c
-c --- w is noisy - smooth at least once.
-c
-      if     (smooth) then
-        do k= 1,kkin
-          call psmoo(w(1,1,k),work)
-          call psmoo(w(1,1,k),work)
-        enddo
+      if     (intfwv) then
+        if     (smooth) then
+          do k= 1,kkin
+            call psmoo(w(1,1,k),work)
+          enddo
+        endif
       else
-        do k= 1,kkin
-          call psmoo(w(1,1,k),work)
-        enddo
-      endif
+c ---   w is noisy - smooth at least once.
+        if     (smooth) then
+          do k= 1,kkin
+            call psmoo(w(1,1,k),work)
+            call psmoo(w(1,1,k),work)
+          enddo
+        else
+          do k= 1,kkin
+            call psmoo(w(1,1,k),work)
+          enddo
+        endif
+      endif !intfwv
       endif !iowvlin
 c
       do 7 j=1,jj
@@ -1506,8 +1573,21 @@ c --- 'wvlio ' = w-velocity I/O unit (0 no I/O)
               utilk(i,j,k)=w(i,j,k)
             enddo
           enddo
+          if     (itest.gt.0 .and. .not.intfwv) then
+            i=itest
+            j=jtest
+            write(lp,'(a,i3,f10.4,f11.7)')
+     &        'wl: ',k,0.5*(p(i,j,k)+p(i,j,k+1)),w(i,j,k)
+          endif !test
         enddo
-        if     (.not.lcell) then !point interpolation
+        if     (intfwv) then !linear between interfaces
+          if     (itest.gt.0) then
+          call infac2z_debug(utilk,p,utilz,zz,flag,ii,jj,kk,kz,
+     &                       0,1, itest,jtest,lp)
+          else
+          call infac2z(utilk,p,utilz,zz,flag,ii,jj,kk,kz,0,1)
+          endif !test
+        elseif (.not.lcell) then !point interpolation
           call layer2z(utilk,p,utilz,zz,flag,ii,jj,kk,kz,itype)
         else !cell average
           call layer2c(utilk,p,utilz,zi,flag,ii,jj,kk,kz,itype)
@@ -1518,6 +1598,16 @@ c --- 'wvlio ' = w-velocity I/O unit (0 no I/O)
      &              'upward_sea_water_velocity',    ! ncdf standard_name
      &              'm/s',                          ! units
      &              kz, frmt,ioin)
+        if     (itest.gt.0) then
+          i=itest
+          j=jtest
+          do k= 1,kz
+            if     (utilz(i,j,k).ne.flag) then
+              write(lp,'(a,i3,f10.4,f11.7)')
+     &          'wz: ',k,zz(k),utilz(i,j,k)
+            endif
+          enddo !k
+        endif !test
       endif
 c
 c --- ----------------

@@ -165,11 +165,11 @@ c
       return
       end
 
-      subroutine infac2z(a,p,az,z,flag,ii,jj,kk,kz,itype)
+      subroutine infac2z(a,p,az,z,flag,ii,jj,kk,kz,atype,itype)
       implicit none
 c
-      integer ii,jj,kk,kz,itype
-      real    a(ii,jj,kk+1),p(ii,jj,kk+1),az(ii,jj,kz),z(kz),flag
+      integer ii,jj,kk,kz,atype,itype
+      real    a(ii,jj,*),p(ii,jj,kk+1),az(ii,jj,kz),z(kz),flag
 c
 c**********
 c*
@@ -184,8 +184,12 @@ c       z     - target z-level  depths (non-negative m)
 c       flag  - data void (land) marker
 c       ii    - 1st dimension of a,p,az
 c       jj    - 2nd dimension of a,p,az
-c       kk    - 3rd dimension of a  (number of layers)
-c       kz    - 3rd dimension of az (number of levels)
+c       kk    - 3rd dimension of p -1 (number of layers)
+c       kz    - 3rd dimension of az   (number of levels)
+c       atype - input array type
+c                 =0; 3rd dimension a is kk;   surface is 0.0
+c                 =1; 3rd dimension a is kk+1; surface is interface 1
+c                 =2; 3rd dimension a is kk;   surface is same as interface 1
 c       itype - interpolation type
 c                 =1; linear interpolation between interfaces
 c
@@ -206,6 +210,7 @@ c**********
 c
       integer i,j,k,l,lf
       real    s,zk,z0,zm,zp
+      real    ai(kk+1)
 c
       do j= 1,jj
         do i= 1,ii
@@ -214,6 +219,15 @@ c
               az(i,j,k) = flag  ! land
             enddo
           else
+            if     (atype.eq.0) then
+              ai(1) = 0.0
+              ai(2:kk+1) = a(i,j,1:kk)
+            elseif (atype.eq.2) then
+              ai(1) = a(i,j,1)
+              ai(2:kk+1) = a(i,j,1:kk)
+            else
+              ai(1:kk+1) = a(i,j,1:kk+1)
+            endif
             lf=1
             do k= 1,kz
               zk=z(k)
@@ -229,9 +243,119 @@ c
                     z0 = p(i,j,l+1)
                     zm = p(i,j,l)
                     s  = (z0 - zk)/(z0 - zm)
-                    az(i,j,k) = s*a(i,j,l) + (1.0-s)*a(i,j,l+1)
+                    az(i,j,k) = s*ai(l) + (1.0-s)*ai(l+1)
 *                 endif
                   lf = l
+                  exit
+                elseif (l.eq.kk) then
+                  az(i,j,k) = flag  ! below the bottom
+                  lf = l
+                  exit
+                endif
+              enddo !l
+            enddo !k
+          endif
+        enddo !i
+      enddo !j
+      return
+      end
+
+      subroutine infac2z_debug(a,p,az,z,flag,ii,jj,kk,kz,
+     &                         atype,itype, itest,jtest,lp)
+      implicit none
+c
+      integer ii,jj,kk,kz,atype,itype, itest,jtest,lp
+      real    a(ii,jj,*),p(ii,jj,kk+1),az(ii,jj,kz),z(kz),flag
+c
+c**********
+c*
+c  1) interpolate a field at layer interfaces to fixed z depths
+c
+c  2) input arguments:
+c       a     - scalar field in layer interface space
+c       p     - layer interface depths (non-negative m)
+c                 p(:,:,   1) is the surface
+c                 p(:,:,kk+1) is the bathymetry
+c       z     - target z-level  depths (non-negative m)
+c       flag  - data void (land) marker
+c       ii    - 1st dimension of a,p,az
+c       jj    - 2nd dimension of a,p,az
+c       kk    - 3rd dimension of p -1 (number of layers)
+c       kz    - 3rd dimension of az   (number of levels)
+c       atype - input array type
+c                 =0; 3rd dimension a is kk;   surface is 0.0
+c                 =1; 3rd dimension a is kk+1; surface is interface 1
+c                 =2; 3rd dimension a is kk;   surface is same as interface 1
+c       itype - interpolation type
+c                 =1; linear interpolation between interfaces
+c
+c  3) output arguments:
+c       az    - scalar field in z-space
+c
+c  4) except at data voids, must have:
+c           p(:,:,   1) == zero (surface)
+c           p(:,:, l+1) >= p(:,:,l)
+c           p(:,:,kk+1) == bathymetry
+c           0 <= z(k) <= z(k+1)
+c     note that z(k) > p(i,j,kk+1) implies that az(i,j,k)=flag,
+c      since the z-level is then below the bathymetry.
+c
+c  5) Alan J. Wallcraft, Naval Research Laboratory, February 2002.
+c*
+c**********
+c
+      integer i,j,k,l,lf
+      real    s,zk,z0,zm,zp
+      real    ai(kk+1)
+c
+      do j= 1,jj
+        do i= 1,ii
+          if     (a(i,j,1).eq.flag) then
+            do k= 1,kz
+              az(i,j,k) = flag  ! land
+            enddo
+          else
+            if     (atype.eq.0) then
+              ai(1) = 0.0
+              ai(2:kk+1) = a(i,j,1:kk)
+            elseif (atype.eq.2) then
+              ai(1) = a(i,j,1)
+              ai(2:kk+1) = a(i,j,1:kk)
+            else
+              ai(1:kk+1) = a(i,j,1:kk+1)
+            endif
+            if     (i.eq.itest .and. j.eq.jtest) then
+              do l= 1,kk+1
+                write(lp,'(a,i3,f10.4,f11.7)')
+     &            'wi: ',l,p(i,j,l),ai(l)
+              enddo
+            endif
+            lf=1
+            do k= 1,kz
+              zk=z(k)
+              do l= lf,kk
+                if     (p(i,j,l).le.zk .and. p(i,j,l+1).ge.zk) then
+c
+c                 z(k) is in layer l.
+c
+*                 if     (itype.eq.1) then
+c
+c                   linear interpolation between interfaces
+c
+                    z0 = p(i,j,l+1)
+                    zm = p(i,j,l)
+                    s  = (z0 - zk)/(z0 - zm)
+                    az(i,j,k) = s*ai(l) + (1.0-s)*ai(l+1)
+*                 endif
+                  lf = l
+                  if     (i.eq.itest .and. j.eq.jtest) then
+                    write(lp,'(a,i3,f10.4,f11.7,f8.4)')
+     &                'wt: ',l,p(i,j,l),ai(l),s
+                    write(lp,'(a,i3,f10.4,f11.7)')
+     &                'wz: ',k,zk,az(i,j,k)
+                    write(lp,'(a,i3,f10.4,f11.7,f8.4)')
+     &                'wb: ',l+1,p(i,j,l+1),ai(l+1),(1.0-s)
+                  endif
                   exit
                 elseif (l.eq.kk) then
                   az(i,j,k) = flag  ! below the bottom
