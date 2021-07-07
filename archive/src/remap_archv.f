@@ -13,12 +13,13 @@ c
       logical   initl,trcout,lsteric,icegln,vskmap
 c
       integer          artype,iexpt,iversn,yrflag
-      integer          i,ia,ibad,j,ja,k,k2,kkin,kkout,l,n,newtop
+      integer          i,ia,ibad,j,ja,k,k2,kbot,kkin,kkout,l,n,newtop
       integer          nhybrd,nsigma
       real             skmap(0:999),s2
       real             dp00,dp00x,dp00f,ds00,ds00x,ds00f,dp0ij,
      &                 dp0k(999),dp0kf,dpm,dpms,dpns,
-     &                 ds0k(999),ds0kf,dsm,dsms,dsns,qdep
+     &                 ds0k(999),ds0kf,dsm,dsms,dsns,qdep,
+     &                 dpold,dpthin
       real             u1(999),v1(999),t1(999),s1(999),r1(999),
      &                 uz(999),vz(999),tz(999),sz(999),rz(999),
      &                 p1(0:999),pz(0:999)
@@ -26,10 +27,10 @@ c
       real             hmina,hmaxa
       double precision time3(3),time,year
 c
-      real, allocatable :: pout(:,:,:),skm(:,:,:)
+      real, allocatable, dimension (:,:)   :: work
+      real, allocatable, dimension (:,:,:) :: pout,skm
 c
       data trcout/.false./  ! must be .false. (no tracer remapping)
-      data initl /.true. /
 c
       call xcspmd
       call zaiost
@@ -53,7 +54,7 @@ c
       call flush(lp)
       read (*,'(a)') flnm_o
       write (lp,'(2a)') 'output file: ',trim(flnm_o)
-      read (*,'(a)') flnm_o
+      read (*,'(a)') flnm_k
       write (lp,'(2a)') 'skmap  file: ',trim(flnm_k)
       vskmap = trim(flnm_k).ne.'NONE'
       call flush(lp)
@@ -80,13 +81,15 @@ c
       kkmax = max(kkin,kkout)
       call plot_alloc
 c
+c --- read depth for land masks
+c
       dpthfil = 'regional.depth'
 c
-      do j=1,jj
-        do i=1,ii
-          p(i,j,1)=0.
-        enddo
-      enddo
+        allocate( work(idm,jdm) )
+      call getdepth(work)
+      deallocate( work )
+c
+      write(lp,*) 'exit getdepth'
 c
 c --- land masks.
 c
@@ -95,6 +98,12 @@ c
       do j= 1,jj
         do i= 1,ii
           depths(i,j) = depths(i,j)*onem
+        enddo
+      enddo
+c
+      do j=1,jj
+        do i=1,ii
+          p(i,j,1)=0.
         enddo
       enddo
 c
@@ -254,9 +263,10 @@ c
       do k=1,kkout
         if     (vskmap) then
           call zaiord(skm(1,1,k),ip,.false., hmina,hmaxa, 9)
-          write(lp,'(/ a,2f10.4 /)')
-     &        'kkmap range = ',hmina,hmaxa
+          write(lp,'(a,2f10.4)') '        skmap  = ',hmina,hmaxa
           call flush(lp)
+c
+          skmap(k) = 0.5*(hmina+hmaxa)  !dummy value
 c
           if     (hmaxa.gt.kkin) then
             write(lp,'(/ a /)')
@@ -286,7 +296,7 @@ c ---   'sigma ' = layer k (out) reference density (sigma units)
         if     (n.eq.2) then !sigma
           if     (k.le.newtop) then
             skmap(k) = 0.0
-          else
+          elseif (.not.vskmap) then
             skmap(k) = skmap(k-1)+1.0
           endif
         else !skmap
@@ -437,7 +447,8 @@ c
 c
 c --- read the archive file, from "*.[ab]".
 c
-      kk = kkin
+      kk    = kkin
+      initl = .false.  !already called getdepth
       call getdatb(flnm_i,time3,artype,initl,lsteric,icegln,trcout,
      &             iexpt,iversn,yrflag,kkin)       ! hycom input
       time = time3(3)
@@ -561,9 +572,9 @@ c
             enddo
             call remap_plm_3(t1,s1,r1,p1,kkin,
      &                       tz,sz,rz,pz,kkout)
-            if     (maxval(s1(1:kkin) )+0.01 .lt.
-     &              maxval(sz(1:kkout))          ) then
-              write(6,*) 'ERROR - i,j,smax = ',i,j,maxval(s1(1:kkin))
+            if     (maxval(s1(1:kkin))+0.01 .lt.
+     &              maxval(sz(1:kkout) )        ) then
+              write(lp,*) 'ERROR - i,j,smax = ',i,j,maxval(s1(1:kkin))
               call remap_plm_3_debug(t1,s1,r1,p1,kkin,
      &                               tz,sz,rz,pz,kkout)
               stop
@@ -581,6 +592,59 @@ c
                 ke(i,j,k) = vz(k)
               endif
             enddo
+c
+c ---       lowest active layer needs special handling
+c
+            dpthin = 0.0001*onem
+            kbot   = 2
+            do k= kkout,2,-1
+              if     (dp(i,j,k).ge.dpthin) then
+                kbot = k
+                exit
+              endif
+            enddo !k
+            do k= kbot-1,1,-1
+              if     (th3d(i,j,k).lt.th3d(i,j,k+1)) then
+                exit
+              endif
+c ---         layers k and k+1 have same density
+              write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &          'orig   - i,j,k,dp,th = ',i,j,k,
+     &          dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
+              write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &          'orig   - i,j,k,dp,th = ',i,j,k+1,
+     &          dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
+              call flush(lp)
+              if     (abs(th3d(i,j,k+1)+thbase-sigma(k+1)).ge.
+     &                abs(th3d(i,j,k)  +thbase-sigma(k)  )    ) then
+c ---           remove layer k+1
+                dp(i,j,k)   = dp(i,j,k) + dp(i,j,k+1)
+                dp(i,j,k+1) = 0.0
+                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &            'remove - i,j,k,dp,th = ',i,j,k,
+     &            dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
+                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &            'remove - i,j,k,dp,th = ',i,j,k+1,
+     &            dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
+                call flush(lp)
+              else
+c ---           minimize layer k
+                qdep  = max( 0.0, min( 1.0,
+     &                                 (depths(i,j) - dsns)/
+     &                                 (dpns        - dsns)  ) )
+                dp0ij = qdep*dp0k(k) + (1.0-qdep)*ds0k(k)
+                dpold = dp(i,j,k)
+                dp(i,j,k)   = min(dp(i,j,k), dp0ij)
+                dp(i,j,k+1) = dp(i,j,k+1) + (dpold - dp(i,j,k))
+                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &            'minize - i,j,k,dp,th = ',i,j,k,
+     &            dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
+                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &            'minize - i,j,k,dp,th = ',i,j,k+1,
+     &            dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
+                call flush(lp)
+              endif
+            enddo !k
           endif
           if     (iu(i,j).eq.1) then
             depthu = min(depths(i,j),depths(ia,j))
