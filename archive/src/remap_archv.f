@@ -14,12 +14,13 @@ c
 c
       integer          artype,iexpt,iversn,yrflag
       integer          i,ia,ibad,j,ja,k,k2,kbot,kkin,kkout,l,n,newtop
+      integer          itest,jtest
       integer          nhybrd,nsigma
-      real             skmap(0:999),s2
+      real             skmap(0:999),s2,s2old
       real             dp00,dp00x,dp00f,ds00,ds00x,ds00f,dp0ij,
      &                 dp0k(999),dp0kf,dpm,dpms,dpns,
      &                 ds0k(999),ds0kf,dsm,dsms,dsns,qdep,
-     &                 dpold,dpthin
+     &                 dpij,dpold,dpthin,dpthick
       real             u1(999),v1(999),t1(999),s1(999),r1(999),
      &                 uz(999),vz(999),tz(999),sz(999),rz(999),
      &                 p1(0:999),pz(0:999)
@@ -46,6 +47,8 @@ c --- 'iexpt ' = experiment number x10  (000=from archive file)
 c --- 'yrflag' = days in year flag (0=360J16,1=366J16,2=366J01,3=actual)
 c --- 'idm   ' = longitudinal array size
 c --- 'jdm   ' = latitudinal  array size
+c --- 'itest ' = longitudinal test point (optional, default 0)
+c --- 'jtest ' = latitudinal  test point (optional, default 0)
 c --- 'kdmold' = original number of layers
 c --- 'kdmnew' = target   number of layers
 c
@@ -62,7 +65,16 @@ c
       call blkini(yrflag,'yrflag')
       call blkini(ii,    'idm   ')
       call blkini(jj,    'jdm   ')
-      call blkini(kkin,  'kdmold')
+      call blkini2(i,j,  'itest ','kdmold')  !read itest or kdmold
+      if (j.eq.1) then
+        itest  = i
+        call blkini(jtest, 'jtest ')
+        call blkini(kkin,  'kdmold')
+      else
+        itest  = 0
+        jtest  = 0
+        kkin   = i
+      endif
       call blkini(kkout, 'kdmnew')
       if     (ii.ne.idm .or. jj.ne.jdm) then
         write(lp,*)
@@ -489,14 +501,17 @@ c --- form interface depths.
 c
       allocate( pout(idm,jdm,kkout+1) )
 c
+      dpthick = 1000.0*onem
       do j= 1,jdm
         do i= 1,idm
           if     (ip(i,j).eq.1) then
             qdep = max( 0.0, min( 1.0,
      &                            (depths(i,j) - dsns)/
      &                            (dpns        - dsns)  ) )
-*           write(lp,'(a,2i4)') 'p - i,j = ',i,j
-*           call flush(lp)
+            if     (i.eq.itest .and. j.eq.jtest) then
+             write(lp,'(a,2i4)') 'p - i,j = ',i,j
+             call flush(lp)
+            endif !test
             p(i,j,1) = 0.0
             do k= 1,kkin-1
               p(i,j,k+1) = min(p(i,j,k) + dp(i,j,k),
@@ -519,27 +534,91 @@ c ---         interface depths from the input
                   k2 = nint(skm(i,j,k))
                   if     (abs(skm(i,j,k)-k2).lt.0.01) then
                     pout(i,j,k+1) = max(pout(i,j,k+1),p(i,j,k2+1))
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i4,f10.4,2f10.4)') 
+     &                  'pout.k+1 - k,k2,sk    = ',k,k2,skm(i,j,k),
+     &                  pout(i,j,k+1)*qonem,p(i,j,k2+1)*qonem
+                      call flush(lp)
+                    endif !test
                   else
                     if    (skm(i,j,k).gt.k2) then
                       k2 = k2+1
                     endif
                     s2 = k2-skm(i,j,k)  !non-negative
+c ---               detect thick terrain-following layers
+                    dpij = p(i,j,k2+1)-p(i,j,k2)
+                    if     (dpij.gt.dpthick .and. k.gt.1 .and.
+     &                      dpij.gt.0.8*(p(i,j,kk+1)-p(i,j,k2))) then
+                      s2old = s2
+                      if     (skm(i,j,k-1).lt.k2-0.99) then
+                        s2 = 1.0 - dp0ij/dpij
+                      elseif (skm(i,j,k+1).gt.k2-0.01) then
+                        s2 = 1.0 - (dpij-dp0ij)/dpij
+                      endif
+                      if     (i.eq.itest .and. j.eq.jtest) then
+                        write(lp,'(a,2i4,3f10.4)') 
+     &                    'pout.k+1 - k,k2,sk,S2 = ',
+     &                  k,k2,skm(i,j,k),s2,s2old
+                        call flush(lp)
+                      endif !test
+                    endif
                     pout(i,j,k+1) = max(pout(i,j,k+1),
      &                                       s2 *p(i,j,k2)  +
      &                                  (1.0-s2)*p(i,j,k2+1) )
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i4,2f10.4,3f10.4)') 
+     &                  'pout.k+1 - k,k2,sk,s2 = ',
+     &                  k,k2,skm(i,j,k),s2,
+     &                  pout(i,j,k+1)*qonem,
+     &                     p(i,j,k2)*qonem,
+     &                     p(i,j,k2+1)*qonem
+                      call flush(lp)
+                    endif !test
                   endif !skm is int:else
                 else
                   k2 = nint(skmap(k))
                   if     (abs(skmap(k)-k2).lt.0.01) then
                     pout(i,j,k+1) = max(pout(i,j,k+1),p(i,j,k2+1))
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i4,f10.4,2f10.4)') 
+     &                  'pout.k+1 - k,k2,sk    = ',k,k2,skmap(k),
+     &                  pout(i,j,k+1)*qonem,p(i,j,k2+1)*qonem
+                      call flush(lp)
+                    endif !test
                   else
                     if    (skmap(k).gt.k2) then
                       k2 = k2+1
                     endif
                     s2 = k2-skmap(k)  !non-negative
+c ---               detect thick terrain-following layers
+                    dpij = p(i,j,k2+1)-p(i,j,k2)
+                    if     (dpij.gt.dpthick .and. k.gt.1 .and.
+     &                      dpij.gt.0.8*(p(i,j,kk+1)-p(i,j,k2))) then
+                      s2old = s2
+                      if     (skmap(k-1).lt.k2-0.99) then
+                        s2 = 1.0 - dp0ij/dpij
+                      elseif (skmap(k+1).gt.k2-0.01) then
+                        s2 = 1.0 - (dpij-dp0ij)/dpij
+                      endif
+                      if     (i.eq.itest .and. j.eq.jtest) then
+                        write(lp,'(a,2i4,3f10.4)') 
+     &                    'pout.k+1 - k,k2,sk,S2 = ',
+     &                    k,k2,skmap(k),s2,s2old
+                        call flush(lp)
+                      endif !test
+                    endif
                     pout(i,j,k+1) = max(pout(i,j,k+1),
      &                                       s2 *p(i,j,k2)  +
      &                                  (1.0-s2)*p(i,j,k2+1) )
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i4,2f10.4,3f10.4)') 
+     &                  'pout.k+1 - k,k2,sk,s2 = ',
+     &                  k,k2,skmap(k),s2,
+     &                  pout(i,j,k+1)*qonem,
+     &                     p(i,j,k2)*qonem,
+     &                     p(i,j,k2+1)*qonem
+                      call flush(lp)
+                    endif !test
                   endif !skmap is int:else
                 endif !vskmap:else
               endif !k>newtop
@@ -608,25 +687,29 @@ c
                 exit
               endif
 c ---         layers k and k+1 have same density
-              write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
-     &          'orig   - i,j,k,dp,th = ',i,j,k,
-     &          dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
-              write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
-     &          'orig   - i,j,k,dp,th = ',i,j,k+1,
-     &          dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
-              call flush(lp)
+              if     (i.eq.itest .and. j.eq.jtest) then
+                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &            'orig   - i,j,k,dp,th = ',i,j,k,
+     &            dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
+                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &            'orig   - i,j,k,dp,th = ',i,j,k+1,
+     &            dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
+                call flush(lp)
+              endif !test
               if     (abs(th3d(i,j,k+1)+thbase-sigma(k+1)).ge.
      &                abs(th3d(i,j,k)  +thbase-sigma(k)  )    ) then
 c ---           remove layer k+1
                 dp(i,j,k)   = dp(i,j,k) + dp(i,j,k+1)
                 dp(i,j,k+1) = 0.0
-                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
-     &            'remove - i,j,k,dp,th = ',i,j,k,
-     &            dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
-                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
-     &            'remove - i,j,k,dp,th = ',i,j,k+1,
-     &            dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
-                call flush(lp)
+                if     (i.eq.itest .and. j.eq.jtest) then
+                  write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &              'remove - i,j,k,dp,th = ',i,j,k,
+     &              dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
+                  write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &              'remove - i,j,k,dp,th = ',i,j,k+1,
+     &              dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
+                  call flush(lp)
+                endif !test
               else
 c ---           minimize layer k
                 qdep  = max( 0.0, min( 1.0,
@@ -636,13 +719,15 @@ c ---           minimize layer k
                 dpold = dp(i,j,k)
                 dp(i,j,k)   = min(dp(i,j,k), dp0ij)
                 dp(i,j,k+1) = dp(i,j,k+1) + (dpold - dp(i,j,k))
-                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
-     &            'minize - i,j,k,dp,th = ',i,j,k,
-     &            dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
-                write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
-     &            'minize - i,j,k,dp,th = ',i,j,k+1,
-     &            dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
-                call flush(lp)
+                if     (i.eq.itest .and. j.eq.jtest) then
+                  write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &              'minize - i,j,k,dp,th = ',i,j,k,
+     &              dp(i,j,k)  *qonem,th3d(i,j,k)  +thbase,sigma(k)
+                  write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
+     &              'minize - i,j,k,dp,th = ',i,j,k+1,
+     &              dp(i,j,k+1)*qonem,th3d(i,j,k+1)+thbase,sigma(k+1)
+                  call flush(lp)
+                endif !test
               endif
             enddo !k
           endif
