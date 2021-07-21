@@ -191,6 +191,16 @@ c
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
 c
+c ---     symetric arrays may have an extra row or column
+c
+          nx(4) = min(nx(4),n)
+          ny(4) = min(ny(4),m)
+c
+c ---     symetric arrays may have an extra row or column
+c
+          nx(4) = min(nx(4),n)
+          ny(4) = min(ny(4),m)
+c
           np = nx(4)-nx(3)+1
           mp = ny(4)-ny(3)+1
 *         write(6,*) 'np,mp = ',np,mp
@@ -402,6 +412,11 @@ c
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
+c
+c ---     symetric arrays may have an extra row or column
+c
+          nx(4) = min(nx(4),n)
+          ny(4) = min(ny(4),m)
 c
           np = nx(4)-nx(3)+1
           mp = ny(4)-ny(3)+1
@@ -615,6 +630,11 @@ c
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
+c
+c ---     symetric arrays may have an extra row or column
+c
+          nx(4) = min(nx(4),n)
+          ny(4) = min(ny(4),m)
 c
           np = nx(4)-nx(3)+1
           mp = ny(4)-ny(3)+1
@@ -830,6 +850,11 @@ c
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
 c
+c ---     symetric arrays may have an extra row or column
+c
+          nx(4) = min(nx(4),n)
+          ny(4) = min(ny(4),m)
+c
           np = nx(4)-nx(3)+1
           mp = ny(4)-ny(3)+1
 *         write(6,*) 'np,mp = ',np,mp
@@ -909,7 +934,7 @@ c ---   multiple netCDF files
         read(cfile(i-8:i-5),*) nc1st
         read(cfile(i-3:i)  ,*) nclst
         do nc= nc1st, nclst
-*         write (6,*) 'nc    = ',nc
+          write (6,*) 'nc    = ',nc
           flnm_p = cfile(1:i-9)
           write(flnm_p(i-8:i-5),'(i4.4)') nc
           lexist =    nf90_open(trim(flnm_p), nf90_nowrite, ncFID)
@@ -949,7 +974,7 @@ c
           call nchek('nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", nx(:)))
-*         write(6,*) 'nx    = ',nx
+          write(6,*) 'nx    = ',nx
           xto = nx(2)
 c
           call nchek('nf90_inquire_dimension-2',
@@ -959,7 +984,7 @@ c
           call nchek('nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
-*         write(6,*) 'ny    = ',ny
+          write(6,*) 'ny    = ',ny
           yto = ny(2)
 c
           call nchek('nf90_inquire_dimension-3',

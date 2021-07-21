@@ -17,9 +17,9 @@ c
      &                 name_e,name_b,name_u,name_v
       character*14     c_ydh
 c
-      logical          larctic
+      logical          larctic,lsymetr
       logical          lsteric,icegln,trcout
-      integer          i,im1,ip1,irec,j,jja,jm1,jp1,k,l,mro
+      integer          i,im1,ip1,irec,j,jja,jm1,jp1,k,l,mro,nvo
       integer          artype,iexpt,iversn,yrflag,itest,jtest
       integer          jday,ihour,iyear
       real             onem,thref,thbase,denij
@@ -100,12 +100,19 @@ c --- mom6 dimensions
 c
       kk = 0
       call rd_dimen2(nto,mto,mro, flnm_e,name_e)
+      if     (trim(name_v) .eq. 'ZERO') then
+        mvo = nto !mvo is not used
+      else
+        call rd_dimen2(nvo,mvo,mro, flnm_e,name_v)
+      endif
 c
-      larctic = mto .eq. jdm-1
+      lsymetr = mto .lt. mvo
+      larctic = mto .eq. jdm-1 .and. nto .eq. idm
 c
       write(lp,*) 
-      write(lp,*) 'nto,mto,kk = ',nto,mto,kk
-      write(lp,*) 'ii,jj,kk   = ',ii, jj, kk
+      write(lp,*) 'nto,mto,mvo,kk = ',nto,mto,mvo,kk
+      write(lp,*) 'ii, jj,     kk = ',ii, jj,   0,kk
+      write(lp,*) 'lsymetr = ',lsymetr
       write(lp,*) 'larctic = ',larctic
       write(lp,*) 
       call zhflsh(lp)
@@ -153,7 +160,7 @@ c
      &               time3,  !HYCOM time
      &               name_e,flnm_e)
       call zhflsh(lp)
-      call m2h_p(f_nc,nto,mto,1, srfht,jdm,larctic)  !ssh or hbt
+      call m2h_p(f_nc,nto,mto,1, srfht,idm,jdm,lsymetr,larctic)  !ssh or hbt
 c
       nstep =                int(time3(3)) *24 +
      &        nint((time3(3)-int(time3(3)))*24.0)  !number of hours
@@ -168,7 +175,7 @@ c
      &                 time3,  !HYCOM time
      &                 name_b,flnm_e)
         call zhflsh(lp)
-        call m2h_p(f_nc,nto,mto,1, steric,jdm,larctic)  !pbt
+        call m2h_p(f_nc,nto,mto,1, steric,idm,jdm,lsymetr,larctic)  !pbt
       endif
 c
       if     (trim(name_u) .eq. 'ZERO') then
@@ -181,19 +188,19 @@ c
      &                 name_u,flnm_e)
         call zhflsh(lp)
       endif
-      call m2h_u(f_nc,nto,mto,1, ubaro,jdm,larctic)
+      call m2h_u(f_nc,nto,mto,1, ubaro,idm,jdm,lsymetr,larctic)
 c
       if     (trim(name_v) .eq. 'ZERO') then
         f_nc(:,:) =  0.0
       else
         f_nc(:,:) = 1.0e20
-        call rd_out2nc(nto,mto,irec,
+        call rd_out2nc(nto,mvo,irec,
      &                 f_nc,
      &                 time3,  !HYCOM time
      &                 name_v,flnm_e)
         call zhflsh(lp)
       endif
-      call m2h_v(f_nc,nto,mto,1, vbaro,jdm,larctic)
+      call m2h_v(f_nc,nto,mvo,1, vbaro,idm,jdm,lsymetr,larctic)
 c
       onem   = 9806.0  ! HYCOM mks pressure units
       thref  = 1.0e-3  ! HYCOM 1/rho_0
@@ -377,12 +384,12 @@ c
 c
       end program mom6nc2tide
 
-      subroutine m2h_p(f_nc,nto,mto,kk, field,jj,larctic)
+      subroutine m2h_p(f_nc,nto,mto,kk, field,ii,jj,lsymetr,larctic)
       implicit none
 c
-      logical larctic
-      integer nto,mto,kk,jj
-      real    f_nc(nto,mto,kk),field(nto,jj,kk)
+      logical lsymetr,larctic
+      integer nto,mto,kk,ii,jj
+      real    f_nc(nto,mto,kk),field(ii,jj,kk)
 c
 c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
       real, parameter :: spval=2.0**100
@@ -406,81 +413,149 @@ c
             ia = nto-mod(i-1,nto)
             field(i,jj,k) = field(ia,jj-1,k)
           enddo !i
-        endif
+        elseif (lsymetr) then
+          do i= 1,nto
+            field(i,jj,k) = spval
+          enddo !i
+          do j= 1,jj
+            field(ii,j,k) = spval
+          enddo !j
+        endif !larctic:lsymetr
       enddo !k
       return
       end
 
-      subroutine m2h_u(f_nc,nto,mto,kk, field,jj,larctic)
+      subroutine m2h_u(f_nc,nto,mto,kk, field,ii,jj,lsymetr,larctic)
       implicit none
 c
-      logical larctic
-      integer nto,mto,kk,jj
-      real    f_nc(nto,mto,kk),field(nto,jj,kk)
+      logical lsymetr,larctic
+      integer nto,mto,kk,ii,jj
+      real    f_nc(nto,mto,kk),field(ii,jj,kk)
 c
 c --- convert u-grid mom6 array to hycom.
-c --- mom6  has "q" at i+0.5,j+0.5 w.r.t. p.ij
-c --- hycom has "q" at i-0.5,j-0.5 w.r.t. p.ij
+c --- nonsymetric mom6  has "q" at i+0.5,j+0.5 w.r.t. p.ij
+c ---    symetric mom6  has "q" at i-0.5,j-0.5 w.r.t. p.ij
+c ---             hycom has "q" at i-0.5,j-0.5 w.r.t. p.ij
 c
 c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
       real, parameter :: spval=2.0**100
 c
       integer i,ia,j,k
 c
-      do k= 1,kk
-        do j= 1,mto
-          do i= 1,nto
-            ia = mod(i,nto)+1
-            if     (f_nc(i,j,k).ne.1.0e20) then
-               field(ia,j,k) = f_nc(i,j,k)
-            else
-               field(ia,j,k) = spval
-            endif
-          enddo !i
-        enddo !j
-        if     (larctic) then  !u-grid vector field, mto=jj-1
-          do i= 1,nto
-            ia = mod(nto-(i-1),nto)+1 
-            if     (field(ia,jj-1,k).ne.spval) then
-              field(i,jj,k) = -field(ia,jj-1,k)
-            else
-               field(i,j,k) = spval
-            endif
-          enddo !i
-        endif
-      enddo !k
+      if     (lsymetr) then
+        do k= 1,kk
+          do j= 1,mto
+            do i= 1,nto
+              if     (f_nc(i,j,k).ne.1.0e20) then
+                 field(i,j,k) = f_nc(i,j,k)
+              else
+                 field(i,j,k) = spval
+              endif
+            enddo !i
+          enddo !j
+          if     (larctic) then  !u-grid vector field, mto=jj-1
+            do i= 1,nto
+              ia = mod(nto-(i-1),nto)+1 
+              if     (field(ia,jj-1,k).ne.spval) then
+                field(i,jj,k) = -field(ia,jj-1,k)
+              else
+                 field(i,j,k) = spval
+              endif
+            enddo !i
+          else
+            do j= mto+1,jj
+              do i= 1,nto  !must be land
+                field(i,j,k) = spval
+              enddo !i
+            enddo !j
+            do i= nto+1,ii
+              do j= 1,jj   !must be land
+                field(i,j,k) = spval
+              enddo !j
+            enddo !i
+          endif !larctic:else
+        enddo !k
+      else
+        do k= 1,kk
+          do j= 1,mto
+            do i= 1,nto
+              ia = mod(i,nto)+1
+              if     (f_nc(i,j,k).ne.1.0e20) then
+                 field(ia,j,k) = f_nc(i,j,k)
+              else
+                 field(ia,j,k) = spval
+              endif
+            enddo !i
+          enddo !j
+          if     (larctic) then  !u-grid vector field, mto=jj-1
+            do i= 1,nto
+              ia = mod(nto-(i-1),nto)+1 
+              if     (field(ia,jj-1,k).ne.spval) then
+                field(i,jj,k) = -field(ia,jj-1,k)
+              else
+                 field(i,j,k) = spval
+              endif
+            enddo !i
+          endif
+        enddo !k
+      endif !lsymetr:else
       return
       end
 
-      subroutine m2h_v(f_nc,nto,mto,kk, field,jj,larctic)
+      subroutine m2h_v(f_nc,nto,mvo,kk, field,ii,jj,lsymetr,larctic)
       implicit none
 c
-      logical larctic
-      integer nto,mto,kk,jj
-      real    f_nc(nto,mto,kk),field(nto,jj,kk)
+      logical lsymetr,larctic
+      integer nto,mvo,kk,ii,jj
+      real    f_nc(nto,mvo,kk),field(ii,jj,kk)
 c
 c --- convert v-grid mom6 array to hycom.
-c --- mom6  has "q" at i+0.5,j+0.5 w.r.t. p.ij
-c --- hycom has "q" at i-0.5,j-0.5 w.r.t. p.ij
+c --- mom6  standard has "q" at i+0.5,j+0.5 w.r.t. p.ij
+c --- mom6  symetric has "q" at i-0.5,j-0.5 w.r.t. p.ij
+c --- hycom          has "q" at i-0.5,j-0.5 w.r.t. p.ij
 c
 c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
       real, parameter :: spval=2.0**100
 c
       integer i,ia,j,k
 c
-      do k= 1,kk
-        do j= 1,min(mto,jj-1)  !mto if larctic
-          do i= 1,nto
-            if     (f_nc(i,j,k).ne.1.0e20) then
-               field(i,j+1,k) = f_nc(i,j,k)
-            else
-               field(i,j+1,k) = spval
-            endif
+      if     (lsymetr) then
+        do k= 1,kk
+          do j= 1,min(mvo,jj)
+            do i= 1,nto
+              if     (f_nc(i,j,k).ne.1.0e20) then
+                 field(i,j,k) = f_nc(i,j,k)
+              else
+                 field(i,j,k) = spval
+              endif
+            enddo !i
+          enddo !j
+          do j= mvo+1,jj
+            do i= 1,nto  !must be land
+              field(i,j,k) = spval
+            enddo !i
+          enddo !j
+          do i= nto+1,ii
+            do j= 1,jj   !must be land
+              field(i,j,k) = spval
+            enddo !j
           enddo !i
-        enddo !j
-        do i= 1,nto  !must be land
-          field(i,1,k) = spval
-        enddo !i
-      enddo !k
+        enddo !k
+      else
+        do k= 1,kk
+          do j= 1,min(mvo,jj-1)
+            do i= 1,nto
+              if     (f_nc(i,j,k).ne.1.0e20) then
+                 field(i,j+1,k) = f_nc(i,j,k)
+              else
+                 field(i,j+1,k) = spval
+              endif
+            enddo !i
+          enddo !j
+          do i= 1,nto  !must be land
+            field(i,1,k) = spval
+          enddo !i
+        enddo !k
+      endif !lsymetr:else
       return
       end

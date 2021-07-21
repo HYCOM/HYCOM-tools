@@ -5,14 +5,15 @@ c --- HYCOM from mom6: array allocation interface.
 c
 c --- Heavily based on hycom/ALL/plot/src/mod_plot.F.
 c
-c --- nto    = 1st dimension   of mom6
-c --- mto    = 2nd dimension   of mom6
+c --- nto    = 1st dimension   of mom6 t-grid
+c --- mto    = 2nd dimension   of mom6 t-grid
+c --- mvo    = 2nd dimension   of mom6 v-grid
 c --- ii     = 1st dimension   of hycom (=idm)
 c --- jj     = 2nd dimension   of hycom (=jdm)
 c --- kk     = actual  number of layers
 c --- ntracr = number of tracers
 c
-      integer, save :: nto,ii,ii1,ii2,mto,jj,jj1,jj2,kk
+      integer, save :: nto,ii,ii1,ii2,mto,mvo,jj,jj1,jj2,kk
       integer, save :: ntracr
 c
 c --- input file names
@@ -27,7 +28,7 @@ c
 c --- mom6 arrays:
 c
       real,    save, allocatable, dimension (:,:,:) :: 
-     &   s_nc
+     &   s_nc,v_nc
 c
       real,    save, allocatable, dimension (:,:)   :: 
      &   f_nc
@@ -74,6 +75,7 @@ c
 c     mom6 arrays
 c
       allocate(  s_nc(nto,mto,kk+1) )  !+1 for interface tracers
+      allocate(  v_nc(nto,mvo,kk)   )
 c
       allocate(  f_nc(nto,mto) )
 c
@@ -139,7 +141,7 @@ c --- initialize allocatable arrays for ssh.
 c
 c     mom6 arrays
 c
-      allocate( f_nc(nto,mto) )
+      allocate( f_nc(nto,mvo) )  !mvo might be mto+1
 c
 c     hycom arrays.
 c
