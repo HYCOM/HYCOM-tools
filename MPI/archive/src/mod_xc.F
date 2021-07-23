@@ -1796,6 +1796,10 @@ c
       open(unit=lp,delim='none')  ! forces open on stdout
 #endif
 c
+c     initialize timers early to allow xcstop to work.
+c
+      call xctmri
+c
 c     calculate tile locations and sizes.
 c     uniform 1-d distribution
 c
@@ -1806,6 +1810,15 @@ c
       idm_in  = itdm
       jdm_in  = (jtdm+jpr-1)/jpr
       jtdm_in = jpr*jdm_in  !>= jtdm
+c
+      if     (jpr.gt.jqr) then
+        if     (mnproc.eq.1) then
+          write(lp,'(a,2i5)') 'jpr,jqr =',jpr,jqr
+          call flush(lp)
+        endif
+        call xcstop('xcspmd: jpr (NMPI) > jqr from mod_dimensions.F')
+        stop '(xcspmd)'
+      endif
 c
       n=1
         i0_pe(1,n) = 0
@@ -1858,17 +1871,9 @@ c
       mp_1st = mpe_1(nproc)  !1st node in this row (public)
 c
 c     mpi-2 i/o group (public), see mod_za.
+c     ipr=1 so this is all procs.
 c
-      if     (mproc.eq.mp_1st) then
-        i = 1
-        call mpi_comm_split(mpi_comm_hycom, i,0,
-     &                      group_1st_in_row, mpierr)
-      else
-        i = 0
-        call mpi_comm_split(mpi_comm_hycom, i,0,
-     &                      group_1st_in_row, mpierr)
-        call mpi_comm_free( group_1st_in_row, mpierr)
-      endif
+      call mpi_comm_dup(mpi_comm_hycom, group_1st_in_row, mpierr)
 #elif defined(SHMEM)
 c
 c     shmem messages are sent and received by pe number (0:ijpr-1).
@@ -2274,9 +2279,8 @@ c
         stop '(xcspmd)'
       endif
 c
-c     initialize timers.
+c     initialize timer names.
 c
-      call xctmri
 #if defined(TIMER)
       call xctmrn( 1,'xcaget')
       call xctmrn( 2,'xceget')
