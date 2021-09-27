@@ -17,8 +17,8 @@ endif
 #
 setenv A $cwd
 #
-foreach d ( archive/src_* meanstd/src_* )
-  echo "CLEANING ${d}"
-  cd ${A}/${d}
-  make clean
+foreach d ( archive meanstd )
+  echo "CLEANING ${d}/src:"
+  cd ${A}/${d}/src
+  make clean ARCH=$ARCH
 end
