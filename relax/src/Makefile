@@ -34,7 +34,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm *.o *.a *.mod *.inc M*log *at *pf *noaa *s *u *u2 *gdem3 *gdem4 *gdem42 *woa *woa13 *density *cer *st *ve *fy *km *field *xi *xv bottom *_linear
+	/bin/rm -f *.o *.a *.mod *.inc M*log *at *pf *noaa *s *u *u2 *gdem3 *gdem4 *gdem42 *woa *woa13 *density *cer *st *ve *fy *km *field *xi *xv bottom *_linear
 
 MODS = mod_xc.o mod_za.o wtime.o
 MODA = $(MODS) mod_ppsw.o
