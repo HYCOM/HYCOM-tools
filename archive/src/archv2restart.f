@@ -7,14 +7,21 @@ c --- hycom/micom archive to hycom restart file.
 c
       common/conrng/ amn,amx
 c
-      character*120    flnmarch,flnmrsi,flnmrso
-      logical          ltheta,smooth,lsteric,icegln
+      character*120     :: flnmarch,flnmrsi,flnmrso,flnmmon
+      logical           :: ltheta,smooth,lsteric,icegln
 c
-      integer          artype,iexpt,iversn,kkin,yrflag,kapref
-      double precision time3(3)
-      real*8           time
+      integer           :: artype,iexpt,iversn,kkin,yrflag,kapref
+      integer           :: rmontg
+      real, allocatable :: work(:,:),thmean(:,:),sshgmn(:,:)
+      real, allocatable :: montg_c(:,:)
+
+      double precision  :: time3(3)
+      real*8            :: time
 c
-      real, parameter :: flag = 2.0**100
+      real, parameter   :: flag = 2.0**100
+      real, parameter   :: rhoref = 1000.0
+      real, parameter   :: g = 9.806
+
 c
 c --- 'trcout' -- tracer input
       logical   trcout
@@ -75,10 +82,20 @@ c ---   'kdm   '   = number of layers
 c
 c ---   'thbase' = reference density (sigma units)
 c ---   'baclin' = baroclinic time step (seconds), int. divisor of 86400
+c ---   'rmontg' = pbavg correction from relax.montg file  (0=F,1=T)
         call blkinr(thbase,
      &             'thbase','("blkinr: ",a6," =",f11.4," sig")')
         call blkinr(baclin,
      &             'baclin','("blkinr: ",a6," =",f11.4," sec")')
+
+        call blkini(rmontg, 'rmontg')
+        if (rmontg.eq.1) then
+          read (*,'(a)')    flnmmon
+          write (lp,'(2a)') 'relax.montg file: ',
+     &                    flnmmon(1:len_trim(flnmmon))
+          call flush(lp)
+        endif
+
         write(lp,*)
         call flush(lp)
 c
@@ -125,7 +142,41 @@ c
       call bigrid(depths)
 c
 c --- srfht=montg+thref*pbaro
-      pbaro(:,:) = (srfht(:,:) - montg(:,:))*1.e3
+c
+      if (rmontg.eq.1) then
+c --- add pbavg correction
+        allocate(thmean(ii,jj))
+        allocate(sshgmn(ii,jj))
+        allocate(work(ii,jj))
+        allocate(montg_c(ii,jj))
+c ---   unwind the pbavg correction for compatibility with psikk
+        write (lp,*) ' now opening mean SSH & Montg. Pot. fields ...'
+        call zaiopf(flnmmon, 'old', 915)
+        call zaiord(work,ip,.false., hmina,hmaxa, 915)
+c        print*,hmina,hmaxa
+        thmean(:,:)=work(:,:)
+        call zaiord(work,ip,.false., hmina,hmaxa, 915)
+        sshgmn(:,:)=work(:,:)
+c        print*,hmina,hmaxa
+        call zaiocl(915)
+
+        montg_c(:,:) = 0.0
+        do j= 1,jj
+          do i= 1,ii
+            montg_c(i,j) = (sshgmn(i,j)-thmean(i,j))*g  !input is mean ssh/montg in m
+c            if (i.eq.360 .and. j.eq.263) then
+c              print*, montg_c(i,j)
+c            endif
+          enddo !i
+        enddo !j
+        pbaro(:,:) = (srfht(:,:) - montg(:,:))*1.e3+montg_c(:,:)*rhoref
+
+        ! deallocate arrays
+        deallocate(thmean,sshgmn,work,montg_c)
+      else
+        pbaro(:,:) = (srfht(:,:) - montg(:,:))*1.e3
+      endif
+
 c
       if     (artype.eq.2) then
 c ---   convert total to baroclinic velocity
