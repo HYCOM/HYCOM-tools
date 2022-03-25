@@ -17,12 +17,14 @@ c
       character ctrc_title(99)*80,ctrc_units(99)*80,
      &          ctrc_lname(99)*80,ctrc_sname(99)*80
       logical   ltheta,smooth,lsteric,icegln,lperiod,baclin
+      logical   lupwrd
 c
       integer          artype,iexpt,iversn,kkin,yrflag,mxlflg
       real             bot,dudxdn,dudxup,dvdydn,dvdyup
       double precision time3(3)
 c
-      real, parameter :: flag = 2.0**100
+      real, parameter :: flag   = 2.0**100
+      real, parameter :: spcifh = 3850.0  !specific heat of sea water (j/kg/deg)
 c
 c --- 'lhycom' -- hycom (vs micom) input file
 c --- 'trcout' -- tracer input
@@ -34,8 +36,6 @@ c
 c
       logical   initl
       data      initl /.true. /
-      real      thref,spcifh
-      data      thref/1.e-3/,spcifh/3990./
       character blank*40
       data      blank/'                                        '/
 c
@@ -213,9 +213,17 @@ c ---   The size of the subgrid is determined by ii,jj.
         call flush(lp)
         endif
 c
+c --- 'lupwrd' = measure up from the bottom (0=F,1=T), optional default 0
 c --- 'ktemp ' = number of temperature surfaces to sample
-      call blkini(ktemp,'ktemp ')
-      allocate( tsur(ktemp) )
+      call blkini2(i,j,  'lupwrd','ktemp ')  !read lupwrd or ktemp
+      if (j.eq.1) then
+        lupwrd = i.eq.1
+        call blkini(ktemp,'ktemp ')
+      else
+        lupwrd = .false.
+        ktemp  = i
+      endif
+      allocate( tsur(0:ktemp) )
       do k= 1,ktemp
 c ---   'tsur  ' = sample temperaure
         call blkinr(tsur(k),
@@ -231,6 +239,7 @@ c ---   'tsur  ' = sample temperaure
           endif  
         endif
       enddo
+      tsur(0) = tsur(1) + 1.0  !safe value
       if(mnproc.eq.1)then
         write(lp,*)
         call flush(lp)
@@ -238,16 +247,31 @@ c ---   'tsur  ' = sample temperaure
 c
       ltheta=.false.
 c
-c --- 'botio ' = bathymetry    I/O unit (0 no I/O)
-c --- 'layio ' = surface layer I/O unit (0 no I/O)
-c --- 'depio ' = surface depth I/O unit (0 no I/O)
-c --- 'temio ' = temperature   I/O unit (0 no I/O)
-c --- 'salio ' = salinity      I/O unit (0 no I/O)
-c --- 'tthio ' = density       I/O unit (0 no I/O)
+c --- 'botio ' = bathymetry                   I/O unit (0 no I/O)
+c --- 'layio ' = iso-surface layer            I/O unit (0 no I/O)
+c --- 'depio ' = iso-surface depth            I/O unit (0 no I/O)
+c --- 'tem0io' = 0 to iso-s. pot. temperature I/O unit (0 no I/O, optional)
+c --- 't0hpio' = 0 to iso-s. heat potential   I/O unit (0 no I/O, optional)
+c --- 'temio ' = iso-surface pot. temperature I/O unit (0 no I/O)
+c --- 'salio ' = iso-surface salinity         I/O unit (0 no I/O)
+c --- 'tthio ' = iso-surface pot. density     I/O unit (0 no I/O)
+c
       call blkini(iobotin,'botio ')
       call blkini(iolayin,'layio ')
       call blkini(iodepin,'depio ')
-      call blkini(iotemin,'temio ')
+      iotem0in = 0
+      iot0hpin = 0
+      do
+        call blkini3(i,j, 'tem0io','t0hpio','temio ')  !read one of three
+        if     (j.eq.1) then
+          iotem0in = i
+        elseif (j.eq.2) then
+          iot0hpin = i
+        else
+          iotemin  = i
+          exit
+        endif
+      enddo
       call blkini(iosalin,'salio ')
       call blkini(iotthin,'tthio ')
 c
@@ -268,18 +292,10 @@ c
         allocate( trk(kk,ntracr) )
       endif
 c
-c      allocate(  util1(ii,jj) )
-c      allocate(   work(ii,jj) )
-c
-c      allocate(  utilq(ii,jj,ktemp) )
-c      allocate(  utilk(ii,jj,ktemp) )
-
-
       allocate(   work(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
       allocate(  util1(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
       allocate(  utilq(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,ktemp) )
       allocate(  utilk(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,ktemp) )
-
 c
       dpthfil = 'regional.depth'
 c
@@ -595,9 +611,12 @@ c
 c
       end if			!  smooth = .true.
 c
-c --- -----------------------------------------------
-c --- calculate the surface locations in layer space.
-c --- -----------------------------------------------
+      if    (lupwrd) then
+c
+c --- -----------------------------------------------------------
+c --- calculate the temperature surface locations in layer space.
+c --- starting at the bottom and working up the water column.
+c --- -----------------------------------------------------------
       do j=1,jj
         do i=1,ii
           kq1 = kk - 1
@@ -605,20 +624,20 @@ c --- -----------------------------------------------
             if (ip(i,j).eq.0) then
               utilq(i,j,k)=flag
             else
-      if (i.eq.itest .and. j.eq.jtest  .and.  mnproc.eq.1) then
+              if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                 write(lp,'(// a,2i5,2i3,f7.2)')
      &             '***** i,j,kt,kq1,tsur = ',i,j,k,kq1,tsur(k)
                 call flush(lp)
               endif !debuging
               if     (k.eq.ktemp) then
-      if (i.eq.itest .and. j.eq.jtest  .and.  mnproc.eq.1) then
+                if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                   write(lp,'(a,2i5,i3,f7.2)')
      &               'i,j,kk,temp = ',i,j,kk,temp(i,j,kk)
                   call flush(lp)
                 endif !debuging
                 if     (temp(i,j,kk).gt.tsur(k)) then
                   utilq(i,j,k) = kk
-      if (i.eq.itest .and. j.eq.jtest  .and.  mnproc.eq.1) then
+                  if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                     write(lp,'(a,2i5,f10.4/)')
      &                 'i,j,q = ',i,j,utilq(i,j,k)
                     call flush(lp)
@@ -629,7 +648,7 @@ c --- -----------------------------------------------
                 endif
               elseif (utilq(i,j,k+1).eq.0.0) then
                 utilq(i,j,k) = 0.0
-      if (i.eq.itest .and. j.eq.jtest  .and.  mnproc.eq.1) then
+                if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                   write(lp,'(a,2i5,f10.4/)')
      &               'i,j,q = ',i,j,utilq(i,j,k)
                   call flush(lp)
@@ -638,7 +657,7 @@ c --- -----------------------------------------------
               elseif (utilq(i,j,k+1).eq.kk) then
                 if     (temp(i,j,kq1+1).gt.tsur(k)) then
                   utilq(i,j,k) = kk
-      if (i.eq.itest .and. j.eq.jtest  .and. nproc.eq.1) then
+                  if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                     write(lp,'(a,2i5,f10.4/)')
      &                 'i,j,q = ',i,j,utilq(i,j,k)
                     call flush(lp)
@@ -651,7 +670,7 @@ c --- -----------------------------------------------
                 kq1 = utilq(i,j,k+1)
               endif
               do kq = kq1,1,-1
-        if (i.eq.itest .and. j.eq.jtest .and. mnproc.eq.1) then
+                if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                   write(lp,'(a,2i5,i3,3f7.2)')
      &               'i,j,kq,temp = ',i,j,kq,
      &               temp(i,j,kq+1),
@@ -673,7 +692,7 @@ c --- -----------------------------------------------
                   utilq(i,j,k) = 0.0
                 endif
               enddo !kq
-       if (i.eq.itest .and. j.eq.jtest .and. mnproc.eq.1) then
+              if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                 write(lp,'(a,2i5,f10.4/)')
      &             'i,j,q = ',i,j,utilq(i,j,k)
                 call flush(lp)
@@ -683,15 +702,76 @@ c --- -----------------------------------------------
         enddo !i
       enddo !j
 c
+      else !.not.lupwrd
+c
+c --- -----------------------------------------------------------
+c --- calculate the temperature surface locations in layer space.
+c --- starting at the top and working down the water column.
+c --- each tsur calculation is independant
+c --- -----------------------------------------------------------
+      do j=1,jj
+        do i=1,ii
+          do k= 1,ktemp
+            if (ip(i,j).eq.0) then
+              utilq(i,j,k)=flag
+            else
+              if (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                write(lp,'(// a,2i5,i3,f7.2)')
+     &             '***** i,j,kt,tsur = ',i,j,k,tsur(k)
+                call flush(lp)
+              endif !debuging
+              if     (temp(i,j,1).le.tsur(k)) then
+                utilq(i,j,k) = 0.0
+                if (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                  write(lp,'(a,2i5,f10.4/)')
+     &               'i,j,q = ',i,j,utilq(i,j,k)
+                  call flush(lp)
+                endif !debuging
+                cycle
+              endif
+              do kq = 1,kk
+                if (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                  write(lp,'(a,2i5,i3,3f7.2)')
+     &               'i,j,kq,temp = ',i,j,kq,
+     &               temp(i,j,kq+1),
+     &               tsur(k),
+     &               temp(i,j,kq)
+                  call flush(lp)
+                endif !debuging
+                if     (temp(i,j,kq+1).le.tsur(k)) then
+                  if (p(i,j,kq+1)+onecm.gt.p(i,j,kk+1)) then
+                    utilq(i,j,k) = kk
+                  else
+                    utilq(i,j,k) = kq +
+     &                             (temp(i,j,kq)-tsur(k))/
+     &                  max(0.00001,temp(i,j,kq)-temp(i,j,kq+1))
+                  endif !thin:ok
+                  exit
+                elseif (kq.eq.kk) then
+                  utilq(i,j,k) = kk
+                endif
+              enddo !kq
+              if (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                write(lp,'(a,2i5,f10.4/)')
+     &             'i,j,q = ',i,j,utilq(i,j,k)
+                call flush(lp)
+              endif !debuging
+            endif !ip:else
+          enddo !k
+        enddo !i
+      enddo !j
+c
+      endif !lupwrd:else
+c
 c --- 'layio ' = surface layer I/O unit (0 no I/O)
       ioin=iolayin
       if     (ioin.ne.0) then
-        call horout_3d(utilq, artype,yrflag,time3,iexpt,lhycom,
+        call horout_3t(utilq, artype,yrflag,time3,iexpt,lhycom,
      &              ' tsur.lay',                        ! plot name
-     &              'temperature_surface_layer_number', ! ncdf name
+     &              'isotherm_layer_number',            ! ncdf name
      &              ' ',                                ! ncdf standard_name
      &              ' ',                                ! units
-     &              1,ktemp,ltheta, frmt,ioin)
+     &              1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif
 c
 c --- ----------------------------
@@ -700,14 +780,15 @@ c --- ----------------------------
 c
 c --- 'surio ' = surface depth I/O unit (0 no I/O)
       ioin=iodepin
-      if (ioin.gt.0) then
+      if     (ioin.ne.0) then
         do k= 1,ktemp
           do j=1,jj
             do i=1,ii
               if (ip(i,j).ne.0) then
-                if     (utilq(i,j,k).ge.kk .or.
-     &                  utilq(i,j,k).le.0.0    ) then
-                  utilk(i,j,k)=flag
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=0.0          !top
+                elseif (utilq(i,j,k).ge.kk) then
+                  utilk(i,j,k)=p(i,j,kk+1)  !bottom
                 else
                   kq = utilq(i,j,k)
                   q  = utilq(i,j,k) - kq
@@ -721,17 +802,17 @@ c --- 'surio ' = surface depth I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,lhycom,
      &                 ' tsur.dep',                       ! plot name
-     &                 'temperature_surface_depth',       ! ncdf name
-     &                 ' ',                               ! ncdf standard_name
+     &                 'isotherm_depth',                  ! ncdf name
+     &    'depth_of_isosurface_of_sea_water_potential_temperature', ! ncdf standard_name
      &                 'm',                               ! units             
-     &                 1,ktemp,ltheta, frmt,ioin)                               
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
-c --- ----------------------------------
-c --- temperature on temperature surface
-c --- ----------------------------------
+c --- ---------------------------------
+c --- potential temperature on isotherm
+c --- ---------------------------------
 c
 c --- 'temio ' = temperature I/O unit (0 no I/O)
       ioin=iotemin
@@ -740,15 +821,16 @@ c --- 'temio ' = temperature I/O unit (0 no I/O)
           do j=1,jj
             do i=1,ii
               if (ip(i,j).ne.0) then
-                if     (utilq(i,j,k).ge.kk .or.
-     &                  utilq(i,j,k).le.0.0    ) then
-                  utilk(i,j,k)=flag
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=temp(i,j, 1)
+                elseif (utilq(i,j,k).ge.kk) then
+                  utilk(i,j,k)=temp(i,j,kk)
                 else
                   kq = utilq(i,j,k)
                   q  = utilq(i,j,k) - kq
                   utilk(i,j,k)=(1.0-q)*temp(i,j,kq)   +
      &                              q *temp(i,j,kq+1)
-       if     (i.eq.itest .and. j.eq.jtest .and. mnproc.eq.1) then
+                  if (i+i0.eq.itest .and. j+j0.eq.jtest) then
                     write(lp,'(a,2i5,2i3,f8.4,4f7.3)')
      &                 'i,j,k,kq,q,temp = ',i,j,k,kq,q,
      &                  temp(i,j,kq),temp(i,j,kq+1),
@@ -762,12 +844,12 @@ c --- 'temio ' = temperature I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
-     &                 '  temp   ',                       ! plot name
-     &                 'temperature_surface_temperature', ! ncdf name
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,lhycom,
+     &                 ' iso potT',                       ! plot name
+     &                 'isotherm_potential_temperature',  ! ncdf name
      &                 'sea_water_potential_temperature', ! ncdf standard_name
      &                 'degC',                            ! units             
-     &                 1,ktemp,ltheta, frmt,ioin)                               
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c --- -------------------------------
@@ -781,9 +863,10 @@ c --- 'salio ' = salinity I/O unit (0 no I/O)
           do j=1,jj
             do i=1,ii
               if (ip(i,j).ne.0) then
-                if     (utilq(i,j,k).ge.kk .or.
-     &                  utilq(i,j,k).le.0.0    ) then
-                  utilk(i,j,k)=flag
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=saln(i,j, 1)
+                elseif (utilq(i,j,k).ge.kk) then
+                  utilk(i,j,k)=saln(i,j,kk)
                 else
                   kq = utilq(i,j,k)
                   q  = utilq(i,j,k) - kq
@@ -796,12 +879,12 @@ c --- 'salio ' = salinity I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
-     &                 ' salinity',                    ! plot name    
-     &                 'temperature_surface_salinity', ! ncdf name    
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,lhycom,
+     &                 ' iso saln',                    ! plot name
+     &                 'isotherm_salinity',            ! ncdf name
      &                 'sea_water_salinity',           ! ncdf standard_name
      &                 'psu',                          ! units             
-     &                 1,ktemp,ltheta, frmt,ioin)                               
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c --- ------------------------------
@@ -815,9 +898,10 @@ c --- 'tthio ' = density I/O unit (0 no I/O)
           do j=1,jj
             do i=1,ii
               if (ip(i,j).ne.0) then
-                if     (utilq(i,j,k).ge.kk .or.
-     &                  utilq(i,j,k).le.0.0    ) then
-                  utilk(i,j,k)=flag
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=th3d(i,j, 1)
+                elseif (utilq(i,j,k).ge.kk) then
+                  utilk(i,j,k)=th3d(i,j,kk)
                 else
                   kq = utilq(i,j,k)
                   q  = utilq(i,j,k) - kq
@@ -830,12 +914,12 @@ c --- 'tthio ' = density I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
-     &                 ' density ',                   ! plot name
-     &                 'temperature_surface_density', ! ncdf name
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,lhycom,
+     &                 ' iso pden',                   ! plot name
+     &                 'isotherm_potential_density',  ! ncdf name
      &                 'sea_water_potential_density', ! ncdf standard_name
      &                 'sigma',                       ! units
-     &                 1,ktemp,ltheta, frmt,ioin)                               
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c ---   -------------
@@ -850,9 +934,10 @@ c ---   'trcio ' = tracer I/O unit (0 no I/O)
             do j=1,jj
               do i=1,ii
                 if (ip(i,j).ne.0) then
-                  if     (utilq(i,j,k).ge.kk .or.
-     &                    utilq(i,j,k).le.0.0    ) then
-                    utilk(i,j,k)=flag
+                  if     (utilq(i,j,k).le.0.0) then
+                    utilk(i,j,k)=trcr(i,j, 1,ktr)
+                  elseif (utilq(i,j,k).ge.kk) then
+                    utilk(i,j,k)=trcr(i,j,kk,ktr)
                   else
                     kq = utilq(i,j,k)
                     q  = utilq(i,j,k) - kq
@@ -865,14 +950,194 @@ c ---   'trcio ' = tracer I/O unit (0 no I/O)
               enddo !i
             enddo !j
           enddo !k
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,lhycom,
+          call horout_3t(utilk, artype,yrflag,time3,iexpt,lhycom,
      &                   trim(ctrc_title(ktr)),      ! plot name
      &                   trim(ctrc_lname(ktr)),      ! ncdf name
      &                   trim(ctrc_sname(ktr)),      ! ncdf standard_name
      &                   trim(ctrc_units(ktr)),      ! units
-     &                   1,ktemp,ltheta, frmt,ioin) 
+     &                   1,ktemp,ltheta,.true.,tsur, frmt,ioin)
         endif !ioin
         enddo  !ktr= 1,ntracr
+c
+c --- ------------------------------------
+c --- temperature from surface to isotherm
+c --- ------------------------------------
+c
+c --- 'tem0io ' = 0 to iso-surface pot.temp. I/O unit (0 no I/O, optional)
+      ioin=iotem0in
+      if     (ioin.ne.0) then
+        do k= 1,ktemp
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=temp(i,j,1)
+                else
+                  kq = utilq(i,j,k)
+                  q  = utilq(i,j,k) - kq
+                  ts = temp(i,j,1)*dp(i,j,1)
+                  ds =             dp(i,j,1)
+                  if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                    write(lp,'(a,2i5,2i3,f8.4)')
+     &                 'i,j,k,kq,q  = ',i,j,k,kq,q
+                    write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
+     &                 'i,j,k,kt,ts = ',i,j,k,1,
+     &                  temp(i,j,1),dp(i,j,1),ds
+                    call flush(lp)
+                  endif !debuging
+                  do kt= 2,kq
+                    ts = ts + temp(i,j,kt)*dp(i,j,kt)
+                    ds = ds +              dp(i,j,kt)
+                    if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
+     &                   'i,j,k,kt,ts = ',i,j,k,kt,
+     &                   temp(i,j,kt),
+     &                   dp(i,j,kt), ds
+                      call flush(lp)
+                    endif !debuging
+                  enddo !kt
+                  if (kq.ne.kk) then
+c
+c ---               Use linear between cell centers to get isotherm
+c ---               ts already includes t.kq across 0.5*dp.kq
+c
+                    ts = ts - temp(i,j,kq)*0.5*dp(i,j,kq)
+                    ds = ds -              0.5*dp(i,j,kq)
+                    if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
+     &                   'i,j,k,kt,ts = ',i,j,k,kq,
+     &                      temp(i,j,kq),
+     &                   -0.5*dp(i,j,kq), ds
+                      call flush(lp)
+                    endif !debuging
+                    ppa = 0.5*(p(i,j,kq)  +p(i,j,kq+1)) !center of layer kq
+                    ppb = 0.5*(p(i,j,kq+1)+p(i,j,kq+2)) !center of layer kq+1
+                    diso=(1.0-q)*ppa +
+     &                        q *ppb
+                    ts= ts + 0.5*(temp(i,j,kq)+tsur(k))*
+     &                           (diso-ppa)
+                    ds= ds +     (diso-ppa)
+                    if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,f8.4,3f8.3)')
+     &                   'i,j,k,kt,ts = ',i,j,k,kq+1,
+     &                   0.5*(temp(i,j,kq)+tsur(k)),
+     &                   (diso-ppa), ds
+                      call flush(lp)
+                    endif !debuging
+                  endif
+                  utilk(i,j,k)=ts/ds
+                  if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                    write(lp,'(a,2i5,2i3,f8.4,4f7.3)')
+     &                 'i,j,k,kq,q,tlay = ',i,j,k,kq,q,
+     &                  temp(i,j,1),temp(i,j,min(kk,kq+1)),
+     &                  utilk(i,j,k),tsur(k)
+                    call flush(lp)
+                  endif !debuging
+                endif
+              else
+                utilk(i,j,k)=flag
+              endif
+            enddo !i
+          enddo !j
+        enddo !k
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' potT2sur',                       ! plot name
+     &                 'shallower_potential_temperature', ! ncdf name
+     &                 'sea_water_potential_temperature', ! ncdf standard_name
+     &                 'degC',                            ! units
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
+      endif !ioin
+
+c
+c --- ---------------------------------------
+c --- heat potential from surface to isotherm
+c --- ---------------------------------------
+c
+c --- 't0hpio ' = 0 to iso-surface heat potential I/O unit (0 no I/O, optional)
+c --- heat potential is based on t-tsur, i.e. heat in excess of that from tsur
+      ioin=iot0hpin
+      if     (ioin.ne.0) then
+c ---   pot. density is 17-term sigma-0, even if HYCOM is using sigma2
+c ---   after 'tthio', so it is safe to overwrite th3d
+        do k= 1,kk
+          call th3d_p(temp(1-nbdy,1-nbdy,k),saln(1-nbdy,1-nbdy,k),
+     &                th3d(1-nbdy,1-nbdy,k),ii,jj, 5,-1000.0)  !kg/m^3
+        enddo !k
+        do k= 1,ktemp
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=0.0
+                else
+                  kq = utilq(i,j,k)
+                  q  = utilq(i,j,k) - kq
+                  hp = (temp(i,j,1)-tsur(k))*
+     &                  th3d(i,j,1)*
+     &                    dp(i,j,1)
+                  if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                    write(lp,'(a,2i5,2i3,f8.4)')
+     &                 'i,j,k,kq,q  = ',i,j,k,kq,q
+                    write(lp,'(a,2i5,2i3,4f9.3)')
+     &                 'i,j,k,kt,hp = ',i,j,k,1,
+     &                 temp(i,j,1)-tsur(k),
+     &                 th3d(i,j,1),dp(i,j,1),hp*1.e-7
+                    call flush(lp)
+                  endif !debuging
+                  do kt= 2,kq
+                    hp = hp + (temp(i,j,kt)-tsur(k))*
+     &                         th3d(i,j,kt)*
+     &                           dp(i,j,kt)
+                    if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,4f9.3)')
+     &                   'i,j,k,kt,hp = ',i,j,k,kt,
+     &                   temp(i,j,kt)-tsur(k),
+     &                   th3d(i,j,kt),
+     &                     dp(i,j,kt), hp*1.e-7
+                      call flush(lp)
+                    endif !debuging
+                  enddo !kt
+                   if (kq.ne.kk) then
+c
+c ---               Use linear between cell centers to get isotherm
+c ---               hp already includes isotherm at ppa+dp.kq, hence -dp.kq
+c
+                    ppa = 0.5*(p(i,j,kq)  +p(i,j,kq+1)) !center of layer kq
+                    ppb = 0.5*(p(i,j,kq+1)+p(i,j,kq+2)) !center of layer kq+1
+                    diso=(1.0-q)*ppa +
+     &                        q *ppb
+                    hp = hp + 0.5*(temp(i,j,kq)-tsur(k))*th3d(i,j,kq)*
+     &                        ((diso-ppa)-dp(i,j,kq))
+                    if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,4f9.3)')
+     &                   'i,j,k,kt,hp = ',i,j,k,kq+1,
+     &                   0.5*(temp(i,j,kq)-tsur(k)),
+     &                        th3d(i,j,kq),
+     &                   (diso-ppa)-dp(i,j,kq),hp*1.e-7
+                      call flush(lp)
+                    endif !debuging
+                  endif
+                  utilk(i,j,k)=spcifh*hp
+                  if     (i+i0.eq.itest .and. j+j0.eq.jtest) then
+                    write(lp,'(a,2i5,i3,2f9.3)')
+     &                 'i,j,k,hp = ',i,j,k,
+     &                 tsur(k),utilk(i,j,k)*1.e-7
+                    call flush(lp)
+                  endif !debuging
+                endif
+              else
+                utilk(i,j,k)=flag
+              endif
+            enddo !i
+          enddo !j
+        enddo !k
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' hp2sur ',                        ! plot name
+     &                 'shallower_heat_potential',        ! ncdf name
+     &                 ' ',                               ! ncdf standard_name
+     &                 'J m-2',                           ! units
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
+      endif !ioin
 c
 c --- ----------
 c --- bathymetry
