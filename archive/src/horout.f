@@ -10,7 +10,7 @@ c
       logical          lhycom,ltheta
       integer          artype,yrflag,iexpt,k,io
       double precision time3(3)
-      real             array(ii,jj),thetak
+      real             array(ii,jj)
 c
 c     write out array to unit io based on frmt.
 c
@@ -255,12 +255,50 @@ c
       logical          lhycom,ltheta
       integer          artype,yrflag,iexpt,kf,kl,io
       double precision time3(3)
-      real             array(ii,jj,*),thetak
+      real             array(ii,jj,*)
 c
 c     write out a 3-d layer array to unit io based on frmt.
 c
 c     2-d array size and frmt    must be identical in all calls.
 c     artype,yrflag,time3,lhycom must be identical in all calls.
+c     io may be modified by this subroutine
+c
+c     calls horout_3t to do the work
+c
+      real tsur(0:kl)
+      tsur(:) = 0.0
+      call horout_3t(array,
+     &               artype,yrflag,time3,iexpt,lhycom,
+     &               name,namel,names,units,
+     &               kf,kl,ltheta,.false.,tsur, frmt,io)
+      return
+      end
+
+      subroutine horout_3t(array,
+     &                     artype,yrflag,time3,iexpt,lhycom,
+     &                     name,namel,names,units,
+     &                     kf,kl,ltheta,ltsur,tsur, frmt,io)
+      use mod_plot ! HYCOM I/O interface
+      use mod_xc   ! HYCOM communication API
+      use mod_zb   ! HYCOM I/O interface for subregion
+      implicit none
+c
+      character*(*)    name,namel,names,units,frmt
+      logical          lhycom,ltheta,ltsur,lexist
+      integer          artype,yrflag,iexpt,kf,kl,io
+      double precision time3(3)
+      real             array(ii,jj,*),tsur(0:kl)
+c
+c     write out a 3-d layer array to unit io based on frmt.
+c
+c     horout_3d calls this routine, and most error stops
+c     reference horout_3d which is the more common call path.
+c
+c     2-d array size and frmt    must be identical in all calls.
+c     artype,yrflag,time3,lhycom must be identical in all calls.
+c     io may be modified by this subroutine
+c
+c     at most one of ltheta and ltsur can be .true..
 c
 c     the output filename is taken from environment variable FOR0xx,
 c      where  xx = io, with default fort.xx.
@@ -293,6 +331,13 @@ c
       character cmonth(12)*3
       data      cmonth/'Jan','Feb','Mar','Apr','May','Jun',
      &                 'Jul','Aug','Sep','Oct','Nov','Dec'/
+c
+      if     (ltheta .and. ltsur) then
+        write(lp,'(/2a/)')   'error in horout_3t - ',
+     &    'ltheta and ltsur are both .true.'
+        call flush(lp)
+        stop
+      endif
 c
       if     (iotype.eq.-1) then
 c
@@ -421,6 +466,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -440,6 +487,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -472,6 +521,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -491,6 +542,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -809,7 +862,7 @@ c
       integer          jlatn,artype,yrflag,iexpt,kf,kl,io
       double precision time3(3)
       real             array(jlatn,kl),
-     &                 platj(jlatn),thetak
+     &                 platj(jlatn)
 c
 c     write out a 2-d layer array to unit io based on frmt.
 c

@@ -223,6 +223,7 @@ c
               call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                 "experiment",
      &                                 label(75:78)))
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf3z"
@@ -467,7 +468,7 @@ c
       logical          lhycom,ltheta,lexist
       integer          artype,yrflag,iexpt,k,io,l
       double precision time3(3)
-      real             array(jdm,k),thetak
+      real             array(jdm,k)
       real             zz(k),zloc(1)
 c
       real, allocatable :: zlat(:)
@@ -682,6 +683,7 @@ c
               call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                 "experiment",
      &                                 label(75:78)))
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf3z"
@@ -955,7 +957,7 @@ c
       logical          lhycom,ltheta,lexist
       integer          artype,yrflag,iexpt,k,io
       double precision time3(3)
-      real             array(ii,jj),thetak
+      real             array(ii,jj)
 c
 c     write out array to unit io based on frmt.
 c
@@ -1420,6 +1422,7 @@ c
               call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                 "experiment",
      &                                 label(75:78)))
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf2d"
@@ -1471,6 +1474,7 @@ c
               call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                 "experiment",
      &                                 label(75:78)))
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf2d"
@@ -1562,7 +1566,7 @@ c
      &                                   "bulletin_date",
      &                                   trim(ncenv)))
               endif
-               ncenv = ' '
+              ncenv = ' '
               call getenv('MERSEA_B_TYPE',ncenv)
               if     (ncenv.ne.' ') then
                 call ncheck(nf90_put_att(ncfileID,nf90_global,
@@ -1593,6 +1597,7 @@ c
      &                                   "classification_authority",
      &                                   "not applicable"))
               endif !PUBLIC
+              ncenv = ' '
               call getenv('CDF_INST',ncenv)
               if     (ncenv.ne.' ') then
                 call nchek('nf90_put_att( institution',
@@ -1613,6 +1618,7 @@ c
      &                                   "source",
      &                                   "HYCOM std. archive file"))
               endif
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf2d"
@@ -2741,13 +2747,52 @@ c
       logical          lhycom,ltheta,lexist
       integer          artype,yrflag,iexpt,kf,kl,io
       double precision time3(3)
-      real             array(ii,jj,kl),thetak
+      real             array(ii,jj,kl)
 c
 c     write out a 3-d layer array to unit io based on frmt.
 c
 c     2-d array size and frmt    must be identical in all calls.
 c     artype,yrflag,time3,lhycom must be identical in all calls.
 c     io may be modified by this subroutine
+c
+c     calls horout_3t to do the work
+c
+      real tsur(0:kl)
+      tsur(:) = 0.0
+      call horout_3t(array,
+     &               artype,yrflag,time3,iexpt,lhycom,
+     &               name,namec,names,units,
+     &               kf,kl,ltheta,.false.,tsur, frmt,io)
+      return
+      end
+
+      subroutine horout_3t(array,
+     &                     artype,yrflag,time3,iexpt,lhycom,
+     &                     name,namec,names,units,
+     &                     kf,kl,ltheta,ltsur,tsur, frmt,io)
+      use mod_plot ! HYCOM I/O interface
+      use mod_xc   ! HYCOM communication API
+      use mod_zb   ! HYCOM I/O interface for subregion
+      use netcdf   ! NetCDF Interface
+      
+      implicit none
+c
+      character*(*)    name,namec,names,units,frmt
+      logical          lhycom,ltheta,ltsur,lexist
+      integer          artype,yrflag,iexpt,kf,kl,io
+      double precision time3(3)
+      real             array(ii,jj,kl),tsur(0:kl)
+c
+c     write out a 3-d layer array to unit io based on frmt.
+c
+c     horout_3d calls this routine, and most error stops
+c     reference horout_3d which is the more common call path.
+c
+c     2-d array size and frmt    must be identical in all calls.
+c     artype,yrflag,time3,lhycom must be identical in all calls.
+c     io may be modified by this subroutine
+c
+c     at most one of ltheta and ltsur can be .true..
 c
 c     the output filename is taken from environment variable FOR0xx,
 c      where  xx = io, with default fort.xx.
@@ -2813,6 +2858,13 @@ c
       character cmonth(12)*3
       data      cmonth/'Jan','Feb','Mar','Apr','May','Jun',
      &                 'Jul','Aug','Sep','Oct','Nov','Dec'/
+c
+      if     (ltheta .and. ltsur) then
+        write(lp,'(/2a/)')   'error in horout_3t - ',
+     &    'ltheta and ltsur are both .true.'
+        call flush(lp)
+        stop
+      endif
 c
       iosave = io
       lugrid = .false.
@@ -3008,6 +3060,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -3027,6 +3081,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -3046,6 +3102,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -3071,6 +3129,8 @@ c
         do k= kf,kl
           if     (ltheta) then
             write(label(33:50),'(a,f5.2,   a)') 'sig=',theta(k),name
+          elseif (ltsur) then
+            write(label(33:50),'(a,f5.2,   a)') 'iso=',tsur(k),name
           else
             write(label(33:50),'(a,i2.2,1x,a)') 'layer=',k,name
           endif
@@ -3123,7 +3183,13 @@ c
             call ncheck(nf90_def_dim(ncfileID,
      &                               "X",         ii,pXDimID))
           endif
-          call ncheck(nf90_def_dim(ncfileID,"Layer",kl-kf+1,lyrDimID))
+          if     (ltsur) then
+            call ncheck(nf90_def_dim(ncfileID,
+     &                               "Isotherm",kl-kf+1,lyrDimID))
+          else
+            call ncheck(nf90_def_dim(ncfileID,
+     &                               "Layer",   kl-kf+1,lyrDimID))
+          endif
           ! create the global attributes
           call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                             "Conventions",
@@ -3160,9 +3226,14 @@ c
             call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                               "experiment",
      &                               label(75:78)))
+            ncenv = ' '
             call getenv('CDF_HIST',ncenv)
             if     (ncenv.eq.' ') then
-              ncenv = "archv2ncdf2d"
+              if     (ltsur) then
+                ncenv = "archv2ncdf2t"
+              else
+                ncenv = "archv2ncdf2d"
+              endif
             endif
             if     (ncenv.ne.'NONE') then
               call ncheck(nf90_put_att(ncfileID,nf90_global,
@@ -3383,6 +3454,11 @@ c
      &                               lyrDimID,lyrVarID))
             call ncheck(nf90_put_att(ncfileID,lyrVarID,
      &                               "units","SigmaTheta"))     
+          elseif (ltsur) then
+            call ncheck(nf90_def_var(ncfileID,"Isotherm", nf90_float,
+     &                               lyrDimID,lyrVarID))
+            call ncheck(nf90_put_att(ncfileID,lyrVarID,
+     &                               "units","degC"))     
           else
             call ncheck(nf90_def_var(ncfileID,"Layer", nf90_int,
      &                               lyrDimID,lyrVarID))
@@ -3628,6 +3704,9 @@ c
           if     (ltheta) then
             call ncheck(nf90_put_var(ncfileID,lyrVarID,
      &                               theta(kf:kl)))
+          elseif (ltsur) then
+            call ncheck(nf90_put_var(ncfileID,lyrVarID,
+     &                               tsur(kf:kl)))
           else
             call ncheck(nf90_put_var(ncfileID,lyrVarID,
      &                               (/(k, k=kf,kl)/)))
@@ -3647,7 +3726,11 @@ c
           if     (iotype.eq.4) then !not for MERSEA
             call ncheck(nf90_inq_dimid(ncfileID,"MT",    MTDimID))
           endif
-          call ncheck(nf90_inq_dimid(ncfileID,"Layer",lyrDimID))
+          if     (ltsur) then
+            call ncheck(nf90_inq_dimid(ncfileID,"Isotherm",lyrDimID))
+          else
+            call ncheck(nf90_inq_dimid(ncfileID,   "Layer",lyrDimID))
+          endif
           if     (iotype.eq.-4) then !MERSEA
             call ncheck(nf90_inq_dimid(ncfileID,
      &                                 "latitude",pLatDimID))
@@ -4257,6 +4340,7 @@ c
               call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                 "experiment",
      &                                 label(75:78)))
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf3z"
@@ -4298,6 +4382,7 @@ c
               call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                                 "experiment",
      &                                 label(75:78)))
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf3z"
@@ -4434,6 +4519,7 @@ c
      &                                   "source",
      &                                   "HYCOM std. archive file"))
               endif
+              ncenv = ' '
               call getenv('CDF_HIST',ncenv)
               if     (ncenv.eq.' ') then
                 ncenv = "archv2ncdf3z"
@@ -5248,7 +5334,7 @@ c
       integer          jlatn,artype,yrflag,iexpt,kf,kl,io
       double precision time3(3)
       real             array(jlatn,kl),
-     &                 platj(jlatn),thetak
+     &                 platj(jlatn)
 c
 c     write out a 2-d layer array to unit io based on frmt.
 c
@@ -5917,8 +6003,8 @@ c
             call ncheck(nf90_put_att(ncfileID,nf90_global,
      &                               "history",
      &                               "archv2ncdfjz"))
-            ncenv = ' '
           else
+            ncenv = ' '
             call getenv('CDF_TITLE',ncenv)
             if     (ncenv.eq.' ') then
               ncenv = "MICOM"

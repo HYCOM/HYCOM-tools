@@ -23,7 +23,8 @@ c
       real             bot,dudxdn,dudxup,dvdydn,dvdyup
       double precision time3(3)
 c
-      real, parameter :: flag = 2.0**100
+      real, parameter :: flag   = 2.0**100
+      real, parameter :: spcifh = 3850.0  !specific heat of sea water (j/kg/deg)
 c
 c --- 'trcout' -- tracer input
       logical   trcout
@@ -34,8 +35,6 @@ c
 c
       logical   initl
       data      initl /.true. /
-      real      thref,spcifh
-      data      thref/1.e-3/,spcifh/3990./
       character blank*40
       data      blank/'                                        '/
 c
@@ -200,24 +199,30 @@ c ---   'tsur  ' = sample temperaure
 c
       ltheta=.false.
 c
-c --- 'botio ' = bathymetry        I/O unit (0 no I/O)
-c --- 'layio ' = iso-surface layer I/O unit (0 no I/O)
-c --- 'depio ' = iso-surface depth I/O unit (0 no I/O)
-c --- 'tem0io' = 0 to iso-s. temp. I/O unit (0 no I/O, optional)
-c --- 'temio ' = iso-surface temp. I/O unit (0 no I/O)
-c --- 'salio ' = iso-surface salin I/O unit (0 no I/O)
-c --- 'tthio ' = iso-surface dens. I/O unit (0 no I/O)
+c --- 'botio ' = bathymetry                   I/O unit (0 no I/O)
+c --- 'layio ' = iso-surface layer            I/O unit (0 no I/O)
+c --- 'depio ' = iso-surface depth            I/O unit (0 no I/O)
+c --- 'tem0io' = 0 to iso-s. pot. temperature I/O unit (0 no I/O, optional)
+c --- 't0hpio' = 0 to iso-s. heat potential   I/O unit (0 no I/O, optional)
+c --- 'temio ' = iso-surface pot. temperature I/O unit (0 no I/O)
+c --- 'salio ' = iso-surface salinity         I/O unit (0 no I/O)
+c --- 'tthio ' = iso-surface pot. density     I/O unit (0 no I/O)
       call blkini(iobotin,'botio ')
       call blkini(iolayin,'layio ')
       call blkini(iodepin,'depio ')
-      call blkini2(i,j,   'tem0io','temio ')  !read tem0io or ktemp
-      if (j.eq.1) then
-        iotem0in = i
-        call blkini(iotemin,'temio ')
-      else
-        iotem0in = 0
-        iotemin  = i
-      endif
+      iotem0in = 0
+      iot0hpin = 0
+      do
+        call blkini3(i,j, 'tem0io','t0hpio','temio ')  !read one of three
+        if     (j.eq.1) then
+          iotem0in = i
+        elseif (j.eq.2) then
+          iot0hpin = i
+        else
+          iotemin  = i
+          exit
+        endif
+      enddo
       call blkini(iosalin,'salio ')
       call blkini(iotthin,'tthio ')
 c
@@ -665,12 +670,12 @@ c
 c --- 'layio ' = surface layer I/O unit (0 no I/O)
       ioin=iolayin
       if     (ioin.ne.0) then
-        call horout_3d(utilq, artype,yrflag,time3,iexpt,.true.,
+        call horout_3t(utilq, artype,yrflag,time3,iexpt,.true.,
      &              ' tsur.lay',                        ! plot name
      &              'isotherm_layer_number',            ! ncdf name
      &              ' ',                                ! ncdf standard_name
      &              ' ',                                ! units
-     &              1,ktemp,ltheta, frmt,ioin)
+     &              1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif
 c
 c --- ----------------------------
@@ -679,7 +684,7 @@ c --- ----------------------------
 c
 c --- 'surio ' = surface depth I/O unit (0 no I/O)
       ioin=iodepin
-      if (ioin.gt.0) then
+      if     (ioin.ne.0) then
         do k= 1,ktemp
           do j=1,jj
             do i=1,ii
@@ -701,106 +706,12 @@ c --- 'surio ' = surface depth I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
      &                 ' tsur.dep',                       ! plot name
      &                 'isotherm_depth',                  ! ncdf name
      &    'depth_of_isosurface_of_sea_water_potential_temperature', ! ncdf standard_name
      &                 'm',                               ! units
-     &                 1,ktemp,ltheta, frmt,ioin)
-      endif !ioin
-c
-c --- ------------------------------------
-c --- temperature from surface to isotherm
-c --- ------------------------------------
-c
-c --- 'tem0io ' = 0 to iso-surface pot.temp. I/O unit (0 no I/O, optional)
-      ioin=iotem0in
-      if (ioin.gt.0) then
-        do k= 1,ktemp
-          do j=1,jj
-            do i=1,ii
-              if (ip(i,j).ne.0) then
-                if     (utilq(i,j,k).le.0.0) then
-                  utilk(i,j,k)=temp(i,j,1)
-                else
-                  kq = utilq(i,j,k)
-                  q  = utilq(i,j,k) - kq
-                  ts = temp(i,j,1)*0.5*dp(i,j,1)
-                  ds =             0.5*dp(i,j,1)
-                  if     (i.eq.itest .and. j.eq.jtest) then
-                    write(lp,'(a,2i5,2i3,f8.4)')
-     &                 'i,j,k,kq,q  = ',i,j,k,kq,q
-                    write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
-     &                 'i,j,k,kt,ts = ',i,j,k,1,
-     &                  temp(i,j,1),0.5*dp(i,j,1),ds
-                    call flush(lp)
-                  endif !debuging
-                  do kt= 2,kq
-                    ts = ts + 0.5*(temp(i,j,kt-1)+
-     &                             temp(i,j,kt)   )*
-     &                        0.5*(  dp(i,j,kt-1)+
-     &                               dp(i,j,kt)   )
-                    ds = ds + 0.5*(  dp(i,j,kt-1)+
-     &                               dp(i,j,kt)   )
-                    if     (i.eq.itest .and. j.eq.jtest) then
-                      write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
-     &                   'i,j,k,kt,ts = ',i,j,k,kt,
-     &                   0.5*(temp(i,j,kt-1)+
-     &                        temp(i,j,kt)   ),
-     &                   0.5*(  dp(i,j,kt-1)+
-     &                          dp(i,j,kt)   ), ds
-                      call flush(lp)
-                    endif !debuging
-                  enddo !kt
-                  if (kq.eq.kk) then
-                    diso = p(i,j,kk+1)
-                    ts   = ts + temp(i,j,kk)*0.5*dp(i,j,kk)
-                    ds   = ds +              0.5*dp(i,j,kk)
-                    if     (i.eq.itest .and. j.eq.jtest) then
-                      write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
-     &                   'i,j,k,kt,ts = ',i,j,k,kk+1,
-     &                        temp(i,j,kk),
-     &                      0.5*dp(i,j,kk), ds
-                      call flush(lp)
-                    endif !debuging
-                  else
-                    ppa = 0.5*(p(i,j,kq)  +p(i,j,kq+1)) !center of layer kq
-                    ppb = 0.5*(p(i,j,kq+1)+p(i,j,kq+2)) !center of layer kq+1
-                    diso=(1.0-q)*ppa +
-     &                        q *ppb
-                    tiso=(1.0-q)*temp(i,j,kq)   +
-     &                        q *temp(i,j,kq+1)
-                    ts= ts + 0.5*(temp(i,j,kq)+tiso)*
-     &                           (diso-ppa)
-                    ds= ds +     (diso-ppa)
-                    if     (i.eq.itest .and. j.eq.jtest) then
-                      write(lp,'(a,2i5,2i3,f8.4,3f8.3)')
-     &                   'i,j,k,kt,ts = ',i,j,k,kq+1,
-     &                   tiso,(diso-ppa),ds,diso
-                      call flush(lp)
-                    endif !debuging
-                  endif
-                  utilk(i,j,k)=ts/diso
-                  if     (i.eq.itest .and. j.eq.jtest) then
-                    write(lp,'(a,2i5,2i3,f8.4,4f7.3)')
-     &                 'i,j,k,kq,q,tlay = ',i,j,k,kq,q,
-     &                  temp(i,j,1),temp(i,j,min(kk,kq+1)),
-     &                  utilk(i,j,k),tsur(k)
-                    call flush(lp)
-                  endif !debuging
-                endif
-              else
-                utilk(i,j,k)=flag
-              endif
-            enddo !i
-          enddo !j
-        enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
-     &                 'potT2sur ',                       ! plot name
-     &                 'shallower_potential_temperature', ! ncdf name
-     &                 'sea_water_potential_temperature', ! ncdf standard_name
-     &                 'degC',                            ! units
-     &                 1,ktemp,ltheta, frmt,ioin)
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c --- ---------------------------------
@@ -837,12 +748,12 @@ c --- 'temio ' = temperature I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
-     &                 'iso potT ',                       ! plot name
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' iso potT',                       ! plot name
      &                 'isotherm_potential_temperature',  ! ncdf name
      &                 'sea_water_potential_temperature', ! ncdf standard_name
      &                 'degC',                            ! units
-     &                 1,ktemp,ltheta, frmt,ioin)
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c --- -------------------------------
@@ -872,12 +783,12 @@ c --- 'salio ' = salinity I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
-     &                 'iso salin',                    ! plot name
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' iso saln',                    ! plot name
      &                 'isotherm_salinity',            ! ncdf name
      &                 'sea_water_salinity',           ! ncdf standard_name
      &                 'psu',                          ! units
-     &                 1,ktemp,ltheta, frmt,ioin)
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c --- ------------------------------
@@ -907,12 +818,12 @@ c --- 'tthio ' = density I/O unit (0 no I/O)
             enddo !i
           enddo !j
         enddo !k
-        call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
-     &                 'iso pden ',                   ! plot name
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' iso pden',                   ! plot name
      &                 'isotherm_potential_density',  ! ncdf name
      &                 'sea_water_potential_density', ! ncdf standard_name
      &                 'sigma',                       ! units
-     &                 1,ktemp,ltheta, frmt,ioin)
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
       endif !ioin
 c
 c ---   -------------
@@ -943,14 +854,193 @@ c ---   'trcio ' = tracer I/O unit (0 no I/O)
               enddo !i
             enddo !j
           enddo !k
-          call horout_3d(utilk, artype,yrflag,time3,iexpt,.true.,
+          call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
      &                   trim(ctrc_title(ktr)),      ! plot name
      &                   trim(ctrc_lname(ktr)),      ! ncdf name
      &                   trim(ctrc_sname(ktr)),      ! ncdf standard_name
      &                   trim(ctrc_units(ktr)),      ! units
-     &                   1,ktemp,ltheta, frmt,ioin)
+     &                   1,ktemp,ltheta,.true.,tsur, frmt,ioin)
         endif !ioin
         enddo  !ktr= 1,ntracr
+c
+c --- ------------------------------------
+c --- temperature from surface to isotherm
+c --- ------------------------------------
+c
+c --- 'tem0io ' = 0 to iso-surface pot.temp. I/O unit (0 no I/O, optional)
+      ioin=iotem0in
+      if     (ioin.ne.0) then
+        do k= 1,ktemp
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=temp(i,j,1)
+                else
+                  kq = utilq(i,j,k)
+                  q  = utilq(i,j,k) - kq
+                  ts = temp(i,j,1)*dp(i,j,1)
+                  ds =             dp(i,j,1)
+                  if     (i.eq.itest .and. j.eq.jtest) then
+                    write(lp,'(a,2i5,2i3,f8.4)')
+     &                 'i,j,k,kq,q  = ',i,j,k,kq,q
+                    write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
+     &                 'i,j,k,kt,ts = ',i,j,k,1,
+     &                  temp(i,j,1),dp(i,j,1),ds
+                    call flush(lp)
+                  endif !debuging
+                  do kt= 2,kq
+                    ts = ts + temp(i,j,kt)*dp(i,j,kt)
+                    ds = ds +              dp(i,j,kt)
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
+     &                   'i,j,k,kt,ts = ',i,j,k,kt,
+     &                   temp(i,j,kt),
+     &                   dp(i,j,kt), ds
+                      call flush(lp)
+                    endif !debuging
+                  enddo !kt
+                  if (kq.ne.kk) then
+c
+c ---               Use linear between cell centers to get isotherm
+c ---               ts already includes t.kq across 0.5*dp.kq
+c
+                    ts = ts - temp(i,j,kq)*0.5*dp(i,j,kq)
+                    ds = ds -              0.5*dp(i,j,kq)
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,f8.4,2f8.3)')
+     &                   'i,j,k,kt,ts = ',i,j,k,kq,
+     &                      temp(i,j,kq),
+     &                   -0.5*dp(i,j,kq), ds
+                      call flush(lp)
+                    endif !debuging
+                    ppa = 0.5*(p(i,j,kq)  +p(i,j,kq+1)) !center of layer kq
+                    ppb = 0.5*(p(i,j,kq+1)+p(i,j,kq+2)) !center of layer kq+1
+                    diso=(1.0-q)*ppa +
+     &                        q *ppb
+                    ts= ts + 0.5*(temp(i,j,kq)+tsur(k))*
+     &                           (diso-ppa)
+                    ds= ds +     (diso-ppa)
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,f8.4,3f8.3)')
+     &                   'i,j,k,kt,ts = ',i,j,k,kq+1,
+     &                   0.5*(temp(i,j,kq)+tsur(k)),
+     &                   (diso-ppa), ds
+                      call flush(lp)
+                    endif !debuging
+                  endif
+                  utilk(i,j,k)=ts/ds
+                  if     (i.eq.itest .and. j.eq.jtest) then
+                    write(lp,'(a,2i5,2i3,f8.4,4f7.3)')
+     &                 'i,j,k,kq,q,tlay = ',i,j,k,kq,q,
+     &                  temp(i,j,1),temp(i,j,min(kk,kq+1)),
+     &                  utilk(i,j,k),tsur(k)
+                    call flush(lp)
+                  endif !debuging
+                endif
+              else
+                utilk(i,j,k)=flag
+              endif
+            enddo !i
+          enddo !j
+        enddo !k
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' potT2sur',                       ! plot name
+     &                 'shallower_potential_temperature', ! ncdf name
+     &                 'sea_water_potential_temperature', ! ncdf standard_name
+     &                 'degC',                            ! units
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
+      endif !ioin
+c
+c --- ---------------------------------------
+c --- heat potential from surface to isotherm
+c --- ---------------------------------------
+c
+c --- 't0hpio ' = 0 to iso-surface heat potential I/O unit (0 no I/O, optional)
+c --- heat potential is based on t-tsur, i.e. heat in excess of that from tsur
+      ioin=iot0hpin
+      if     (ioin.ne.0) then
+c ---   pot. density is 17-term sigma-0, even if HYCOM is using sigma2
+c ---   after 'tthio', so it is safe to overwrite th3d
+        do k= 1,kk
+          call th3d_p(temp(1,1,k),saln(1,1,k),
+     &                th3d(1,1,k),ii,jj, 5,-1000.0)  !pot. density, kg/m^3
+        enddo !k
+        do k= 1,ktemp
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                if     (utilq(i,j,k).le.0.0) then
+                  utilk(i,j,k)=0.0
+                else
+                  kq = utilq(i,j,k)
+                  q  = utilq(i,j,k) - kq
+                  hp = (temp(i,j,1)-tsur(k))*
+     &                  th3d(i,j,1)*
+     &                    dp(i,j,1)
+                  if     (i.eq.itest .and. j.eq.jtest) then
+                    write(lp,'(a,2i5,2i3,f8.4)')
+     &                 'i,j,k,kq,q  = ',i,j,k,kq,q
+                    write(lp,'(a,2i5,2i3,4f9.3)')
+     &                 'i,j,k,kt,hp = ',i,j,k,1,
+     &                 temp(i,j,1)-tsur(k),
+     &                 th3d(i,j,1),dp(i,j,1),hp*1.e-7
+                    call flush(lp)
+                  endif !debuging
+                  do kt= 2,kq
+                    hp = hp + (temp(i,j,kt)-tsur(k))*
+     &                         th3d(i,j,kt)*
+     &                           dp(i,j,kt)
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,4f9.3)')
+     &                   'i,j,k,kt,hp = ',i,j,k,kt,
+     &                   temp(i,j,kt)-tsur(k),
+     &                   th3d(i,j,kt),
+     &                     dp(i,j,kt), hp*1.e-7
+                      call flush(lp)
+                    endif !debuging
+                  enddo !kt
+                  if (kq.ne.kk) then
+c
+c ---               Use linear between cell centers to get isotherm
+c ---               hp already includes isotherm at ppa+dp.kq, hence -dp.kq
+c
+                    ppa = 0.5*(p(i,j,kq)  +p(i,j,kq+1)) !center of layer kq
+                    ppb = 0.5*(p(i,j,kq+1)+p(i,j,kq+2)) !center of layer kq+1
+                    diso=(1.0-q)*ppa +
+     &                        q *ppb
+                    hp = hp + 0.5*(temp(i,j,kq)-tsur(k))*th3d(i,j,kq)*
+     &                        ((diso-ppa)-dp(i,j,kq))
+                    if     (i.eq.itest .and. j.eq.jtest) then
+                      write(lp,'(a,2i5,2i3,4f9.3)')
+     &                   'i,j,k,kt,hp = ',i,j,k,kq+1,
+     &                   0.5*(temp(i,j,kq)-tsur(k)),
+     &                        th3d(i,j,kq),
+     &                   (diso-ppa)-dp(i,j,kq),hp*1.e-7
+                      call flush(lp)
+                    endif !debuging
+                  endif
+                  utilk(i,j,k)=spcifh*hp
+                  if     (i.eq.itest .and. j.eq.jtest) then
+                    write(lp,'(a,2i5,i3,2f9.3)')
+     &                 'i,j,k,hp = ',i,j,k,
+     &                 tsur(k),utilk(i,j,k)*1.e-7
+                    call flush(lp)
+                  endif !debuging
+                endif
+              else
+                utilk(i,j,k)=flag
+              endif
+            enddo !i
+          enddo !j
+        enddo !k
+        call horout_3t(utilk, artype,yrflag,time3,iexpt,.true.,
+     &                 ' hp2sur ',                        ! plot name
+     &                 'shallower_heat_potential',        ! ncdf name
+     &                 ' ',                               ! ncdf standard_name
+     &                 'J m-2',                           ! units
+     &                 1,ktemp,ltheta,.true.,tsur, frmt,ioin)
+      endif !ioin
 c
 c --- ----------
 c --- bathymetry
