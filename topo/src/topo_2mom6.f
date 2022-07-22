@@ -9,7 +9,7 @@ c
       integer          ncfileID, status, varID
       integer          nxDimID,nyDimID,ntDimID
       integer          i,j,mapflg,ntiles
-      real             hmaxa,hmaxb,hmina,hminb
+      real             dhdry,hmaxa,hmaxb,hmina,hminb
       character        preambl(5)*79,cline*80,preambl_all*512
 c
 c --- create a MOM6 topo file from a HYCOM version.
@@ -71,13 +71,17 @@ c
 c
 c --- calculate wet
 c
+      dhdry = min( 0.0, hmina-5.0)
+      write(6,*)
+      write(6,*) 'dhdry = ',dhdry
+c
       do j= 1,jdm
         do i= 1,idm
           if     (dh(i,j).lt.2.0**99) then
             wet(i,j) = 1.0
           else
             wet(i,j) = 0.0
-             dh(i,j) = 0.0
+             dh(i,j) = dhdry
           endif
         enddo
       enddo
