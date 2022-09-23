@@ -85,6 +85,31 @@ case 'AIX':
 	setenv CC	"cc"
 	setenv CFLAGS	"-O -q64 -DAIX"
 	breaksw
+case 'XC50_intel':
+#       compile for XC50 with INTEL compiler via aprun
+        setenv FC       "ftn"
+        setenv FFLAGS   "-traceback -O3 -fp-model precise -ftz -align array64byte -warn nogeneral -diag-disable 10212"
+        setenv FLIBS    ""
+        setenv CC       "cc"
+        setenv CFLAGS   "-traceback -O"
+        breaksw
+case 'XC50_gnu':
+#       compile for XC50 with GNU compiler via aprun
+        setenv FC       "ftn"
+        setenv FFLAGS   "-fPIC -m64 -fno-second-underscore -O"
+        setenv FLIBS    ""
+        setenv CC       "cc"
+        setenv CFLAGS   "-fPIC -m64 -O"
+        breaksw
+case 'XC50_cray':
+#       compile for XC50 with CRAY compiler via aprun
+        setenv FC       "ftn"
+        setenv FFLAGS   "-O2 -h fp0 -h omp"
+        setenv FFLAGS   "-O1 -h fp0 -h omp -Ofp0 -K trap=fp"
+        setenv FLIBS    ""
+        setenv CC       "cc"
+        setenv CFLAGS   "-O"
+        breaksw
 default:
 	echo 'Unknown Operating System: ' $OS
 	exit (1)
