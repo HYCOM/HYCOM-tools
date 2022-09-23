@@ -1370,7 +1370,6 @@ c      write(6,*)'End of Tides_set(),idm,jdm =',idm,jdm
           allocate(atide(idm,jdm,8),btide(idm,jdm,8))
 c
 !$OMP      PARALLEL DO PRIVATE(j,i,semi_cos,semi_sin,diur_cos,diur_sin)
-!$OMP&              SCHEDULE(STATIC,jblk)
            do j= 1,jdm
              do i= 1,idm
                semi_cos=cos(rad*plat(i,j))**2*cos(rad*2*plon(i,j))
@@ -1417,7 +1416,6 @@ ccc
         enddo
 
 !$OMP PARALLEL DO PRIVATE(j,i,etide)
-!$OMP&         SCHEDULE(STATIC,jblk)
       do j= 1,jdm
         do i= 1,idm
           if     (tide_on(1)) then

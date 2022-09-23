@@ -607,7 +607,6 @@ c
       if     (lmask) then
 !$OMP   PARALLEL DO PRIVATE(j,i)
 !$OMP&              REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-!$OMP&           SCHEDULE(STATIC,jblk)
         do j= 1,jdm
           do i= 1,idm
             if     (mask(i,j).ne.0) then
@@ -625,7 +624,6 @@ c
       else
 !$OMP   PARALLEL DO PRIVATE(j,i)
 !$OMP&              REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-!$OMP&           SCHEDULE(STATIC,jblk)
         do j= 1,jdm
           do i= 1,idm
             h(i,j) = w(i+(j-1)*idm)
@@ -817,7 +815,6 @@ c
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
 !$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             do i= 1,idm
               if     (mask(i,j).ne.0) then
@@ -837,7 +834,6 @@ c
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
 !$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             do i= 1,idm
               w(i+(j-1)*idm) = h(i,j)
@@ -857,7 +853,6 @@ c
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
 !$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             do i= 1,idm
               if     (mask(i,j).ne.0) then
@@ -872,7 +867,6 @@ c
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
 !$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             do i= 1,idm
               w(i+(j-1)*idm) = h(i,j)
