@@ -430,7 +430,7 @@ c
 c  declare passed variables.
       integer init,n,m
       real*4  delx,dti
-      real*4  stfv_ss,stfv_ts,stfv_rms
+      real*4  stfv_ss(1),stfv_ts(1),stfv_rms(1)
       real*4  stfv(n,m)
 c
 c  compute/update stochastic forcing fields on 1st call for new time step.

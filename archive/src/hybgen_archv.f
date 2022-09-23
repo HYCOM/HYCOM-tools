@@ -24,7 +24,8 @@ c
       real             hybiso,hybrlx,qhybrlx
       real             dp00,dp00x,dp00f,ds00,ds00x,ds00f,dp00i
       real             sigma(999),thbase,depthu,depthv,onem,qonem
-      real             dp0k(999),ds0k(999),dpns,dsns,depth1,isotop
+      real             dp0k(999),ds0k(999),dpns,dsns,depth1(1,1),isotop,
+     &                                              isotop1(1,1)
       real             thkbot,dpthin
       real             hmina,hmaxa
       double precision time3(3),time,year
@@ -239,6 +240,7 @@ c
         enddo
       enddo
       isotop = isotop*onem
+      isotop1=isotop ! vector from scalar
 c
 c --- check that bathymetry is consistent with this archive.
 c
@@ -311,7 +313,7 @@ c
             ldebug = i.eq.itst .and. j.eq.jtst
             call hybgen(t1,s1,r1,e1,dp1,theta,kk,
      &                  nhybrd,isopcm,hybmap,hybflg,hybiso, qhybrlx,
-     &                  dp00i,dp0k,ds0k,dpns,dsns,depth1,isotop,thkbot,
+     &                  dp00i,dp0k,ds0k,dpns,dsns,depth1,isotop1,thkbot,
      &                  ldebug)
             pout(i,j,1)    = 0.0
             do k= 1,kk
