@@ -3,8 +3,9 @@
            Option:    -n   do not append newline
 */
 #include <stdio.h>
+#include <string.h>
 
-main(argc,argv)
+int main(argc,argv)
 	short argc;
 	char *argv[];
 {
