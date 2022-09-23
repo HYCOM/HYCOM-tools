@@ -275,7 +275,8 @@ C
       REAL*4  TARRAY(2)
       REAL*4  ETIME
 C
-      SEC = ETIME(TARRAY)
+!MHRI SOBROUTINE NOT USED AND ETIME NOT DEFINED!!!      SEC = ETIME(TARRAY)
+      call Cpu_Time(SEC) ! cpu_time is fortran standard
       RETURN
 C     END OF ZHSEC.
       END
