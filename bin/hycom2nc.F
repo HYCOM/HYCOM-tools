@@ -256,10 +256,10 @@ c
       real             :: hmin,hmax,hrange(2)
       real             :: zz(999)
       double precision :: time,year,wday1,wdayi,date
-      real               :: fill_value
+      real             :: fill_value
 c
-      integer,      save :: kk_rec     = 0
-      integer,      save :: mt_rec     = 0
+      integer          :: kk_rec     = 0 ! saved below
+      integer          :: mt_rec     = 0 ! saved below
 c
       save  !save all local variables
 c
