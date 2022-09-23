@@ -18,7 +18,7 @@ c
       integer          artype,yrflag,iexpt,io,l
       double precision time3(3)
       real             array(jdm)
-      real             zloc(1)
+      integer          zloc(1)
 c
       real, allocatable :: zlat(:)
 
@@ -171,7 +171,7 @@ c
           stop
         endif
 c
-        call ncrange_1d(array,jj, fill_value, hmin,hmax)
+        call ncrange_1d(array,jj, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
 
@@ -469,7 +469,8 @@ c
       integer          artype,yrflag,iexpt,k,io,l
       double precision time3(3)
       real             array(jdm,k)
-      real             zz(k),zloc(1)
+      real             zz(k)
+      integer          zloc(1)
 c
       real, allocatable :: zlat(:)
 
@@ -628,7 +629,7 @@ c
           stop
         endif
 c
-        call ncrange_2d(array,jj,kz, fill_value, hmin,hmax)
+        call ncrange_2d(array,jj,kz, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -3149,7 +3150,8 @@ c
           stop
         endif
 c
-        call ncrange(array(1,1,kf),ii,jj,kl-kf+1, fill_value, hmin,hmax)
+        call ncrange(array(1,1,kf),ii,jj,kl-kf+1, fill_value,
+     &                                         hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -4249,7 +4251,7 @@ c
           stop
         endif
 c
-        call ncrange(array,ii,jj,kz, fill_value, hmin,hmax)
+        call ncrange(array,ii,jj,kz, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -5471,7 +5473,7 @@ c
         endif
 c
         call ncrange(array(1,kf), 1,jlatn,kl-kf+1,
-     &                            fill_value, hmin,hmax)
+     &                            fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -5947,7 +5949,7 @@ c
           stop
         endif
 c
-        call ncrange(array, 1,jlatn,kz, fill_value, hmin,hmax)
+        call ncrange(array, 1,jlatn,kz, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
