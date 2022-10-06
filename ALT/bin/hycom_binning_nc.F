@@ -715,8 +715,8 @@ c
       real             :: zz(999)
       double precision :: time,year,wday1,wdayi,date
 c
-      integer,      save :: kk_rec     = 0
-      integer,      save :: mt_rec     = 0
+      integer          :: kk_rec     = 0  ! saved below
+      integer          :: mt_rec     = 0  ! saved below
       real,    parameter :: fill_value = 2.0**100
 c
       save  !save all local variables
