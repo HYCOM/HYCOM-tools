@@ -19,7 +19,7 @@
 # EXTRALIBS:  Extra local libraries (if any).
 #
 FC            =	ftn
-FCFFLAGS      =	-traceback -xHost -O3 -fp-model precise -ftz -align array64byte -assume byterecl -warn nogeneral -diag-disable 10212 -h byteswapio 
+FCFFLAGS      =	-traceback -xHost -O3 -fp-model precise -ftz -align array64byte -assume byterecl -warn nogeneral -diag-disable 10212 -convert big_endian 
 FCFFLAGS      =	-traceback -xHost -O3 -fp-model precise -ftz -align array64byte -assume byterecl -warn nogeneral -diag-disable 10212
 CC            =	cc
 CCFLAGS       =	-traceback -xHost -O

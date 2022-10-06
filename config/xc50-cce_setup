@@ -20,7 +20,7 @@
 #
 FC            =	ftn
 FCFFLAGS      = -O2 -h fp0 -h omp
-FCFFLAGS      = -O1 -h fp0 -h omp -Ofp0 -K trap=fp -convert big_endian
+FCFFLAGS      = -O1 -h fp0 -h omp -Ofp0 -K trap=fp -h byteswapio
 FCFFLAGS      = -O1 -h fp0 -h omp -Ofp0 -K trap=fp
 CC            =	cc
 CCFLAGS       =	-O
