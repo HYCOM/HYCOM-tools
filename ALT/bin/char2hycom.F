@@ -187,7 +187,7 @@ C
         CALL EXIT(3)
       ENDIF
 C
-      WRITE(CFMT,'(A,I,A)') '(',IDM,'I1)'
+      WRITE(CFMT,'(A,I8,A)') '(',IDM,'I1)'
       DO 110 K= 1,HUGE(K)
         READ(21,TRIM(CFMT),IOSTAT=IOS) B
         IF     (IOS.NE.0) THEN
