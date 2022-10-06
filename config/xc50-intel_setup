@@ -1,0 +1,52 @@
+#
+# ----------------------------------------------------------------------------
+# Common definitions for Cray XC50 batch nodes/cray-cce, single processor, real*4
+# Cray Compiler: module load PrgEnv-cray (default)
+# same optimization switches as the MPI version
+# NOTE: native (little endian) version
+# ----------------------------------------------------------------------------
+#
+# MACROS      DESCRIPTIONS:
+#
+# FC:         Fortran 90 compiler.
+# FCFFLAGS:   Fortran 90 compilation flags.
+# CC:         C compiler.
+# CCFLAGS:    C compilation flags.
+# CPP:        cpp preprocessor (may be implied by FC).
+# CPPFLAGS:   cpp -D macro flags.
+# LD:         Loader.
+# LDFLAGS:    Loader flags.
+# EXTRALIBS:  Extra local libraries (if any).
+#
+FC            =	ftn
+FCFFLAGS      =	-traceback -xHost -O3 -fp-model precise -ftz -align array64byte -assume byterecl -warn nogeneral -diag-disable 10212 -h byteswapio 
+FCFFLAGS      =	-traceback -xHost -O3 -fp-model precise -ftz -align array64byte -assume byterecl -warn nogeneral -diag-disable 10212
+CC            =	cc
+CCFLAGS       =	-traceback -xHost -O
+CPP           =	cpp -P
+CPPFLAGS      =	-DIA32 -DREAL4
+LD            =	$(FC)
+LDFLAGS       =	-V $(FCFFLAGS)
+EXTRALIBS     =
+
+#
+# --- generic make definitions
+#
+SHELL         = /bin/sh
+RM            = \rm -f
+
+#
+# rules.
+#
+
+.f90.o:
+	$(FC)             $(FCFFLAGS) -c $*.f90
+
+.c.o:
+	$(CC) $(CPPFLAGS) $(CCFLAGS)  -c $*.c
+
+.f.o:
+	$(FC)             $(FCFFLAGS) -c $*.f
+
+.F.o:
+	$(FC) $(CPPFLAGS) $(FCFFLAGS) -c $*.F

@@ -8,7 +8,7 @@ set echo
 /bin/rm -f *.mod
 /bin/rm -f *.inc
 #
-foreach OS ( .exe _LinuxGF _LinuxIF _LinuxAIF _LinuxPGF _XC30 _AIX )
+foreach OS ( .exe _LinuxGF _LinuxIF _LinuxAIF _LinuxPGF _XC30 _AIX _XC50_{intel,gnu,cray} )
 #start OS
 foreach f ( clim_stat wind_stat wind_stat_check \
             wind_stat_range wind_stat_range2 wind_stat_range4 wind_stat_range5 \
@@ -23,7 +23,7 @@ end
 #end OS
 end
 #
-foreach OS ( "" _LinuxGF _LinuxIF _LinuxAIF _LinuxPGF _XC30 _AIX )
+foreach OS ( "" _LinuxGF _LinuxIF _LinuxAIF _LinuxPGF _XC30 _AIX _XC50_{intel,gnu,cray} )
 #start OS
 foreach f ( echo2 endian )
   touch       ${f}${OS}
