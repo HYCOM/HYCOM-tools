@@ -801,8 +801,9 @@ C
       IT = 0
       CALL BOTH(F,H(1,3),X)
       E = 0.
-      DO 10 I = 1,N
-10         IF ( DABS(H(I,3)) .GT. E ) E = DABS(H(I,3))
+      DO I = 1,N
+        IF ( DABS(H(I,3)) .GT. E ) E = DABS(H(I,3))
+      enddo
 *     IF ( E .LE. T ) RETURN
       EE = F
       IF (EE .LE. TT) RETURN
@@ -810,17 +811,20 @@ C
       CALL PRE(H(1,2),H(1,3))
       A = STEP
       IF ( A .GT. 0. ) GOTO 30
-      DO 20 I = 1,N
-20         IF ( DABS(X(I)) .GT. A ) A = DABS(X(I))
+      DO I = 1,N
+        IF ( DABS(X(I)) .GT. A ) A = DABS(X(I))
+      enddo
       A = .01*A/E
       IF ( A .EQ. 0. ) A = 1.
 30    G = 0.
-      DO 40 I = 1,N
-40         G = G + H(I,2)*H(I,3)
+      DO I = 1,N
+        G = G + H(I,2)*H(I,3)
+      enddo
       IF ( G .LT. 0. ) GOTO 620
 50    L = 0
-      DO 60 I = 1,N
-60         H(I,1) = -H(I,2)
+      DO I = 1,N
+        H(I,1) = -H(I,2)
+      enddo
       D = -G
 70    FA = FV(A,X,H,N,VALUE)
       C0 = A
@@ -1003,8 +1007,9 @@ C
       CALL INS(Q,P,A,B,C,FA,FB,FC,J,Y,Z)
       IF ( P .LT. F1 ) GOTO 340
       IF ( A .GT. R ) GOTO 360
-      DO 350 I = 1,N
-350        H(I,2) = X(I) + A*H(I,1)
+      DO I = 1,N
+        H(I,2) = X(I) + A*H(I,1)
+      enddo
       GOTO 560
 360   DA = FD(A,X,H,N,GRAD)
       IF ( DA .GT. A6*G ) GOTO 410
@@ -1026,8 +1031,9 @@ C
       CALL INS(S,P,A,B,C,FA,FB,FC,J,Y,Z)
       IF ( P .LT. F1 ) GOTO 390
       IF ( A .GT. R ) GOTO 320
-      DO 400 I = 1,N
-400        H(I,2) = X(I) + A*H(I,1)
+      DO I = 1,N
+        H(I,2) = X(I) + A*H(I,1)
+      enddo
       GOTO 560
 410   B = 0.
       K = 1
@@ -1092,9 +1098,10 @@ C
       W = DABS(B-A)
       GOTO 500
 560   E = 0.
-      DO 570 I = 1,N
-           IF ( DABS(H(I,3)) .GT. E ) E = DABS(H(I,3))
-570        X(I) = H(I,2)
+      DO I = 1,N
+        IF ( DABS(H(I,3)) .GT. E ) E = DABS(H(I,3))
+        X(I) = H(I,2)
+      enddo
       IT = IT + 1
 *     IF ( E .LE. T ) GOTO 660
       EE = F
@@ -1105,17 +1112,19 @@ C
       A = A7*A
       CALL PRE(H(1,2),H(1,3))
       R = 0.
-      DO 580 I = 1,N
-580        R = R + H(I,2)*H(I,3)
+      DO I = 1,N
+        R = R + H(I,2)*H(I,3)
+      enddo
       IF ( R .LT. 0. ) GOTO 620
       S = R/G
       G = R
       L = L + 1
       IF ( L .GE. M ) GOTO 50
       D = 0.
-      DO 590 I = 1,N
-           H(I,1) = -H(I,2) + S*H(I,1)
-590        D = D + H(I,1)*H(I,3)
+      DO I = 1,N
+        H(I,1) = -H(I,2) + S*H(I,1)
+        D = D + H(I,1)*H(I,3)
+      enddo
       GOTO 70
 600   IF ( D .LT. G ) GOTO 560
 *       WRITE(6,*) 'UNABLE TO OBTAIN DESCENT DIRECTION'
@@ -1153,20 +1162,23 @@ C
       REAL*8 FUNCTION FV(A,X,H,N,VALUE)
       REAL*8 H(N,*),X(*),A,VALUE
       EXTERNAL VALUE
-      DO 10 I = 1 , N
-10         H(I,2) = X(I) + A*H(I,1)
+      DO I = 1 , N
+        H(I,2) = X(I) + A*H(I,1)
+      enddo
       FV = VALUE(H(1,2))
       RETURN
       END
       REAL*8 FUNCTION FD(A,X,H,N,GRAD)
       REAL*8 H(N,*),X(*),A,D
       EXTERNAL GRAD
-      DO 10 I = 1 , N
-10         H(I,2) = X(I) + A*H(I,1)
+      DO I = 1 , N
+        H(I,2) = X(I) + A*H(I,1)
+      enddo
       CALL GRAD(H(1,3),H(1,2))
       D = 0.
-      DO 20 I = 1,N
-20         D = D + H(I,1)*H(I,3)
+      DO I = 1,N
+        D = D + H(I,1)*H(I,3)
+      enddo
       FD = D
       RETURN
       END
@@ -1176,12 +1188,14 @@ C
       REAL*8   H(N,*),X(*),A,D,V
       EXTERNAL BOTH
       INTEGER  I
-      DO 10 I = 1 , N
-10         H(I,2) = X(I) + A*H(I,1)
+      DO I = 1 , N
+        H(I,2) = X(I) + A*H(I,1)
+      enddo
       CALL BOTH(V,H(1,3),H(1,2))
       D = 0.
-      DO 20 I = 1,N
-20         D = D + H(I,1)*H(I,3)
+      DO I = 1,N
+        D = D + H(I,1)*H(I,3)
+      enddo
       RETURN
       END
       SUBROUTINE CUB(X,A,B,C,D,E,F)

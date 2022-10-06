@@ -299,9 +299,9 @@ c
         endif
       endif !iversn.ge.20
 c
-      do 3 k=1,kkin
-      do 3 j=1,jj
-      do 3 i=1,ii
+      do k=1,kkin
+      do j=1,jj
+      do i=1,ii
 c
 c --- convert baroclinic to total velocities by adding barotropic component
 c --- note that mean archives already contain total velocity
@@ -376,7 +376,10 @@ c --- convert layer thickness to meters
           trcr(i,j,k,ktr)=flag
         enddo
       endif
- 3    continue
+
+      enddo ! i=1,ii
+      enddo ! j=1,jj
+      enddo ! k=1,kkin
 c
 c --- eddy kinetic energy
       if     (artype.eq.3) then
@@ -506,9 +509,9 @@ ccc      x=thrufl(107,209,122,212,'(Drake Passage)')
 ccc      x=thrufl(41,199,44,201,'(Florida Straits)')
 ccc      x=thrufl(63,76,69,94,'(Indonesia)')
 c
-      do 7 j=1,jj
+      do j=1,jj
       jp1 = min(j+1,jj)
-      do 7 i=1,ii
+      do i=1,ii
       if     (ip(i,j).eq.1) then
         if     (artype.eq.3) then
           if     (i.ne.ii) then
@@ -574,7 +577,8 @@ c ---     ke = 0.5*( std(u)**2 + std(v)**2 )
           p(i,j,kk+1)=flag
         endif
       endif
- 7    continue
+      enddo ! i
+      enddo ! j
 c
       dpth=0.5*onecm
 c
@@ -592,10 +596,10 @@ c
         call psmoo(trcr(1,1,2,ktr),work)
       enddo
 c
-      do 38 k=2,kkin
+      do k=2,kkin  ! Label 38
 c
-      do 76 j=1,jj1
-      do 76 i=1,ii1
+      do j=1,jj1
+      do i=1,ii1
       if     (ip(i,j).eq.1) then
         util1(i,j)=max(onemm,dp(i,j,k))
         temp(i,j,k)=temp(i,j,k)*util1(i,j)
@@ -612,7 +616,8 @@ c
           trcr(i,j,k,ktr)=flag
         enddo
       end if
- 76   continue
+      enddo ! i
+      enddo ! j
 c
       call psmoo(util1,      work)
       call psmoo(temp(1,1,k),work)
@@ -622,8 +627,8 @@ c
         call psmoo(trcr(1,1,k,ktr),work)
       enddo
 c
-      do 38 j=1,jj1
-      do 38 i=1,ii1
+      do j=1,jj1
+      do i=1,ii1
       if     (ip(i,j).eq.1) then
         temp(i,j,k)=temp(i,j,k)/util1(i,j)
         saln(i,j,k)=saln(i,j,k)/util1(i,j)
@@ -632,81 +637,93 @@ c
           trcr(i,j,k,ktr)=trcr(i,j,k,ktr)/util1(i,j)
         enddo
       end if
- 38   continue
+      enddo ! i
+      enddo ! j
+      enddo ! k=2,kkin   !!! TODO  ADDED by MHRI (label 38)
 c
 c --- smooth velocity and layer thickness fields
 c
-      do 30 k=1,kkin
+      do k=1,kkin
 c
-      if     (.not.lpvel) then
-      do 31 j=1,jj1
-      do 31 i=2,ii1
+        if     (.not.lpvel) then
+          do j=1,jj1
+          do i=2,ii1
 ******if(k.eq.1) umix(i,j)=umix(i,j)*(dpmixl(i,j)+dpmixl(i-1,j))
- 31   uflux(i,j)=u(i,j,k)*max(onecm,dp(i,j,k)+dp(i-1,j,k))
+             uflux(i,j)=u(i,j,k)*max(onecm,dp(i,j,k)+dp(i-1,j,k))
+          enddo ! i
+          enddo ! j
 c
-      do 32 j=2,jj1
-      do 32 i=1,ii1
+          do j=2,jj1
+          do i=1,ii1
 ******if(k.eq.1) vmix(i,j)=vmix(i,j)*(dpmixl(i,j)+dpmixl(i,j-1))
- 32   vflux(i,j)=v(i,j,k)*max(onecm,dp(i,j,k)+dp(i,j-1,k))
+            vflux(i,j)=v(i,j,k)*max(onecm,dp(i,j,k)+dp(i,j-1,k))
+          enddo ! i
+          enddo ! j
 c
-      if(k.eq.1) then
-        call usmoo(umix,work)
-        call vsmoo(vmix,work)
-      end if
-      call usmoo(uflux,work)
-      call vsmoo(vflux,work)
-      call psmoo(dp(1,1,k),work)
+          if(k.eq.1) then
+            call usmoo(umix,work)
+            call vsmoo(vmix,work)
+          end if
+          call usmoo(uflux,work)
+          call vsmoo(vflux,work)
+          call psmoo(dp(1,1,k),work)
 c --- (warning: smoothed -dp- field unsuitable for deriving interface depths)
 c
-      do 33 j=1,jj1
-      do 33 i=2,ii1
+          do j=1,jj1
+          do i=2,ii1
 ******if(k.eq.1) umix(i,j)=umix(i,j)/(dpmixl(i,j)+dpmixl(i-1,j))
- 33   u(i,j,k)=uflux(i,j)/max(onecm,dp(i,j,k)+dp(i-1,j,k))
+             u(i,j,k)=uflux(i,j)/max(onecm,dp(i,j,k)+dp(i-1,j,k))
+          enddo ! i
+          enddo ! j
 c
-      do 34 j=2,jj1
-      do 34 i=1,ii1
+          do j=2,jj1
+          do i=1,ii1
 ******if(k.eq.1) vmix(i,j)=vmix(i,j)/(dpmixl(i,j)+dpmixl(i,j-1))
- 34   v(i,j,k)=vflux(i,j)/max(onecm,dp(i,j,k)+dp(i,j-1,k))
-      else !lpvel
-        do j=1,jj
-          do i=1,ii
-            uflux(i,j)=u(i,j,k)*max(onecm,dp(i,j,k))
-            vflux(i,j)=v(i,j,k)*max(onecm,dp(i,j,k))
-          enddo !i
-        enddo !j
+             v(i,j,k)=vflux(i,j)/max(onecm,dp(i,j,k)+dp(i,j-1,k))
+          enddo ! i
+          enddo ! j
+
+        else !lpvel
+          do j=1,jj
+            do i=1,ii
+              uflux(i,j)=u(i,j,k)*max(onecm,dp(i,j,k))
+              vflux(i,j)=v(i,j,k)*max(onecm,dp(i,j,k))
+            enddo !i
+          enddo !j
 c
-        if(k.eq.1) then
-          call psmoo(umix,work)
-          call psmoo(vmix,work)
-        end if
-        call psmoo(uflux,work)
-        call psmoo(vflux,work)
-        call psmoo(dp(1,1,k),work)
+          if(k.eq.1) then
+            call psmoo(umix,work)
+            call psmoo(vmix,work)
+          end if
+          call psmoo(uflux,work)
+          call psmoo(vflux,work)
+          call psmoo(dp(1,1,k),work)
 c ---   (warning: smoothed -dp- field unsuitable for deriving interface depths)
-        do j=1,jj
-          do i=1,ii
-            u(i,j,k)=uflux(i,j)/max(onecm,dp(i,j,k))
-            v(i,j,k)=vflux(i,j)/max(onecm,dp(i,j,k))
-          enddo !i
-        enddo !j
-      endif !.not.lpvel:else
+          do j=1,jj
+            do i=1,ii
+              u(i,j,k)=uflux(i,j)/max(onecm,dp(i,j,k))
+              v(i,j,k)=vflux(i,j)/max(onecm,dp(i,j,k))
+            enddo !i
+          enddo !j
+        endif !.not.lpvel:else
 c
 c --- now smooth layer interfaces and find corresponding -dp- field
-      if (k.lt.kkin) call psmo1(p(1,1,k+1),work,p(1,1,kk+1))
+        if (k.lt.kkin) call psmo1(p(1,1,k+1),work,p(1,1,kk+1))
 c --- now smooth boundary layer thickness and mixed layer base
-      if (k.eq.1) then
-        call psmo1(dpbl,work,p(1,1,kk+1))
-        call psmo1(dpmixl,work,p(1,1,kk+1))
-      end if
+        if (k.eq.1) then
+          call psmo1(dpbl,work,p(1,1,kk+1))
+          call psmo1(dpmixl,work,p(1,1,kk+1))
+        end if
 c
-      do 35 j=1,jj1
-      do 35 i=1,ii1
-      if     (ip(i,j).eq.1) then
-        dp(i,j,k)=p(i,j,k+1)-p(i,j,k)
-      endif
- 35   continue
+        do j=1,jj1
+        do i=1,ii1
+        if     (ip(i,j).eq.1) then
+          dp(i,j,k)=p(i,j,k+1)-p(i,j,k)
+        endif
+        enddo ! i
+        enddo ! j
 c
- 30   continue
+      enddo ! k=1,kkin
 c
       end if			!  smooth = .true.
 c

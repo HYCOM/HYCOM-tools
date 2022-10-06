@@ -103,7 +103,6 @@ c
       endif
 c
 !$OMP PARALLEL DO PRIVATE(j,i)
-!$OMP&         SCHEDULE(STATIC,jblk)
       do j= 1,jj
         do i= 1,ii
           if     (depths(i,j).gt.2.0**99) then
@@ -113,7 +112,6 @@ c
       enddo
 c
 !$OMP PARALLEL DO PRIVATE(j,i)
-!$OMP&         SCHEDULE(STATIC,jblk)
       do j= 1,jj
         do i= 1,ii
           depthu(i,j)=min(depths(i,j),depths(max(i-1,1),j))

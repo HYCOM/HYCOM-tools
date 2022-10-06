@@ -464,15 +464,12 @@ c ---                       Foreman et al. JGR,98,2509-2532,1993
            alpha2s2=alpha2m2
            alpha2n2=alpha2m2
            alpha2k2=alpha2m2         
-!$OMP      PARALLEL DO PRIVATE(j,i,semi_cos,semi_sin,diur_cos,diur_sin)
-!$OMP&              SCHEDULE(STATIC,jblk)
 c      write(6,*)'End of Tides_set(),idm,jdm =',idm,jdm
 
        if    (.not.allocated(atide)) then
           allocate(atide(idm,jdm,8),btide(idm,jdm,8),etide(idm,jdm,9))
 c
 !$OMP      PARALLEL DO PRIVATE(j,i,semi_cos,semi_sin,diur_cos,diur_sin)
-!$OMP&              SCHEDULE(STATIC,jblk)
            do j= 1,jdm
              do i= 1,idm
                semi_cos=cos(rad*plat(i,j))**2*cos(rad*2*plon(i,j))
@@ -506,6 +503,7 @@ c      write(6,*)'atide(i,j,3/4=',atide(i,j,3),atide(i,j,4)
                 endif!start
             enddo !i
           enddo  !j
+!$OMP END PARALLEL DO
           etide=0.0
 c
           if     (s_body) then
@@ -570,9 +568,7 @@ ccc
           sin_t(k) = pf8(k)*sin(omega(k)*timet+arg8(k)+pu8(k))
         enddo
 
-!$OMP PARALLEL DO PRIVATE(j,i,
-!$OMP&         etide1,etide2,etide3,etide4,etide5,etide6,etide7,etide8)
-!$OMP&         SCHEDULE(STATIC,jblk)
+!$OMP PARALLEL DO PRIVATE(j,i,etide)
       do j= 1,jdm
         do i= 1,idm
           ett=0.0
@@ -614,6 +610,7 @@ c     & omega(1)*timet+arg8(1)+pu8(1)
              endif !debug
         enddo !i
       enddo !j
+!$OMP END PARALLEL DO
           do j=1,jsize
             do i=1,isize
               ff=0.0

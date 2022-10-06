@@ -533,6 +533,12 @@ c --- is there ice?
 c
         read (ni,'(a)',end=6) cline
         write(lp,'(a)')       cline(1:len_trim(cline))
+      else
+        covice(:,:) = 0.0
+      endif
+
+      icegln = ios.eq.0 .and. cline(1:8).eq.'thkice  '
+      if     (icegln) then
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
         call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
@@ -541,6 +547,12 @@ c
 c
         read (ni,'(a)',end=6) cline
         write(lp,'(a)')       cline(1:len_trim(cline))
+      else
+        thkice(:,:) = 0.0
+      endif
+
+      icegln = ios.eq.0 .and. cline(1:8).eq.'temice  '
+      if     (icegln) then
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
         call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
@@ -550,8 +562,6 @@ c
         read (ni,'(a)',end=6) cline
         write(lp,'(a)')       cline(1:len_trim(cline))
       else
-        covice(:,:) = 0.0
-        thkice(:,:) = 0.0
         temice(:,:) = 0.0
       endif
 c
@@ -1800,6 +1810,12 @@ c --- is there ice?
 c
         read (ni,'(a)',end=6) cline
         write(lp,'(a)')       cline(1:len_trim(cline))
+      else
+        covice(:,:) = 0.0
+      endif
+
+      icegln = ios.eq.0 .and. cline(1:8).eq.'thkice  '
+      if     (icegln) then
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
         call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
@@ -1808,6 +1824,12 @@ c
 c
         read (ni,'(a)',end=6) cline
         write(lp,'(a)')       cline(1:len_trim(cline))
+      else
+        thkice(:,:) = 0.0
+      endif
+
+      icegln = ios.eq.0 .and. cline(1:8).eq.'temice  '
+      if     (icegln) then
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
         call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
@@ -1817,8 +1839,6 @@ c
         read (ni,'(a)',end=6) cline
         write(lp,'(a)')       cline(1:len_trim(cline))
       else
-        covice(:,:) = 0.0
-        thkice(:,:) = 0.0
         temice(:,:) = 0.0
       endif
 c

@@ -116,7 +116,7 @@ c
 c
 c       NetCDF I/O
 c
-        call ncrange(array, 1,jn,1, fill_value, hmin,hmax)
+        call ncrange(array, 1,jn,1, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then

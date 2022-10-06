@@ -24,7 +24,7 @@ C
 C
       CHARACTER*240 CFILEA
       CHARACTER*240 CLINE
-      REAL          DPMIXL,RMLJMP,TMLJMP,THK(99),FLAG
+      REAL          DPMIXL,RMLJMP(99),TMLJMP,THK(99),FLAG
       REAL          U,V,T(99),S(99),R(99),P(99+1), R0(99)
       INTEGER       I,IOS,ITYPE,K,KDM
       REAL          DUM,DVM,DTM,DSM,DRM
@@ -113,11 +113,11 @@ C
 C     FIND THE MIXED LAYER DEPTH.
 C
       IF     (ITYPE.GE.2) THEN
-        CALL RMLJMPL(RMLJMP, T(1),S(1), 1,1, TMLJMP)
+        CALL RMLJMPL(RMLJMP(1), T(1),S(1), 1,1, TMLJMP)
       ELSEIF (R(KDM).LT.32.0) THEN
-        CALL RMLJMP0(RMLJMP, T(1),S(1), 1,1, TMLJMP)
+        CALL RMLJMP0(RMLJMP(1), T(1),S(1), 1,1, TMLJMP)
       ELSE
-        CALL RMLJMP2(RMLJMP, T(1),S(1), 1,1, TMLJMP)
+        CALL RMLJMP2(RMLJMP(1), T(1),S(1), 1,1, TMLJMP)
       ENDIF
 *
       write(6,"('jmp =',2f9.5)") RMLJMP,TMLJMP*0.03
@@ -125,15 +125,15 @@ C
       RMLJMP = MAX(RMLJMP,TMLJMP*0.03)  !cold-water fix
 C
       IF     (ITYPE.EQ.-1) THEN
-        CALL MLD_CEN(R, P,   KDM, RMLJMP, DPMIXL)
+        CALL MLD_CEN(R, P,   KDM, RMLJMP(1), DPMIXL)
       ELSEIF (ITYPE.EQ.0) THEN
-        CALL MLD_PCM(R, P,   KDM, RMLJMP, DPMIXL)
+        CALL MLD_PCM(R, P,   KDM, RMLJMP(1), DPMIXL)
       ELSEIF (ITYPE.EQ.1) THEN
-        CALL MLD_PLM(R, THK, KDM, RMLJMP, DPMIXL)
+        CALL MLD_PLM(R, THK, KDM, RMLJMP(1), DPMIXL)
       ELSEIF (ITYPE.EQ.2) THEN
-        CALL MLD_LOC(R,T,S,P, THK, KDM, RMLJMP, DPMIXL)
+        CALL MLD_LOC(R,T,S,P, THK, KDM, RMLJMP(1), DPMIXL)
       ELSEIF (ITYPE.EQ.3) THEN
-        CALL MLD_PQM(R,T,S,P, THK, KDM, RMLJMP, DPMIXL)
+        CALL MLD_PQM(R,T,S,P, THK, KDM, RMLJMP(1), DPMIXL)
       ELSE
         WRITE(6,*)
      +    'Usage: hycom_profile_mld archv.txt tmljmp [itype]'

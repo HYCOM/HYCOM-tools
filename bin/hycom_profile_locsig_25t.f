@@ -24,7 +24,7 @@ C
       CHARACTER*240 CLINE
       LOGICAL       LMEAN
       REAL          THK,DEPTH,FLAG,alfadt,betads,ROFF
-      REAL*8        THKMN,SM(5),KEMN
+      REAL*8        THKMN,SM(7),KEMN
       INTEGER       IOS,K,KDM,KI,KK,KP
 C
 c------------------------------------------------------------------------

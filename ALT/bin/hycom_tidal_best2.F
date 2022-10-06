@@ -370,7 +370,10 @@ C
           ELSE
             BR = huge(BR)
             BF = huge(BF)
-            do SF= sclmin,sclmax+0.05,0.1
+!MHRI            do SF= sclmin,sclmax+0.05,0.1
+            SF=sclmin
+            do
+              if (SF>sclmax+0.05) exit
               TR  = TideR(I,J,1)*SF + TideR(I,J,2)*(1.0-SF)
               TI  = TideI(I,J,1)*SF + TideI(I,J,2)*(1.0-SF)
               RMS = sqrt((TR-TideR(I,J,3))**2 +
@@ -387,6 +390,7 @@ C
 *                 write(6,*) 'sf,br        = ',SF,BR
 *               endif
               endif
+              SF=SF+0.1  ! Update SF counter
             enddo !sf
 *           if     (mod(i,1000).eq.0 .and. mod(j,500).eq.0) then
 *             write(6,*) 'bf,br        = ',BF,BR

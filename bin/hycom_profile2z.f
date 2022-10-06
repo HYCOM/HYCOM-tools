@@ -1113,7 +1113,7 @@ C     Alan J. Wallcraft,  Naval Research Laboratory,  August 2007.
 c*
 c**********
 c
-      integer j,k,l
+      integer j,k,l, jm1,jp1
       real    da,a6,slj,scj,srj
       real    as(ki),al(ki),ar(ki)
       real     ptjp(ki), pt2jp(ki), ptj2p(ki),
@@ -1121,10 +1121,12 @@ c
 c
       !compute grid metrics
       do j=1,ki
-         ptq3( j) = pt(j)/(pt(j-1)+pt(j)+pt(j+1))
-         ptjp( j) = pt(j)   + pt(j+1)
+         jm1=max(1,j-1)
+         jp1=min(ki,j+1)
+         ptq3( j) = pt(j)/(pt(jm1)+pt(j)+pt(jp1))
+         ptjp( j) = pt(j)   + pt(jp1)
          pt2jp(j) = pt(j)   + ptjp(j)
-         ptj2p(j) = ptjp(j) + pt(j+1)
+         ptj2p(j) = ptjp(j) + pt(jp1)
         qptjp( j) = 1.0/ptjp( j)
         qpt2jp(j) = 1.0/pt2jp(j)
         qptj2p(j) = 1.0/ptj2p(j)
@@ -1695,7 +1697,7 @@ c r millard
 c march 9, 1983
 c check value: p80=7500.004 dbars;for lat=30 deg., depth=7321.45 meters
       real function p80(dpth,xlat)
-      parameter pi=3.141592654
+      real, parameter :: pi=3.141592654
       plat=abs(xlat*pi/180.)
       d=sin(plat)
       c1=5.92e-3+d**2*5.25e-3

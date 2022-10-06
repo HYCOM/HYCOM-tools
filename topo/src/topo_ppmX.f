@@ -151,7 +151,7 @@ C
       ENDIF
 C
       CALL TOPIMG(IB(NC-3*((IDM+KSUB-1)/KSUB)*
-     &                    ((JDM+KSUB-1)/KSUB)+1),PPMPAL,
+     &                    ((JDM+KSUB-1)/KSUB)+1),char(PPMPAL),
      &            DEPTHS,IDM,JDM, ISPT,ILPT,JSPT,JLPT,NMPE,KSUB)
 C
 C     OUTPUT AS PPM IMAGE FILE.

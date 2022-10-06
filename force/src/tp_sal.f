@@ -549,7 +549,6 @@ c ---                       Foreman et al. JGR,98,2509-2532,1993
 c
            if     (ibody.eq.1) then
 !$OMP      PARALLEL DO PRIVATE(j,i,semi_cos,semi_sin,diur_cos,diur_sin)
-!$OMP&              SCHEDULE(STATIC,jblk)
            do j= 1,jdm
              do i= 1,idm
                semi_cos=cos(rad*plat(i,j))**2*cos(rad*2*plon(i,j))
@@ -629,7 +628,6 @@ c           no of leap years in the two reference periods mentioned above:
         enddo
 
 !$OMP PARALLEL DO PRIVATE(j,i,etide)
-!$OMP&         SCHEDULE(STATIC,jblk)
       do j= 1,jdm
         do i= 1,idm
           if     (tide_on(1)) then

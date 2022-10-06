@@ -66,6 +66,34 @@ case 'AIX':
 	setenv CC	"cc"
 	setenv CFLAGS	"-O -q64 -DAIX"
 	breaksw
+case 'XC50_intel':
+#       compile for XC50 with INTEL compiler via aprun. Native (little endian) version
+        setenv FC       "ftn"
+        setenv FFLAGS   "-traceback -O3 -fp-model precise -ftz -align array64byte -warn nogeneral -diag-disable 10212 -convert big_endian"
+        setenv FFLAGS   "-traceback -O3 -fp-model precise -ftz -align array64byte -warn nogeneral -diag-disable 10212"
+        setenv FLIBS    ""
+        setenv CC       "cc"
+        setenv CFLAGS   "-traceback -O"
+        breaksw
+case 'XC50_gnu':
+#       compile for XC50 with GNU compiler via aprun. Native (little endian) version
+	setenv FC	"ftn"
+	setenv FFLAGS	"-fPIC -m64 -fno-second-underscore -O -fconvert=big-endian"
+	setenv FFLAGS	"-fPIC -m64 -fno-second-underscore -O"
+	setenv FLIBS	""
+	setenv CC	"cc"
+	setenv CFLAGS	"-fPIC -m64 -O"
+        breaksw
+case 'XC50_cray':
+#       compile for XC50 with CRAY compiler via aprun. Native (little endian) version
+        setenv FC       "ftn"
+        setenv FFLAGS   "-O2 -h fp0 -h omp"
+        setenv FFLAGS   "-O1 -h fp0 -h omp -Ofp0 -K trap=fp -h byteswapio"
+        setenv FFLAGS   "-O1 -h fp0 -h omp -Ofp0 -K trap=fp"
+        setenv FLIBS    ""
+        setenv CC       "cc"
+        setenv CFLAGS   "-O"
+        breaksw
 default:
 	echo 'Unknown Operating System: ' $OS
 	exit (1)
@@ -214,14 +242,22 @@ if (! -e hycom_profile_lib.o  ) then
   foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
               hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
               hycom_profile_stokes hycom_bad_velocity )
-    $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    if ( -e ${f}.F ) then
+      $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    else
+      $FC $FFLAGS ${f}.f $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    endif
   end
 else if ( -f `find hycom_profile_lib.F -prune -newer hycom_profile_lib.o` ) then
   $FC $FFLAGS -c hycom_profile_lib.F
   foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
               hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
               hycom_profile_stokes hycom_bad_velocity )
-    $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    if ( -e ${f}.F ) then
+      $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    else
+      $FC $FFLAGS ${f}.f $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+    endif
   end
 else
   foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \

@@ -652,7 +652,6 @@ c
       endif
       if     (lmask) then
 !$OMP   PARALLEL DO PRIVATE(j,i)
-!$OMP&           SCHEDULE(STATIC,jblk)
         do j= 1,jdm
           wminy(j) =  spval
           wmaxy(j) = -spval
@@ -671,7 +670,6 @@ c
         endif
       else
 !$OMP   PARALLEL DO PRIVATE(j,i)
-!$OMP&           SCHEDULE(STATIC,jblk)
         do j= 1,jdm
           wminy(j) =  spval
           wmaxy(j) = -spval
@@ -877,7 +875,6 @@ c
       if     (lreal4) then
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             wminy(j) =  spval
             wmaxy(j) = -spval
@@ -898,7 +895,6 @@ c
           enddo
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             wminy(j) =  spval
             wmaxy(j) = -spval
@@ -919,7 +915,6 @@ c
       else
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             wminy(j) =  spval
             wmaxy(j) = -spval
@@ -935,7 +930,6 @@ c
           enddo
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&             SCHEDULE(STATIC,jblk)
           do j= 1,jdm
             wminy(j) =  spval
             wmaxy(j) = -spval

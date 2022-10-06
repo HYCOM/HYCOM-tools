@@ -1260,7 +1260,8 @@ c      PRINT *,'J,UU,RR,SUMC,SUMS=',J,UU,RR,SUMC,SUMS
 *    &    'hd1,lat,K,F,V,U=',hd1,xlat,K,F(K),v(k),U(K)
 *       PRINT *,'hd1,SUMC,SUMS,vv=',hd1,SUMC,SUMS,vv
 *     ENDIF !m2
-210   JBASE=JL
+      JBASE=JL
+210   continue
 C
 C***********************************************************************
 C*  HERE F AND V+U OF THE SHALLOW WATER CONSTITUENTS ARE COMPUTED FROM
@@ -1299,7 +1300,8 @@ c      PRINT *,'UVF(L),COEF(J)',F(L),V(L),U(L),COEF(J)
 c      if(iflag.eq.1) FREQ(lk)=FREQ(lk)+COEF(J)*FREQ(indx(L))
 260   continue
 c      PRINT *,'hd1,K,F,v,U=',hd1,K,F(K),v(k),U(K)
-270   JBASE=JL  
+      JBASE=JL  
+270   continue
       RETURN
       END
 	subroutine astr(d1,h,pp,s,p,np,dh,dpp,ds,dp,dnp)

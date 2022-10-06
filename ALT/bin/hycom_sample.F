@@ -113,7 +113,8 @@ C
         ENDIF
 C
         DO I= 1,100000
-          READ(99,*,IOSTAT=IOS) IP(I),JP(I)
+          II=min(I,99999)
+          READ(99,*,IOSTAT=IOS) IP(II),JP(II)
           IF     (IOS.NE.0) THEN
             NP = I-1
             EXIT
