@@ -303,17 +303,20 @@ c
 c       DO loop 45 generates the right hand side for a given equation
 c
          sumb=0.
-         do 45 ij=1,ndata
-  45        sumb=sumb+yd(ij)*xd(ij)**(ir-1)
+         do ij=1,ndata  ! loop 45
+            sumb=sumb+yd(ij)*xd(ij)**(ir-1)
+         enddo
          c(ir)=sumb
 c
 c       DO loop 50 generates the coefficients a given equation
 c
-         do 50 is=1,3
+         do is=1,3  ! loop 50
             suma=0.
-            do 52 ij=1,ndata
-  52           suma=suma+xd(ij)**(is-1)*xd(ij)**(ir-1)
-  50        aa(ir,is)=suma
+            do ij=1,ndata
+               suma=suma+xd(ij)**(is-1)*xd(ij)**(ir-1)
+            enddo
+            aa(ir,is)=suma
+         enddo
   55     continue
 c
 c    Solve the Least Squares Equations
