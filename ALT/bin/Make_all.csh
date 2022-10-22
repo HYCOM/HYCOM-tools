@@ -8,9 +8,9 @@ setenv OS `uname`
 if ($OS == "Linux") then
 # setenv OS XC30
 # setenv OS LinuxPGF
-# setenv OS LinuxGF
+  setenv OS LinuxGF
 # setenv OS LinuxAIF
-  setenv OS LinuxIF
+# setenv OS LinuxIF
 endif
 #
 # --- the following are extracted from HYCOM-tools/config/*_setup
@@ -264,9 +264,17 @@ else
               hycom_profile_obs hycom_profile_offset hycom_profile_stericsshanom \
               hycom_profile_stokes hycom_bad_velocity )
     if ( ! -e ${f}_${OS} ) then
-      $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+      if ( -e ${f}.F ) then
+        $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+      else
+        $FC $FFLAGS ${f}.f $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+      endif
     else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then
-      $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+      if ( -e ${f}.F ) then
+        $FC $FFLAGS ${f}.F $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+      else
+        $FC $FFLAGS ${f}.f $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
+      endif
     else
       echo "${f}_${OS} is already up to date"
     endif

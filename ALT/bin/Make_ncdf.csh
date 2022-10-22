@@ -27,9 +27,9 @@ setenv OS `uname`
 if ($OS == "Linux") then
 # setenv OS XC30
 # setenv OS LinuxPGF
-# setenv OS LinuxGF
+  setenv OS LinuxGF
 # setenv OS LinuxAIF
-  setenv OS LinuxIF
+# setenv OS LinuxIF
 endif
 #
 # --- the following are extracted from HYCOM-tools/config/*_setup
@@ -118,7 +118,7 @@ default:
 	exit (1)
 endsw
 #
-foreach f ( hycom2nc hycom_binning_nc hycom_scrip_nc )
+foreach f ( nc2hycom hycom2nc hycom_binning_nc hycom_scrip_nc )
   if ( ! -e ${f}_${OS} ) then
     $FC $FFLAGS ${f}.F hycom_endian_io.o parse.o ${EXTRANCDF} -o ${f}_${OS}
   else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then

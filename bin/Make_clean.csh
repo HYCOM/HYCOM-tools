@@ -92,7 +92,7 @@ foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profi
   touch       ${f}${OS}
   /bin/rm -f  ${f}${OS}
 end
-foreach f ( hycom2nc hycom_binning_nc hycom_scrip_nc )
+foreach f ( nc2hycom hycom2nc hycom_binning_nc hycom_scrip_nc )
   touch       ${f}${OS}
   /bin/rm -f  ${f}${OS}
 end
