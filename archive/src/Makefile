@@ -7,8 +7,11 @@
 #
 
 .SUFFIXES: 
-.SUFFIXES: .c .F .f .o
+.SUFFIXES: .c .F .f .f90 .o
 
+.f90:
+	@echo "Must have an explicit rule for" $*
+	@exit 1
 .F:
 	@echo "Must have an explicit rule for" $*
 	@exit 1
@@ -39,6 +42,7 @@ MODB     =	mod_plot.o mod_xc.o mod_za.o mod_zb.o      wtime.o
 MODZ     =	mod_plot.o mod_xc.o mod_za.o mod_zb.o      wtime.o mod_ppsw.o
 MODG     =	mod_plot.o mod_xc.o mod_za.o mod_zb.o      wtime.o mod_ppsw.o
 MODR     =	mod_plot.o mod_xc.o mod_za.o mod_restart.o wtime.o
+MODN     =	mod_plot.o mod_xc.o mod_za.o mod_ncio.o    wtime.o
 
 DATAX_OBJ = 	bigrid.o           blkin.o    \
 		buoflx.o                      \
@@ -108,6 +112,9 @@ field2ncdf:         $(MODB) field2data.o    $(NCDFH_OBJ)
 
 field2ncdf3z:       $(MODB) field2data3z.o  $(NCDFH_OBJ)
 	$(LD) $(LDFLAGS) -o field2ncdf3z  field2data3z.o  $(MODB) $(NCDFH_OBJ) $(EXTRANCDF)
+
+archv2mom6res:      $(MODN) archv2mom6res.o $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o archv2mom6res archv2mom6res.o $(MODN) $(ARCHV_OBJ) $(EXTRANCDF)
 
 archv2ncdf2d:       $(MODB) archv2data2d.o  $(NCDFH_OBJ)
 	$(LD) $(LDFLAGS) -o archv2ncdf2d  archv2data2d.o  $(MODB) $(NCDFH_OBJ) $(EXTRANCDF)
@@ -231,6 +238,7 @@ archv2datasfl.o: archv2datasfl.f mod_plot.o mod_za.o
 archv2datasfz.o: archv2datasfz.f mod_plot.o mod_za.o
 archv2ncombc.o:  archv2ncombc.f  mod_plot.o mod_za.o
 archv2restart.o: archv2restart.f mod_plot.o mod_za.o mod_restart.o
+archv2mom6res.o: archv2mom6res.f mod_plot.o mod_za.o mod_ncio.o
 
 hycomarchv.o:    hycomarchv.f    mod_plot.o mod_za.o
 botlay_archv.o:  botlay_archv.f  mod_plot.o mod_za.o
@@ -273,6 +281,7 @@ putdat.o:   putdat.f      mod_plot.o mod_za.o
 wtime.o:    wtime.F
 zebra.o:    zebra.f
 
+mod_ncio.o: mod_ncio.f90
 mod_plot.o: mod_plot.F
 mod_ppsw.o: mod_ppsw.F
 mod_xc.o:   mod_xc.F   

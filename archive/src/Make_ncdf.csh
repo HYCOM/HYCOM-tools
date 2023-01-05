@@ -37,7 +37,7 @@ ln -s ${NCDF}/include/typesizes.mod .
 #
 # --- netCDF archive programs
 #
-foreach m ( archv2strmf_nc archv2ncdf2d archv2ncdf2b archv2ncdf2t archv2ncdf3z archv2ncdfsf archv2ncdfsfl archv2ncdfsfz field2ncdf field2ncdf3z gofs_ptemp )
+foreach m ( archv2mom6res archv2strmf_nc archv2ncdf2d archv2ncdf2b archv2ncdf2t archv2ncdf3z archv2ncdfsf archv2ncdfsfl archv2ncdfsfz field2ncdf field2ncdf3z gofs_ptemp )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"
