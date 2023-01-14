@@ -3,28 +3,25 @@
       use mod_za    ! HYCOM array I/O interface
       use mod_ncio  ! A. Srinivasan netcdf module
       use netcdf    ! Netcdf module
-
 c
       implicit none
 c
-c --- Create a MOM6  Netcdf -restart- file from a HYCOM archive
-c --- if archive == incupd diff file, restart=MOM6 restart + increment
-c --- otherwise restart=archive and a "template" MOM6 restart is input
-c --- requires the HYCOM regional.grid for the MOM6 domain.
+c --- Create a MOM6  Netcdf -restart- file from a HYCOM archive.
+c --- A "template" MOM6 restart is input, to define the axis arrays.
+c --- Requires the HYCOM regional.grid for the MOM6 domain.
 c
       character*256    flnm_rt,flnm_rs,flnm_rh,flnm_ru,flnm_rv
       character*256    flnm_i,flnm_o,filename
-      logical          larctic,lsymetr,lobc
-      integer          i,ia,irec,j,k,ntq,mtq,nto,mto
+      logical          larctic,lsymetr
+      integer          i,ia,irec,j,k,ntq,mtq,nto,mto,ndim
       integer          yrflag,ibads,ibadl
       real             dayout,q,misval
       double precision time3(3)
 
 c --- read archives
-      logical          smooth,mthin,lsteric,icegln,lperiod,
-     &                 lpvel
+      logical          smooth,mthin,lsteric,icegln,lperiod
 c
-      logical          ltheta,baclin
+      logical          ltheta
       integer          artype,iexpt,iversn,kkin
 
       real, parameter :: flag = 2.0**100
@@ -44,15 +41,11 @@ c --- MOM6 Netcdf fields
       character(:),allocatable   :: vname
       integer                    :: vtype
       integer                    :: vdim1d(1),vdim3d(3),vdim4d(4)
-c --- 4D fields
-c --- Tracer concentration at the boundary
+c --- MOM6 4D fields
       real, allocatable, dimension (:,:,:,:) ::
-     &   tres_x_001,tres_x_002,tres_y_001,tres_y_002
-      real, allocatable, dimension (:,:,:,:) ::
-     &   u_mom,v_mom,temp_mom,saln_mom,h_mom,
-     &   u_inc,v_inc,temp_inc,saln_inc,h_inc
+     &   u_mom,v_mom,temp_mom,saln_mom,h_mom
 
-c --- 1D fields
+c --- MOM6 1D fields
       real, allocatable, dimension (:) ::
      & lath,lonh,latq,lonq,Layer,time
 
@@ -63,14 +56,11 @@ c
       yrflag = 3
       iexpt  = 100
       iversn = 23
-      baclin = .false.
 
 c
 c --- 'flnm_i'  = name of HYCOM archive file
 c --- 'flnm_o'  = name of MOM6 restart single file (output)
 c --- 'flnm_rt' = name of MOM6 restart temp  input
-c --- 'flnm_rs' = name of MOM6 restart salt  input
-c --- 'flnm_rh' = name of MOM6 restart thick input
 c --- 'flnm_ru' = name of MOM6 restart u-vel input
 c --- 'flnm_rv' = name of MOM6 restart v-vel input
 ! --- 'idm   ' = longitudinal array size
@@ -83,10 +73,6 @@ c --- 'flnm_rv' = name of MOM6 restart v-vel input
       write (lp,'(2a)') '   output file: ',trim(flnm_o)
       read (*,'(a)') flnm_rt
       write (lp,'(2a)') 'template T file: ',trim(flnm_rt)
-      read (*,'(a)') flnm_rs
-      write (lp,'(2a)') 'template S file: ',trim(flnm_rs)
-      read (*,'(a)') flnm_rh
-      write (lp,'(2a)') 'template H file: ',trim(flnm_rh)
       read (*,'(a)') flnm_ru
       write (lp,'(2a)') 'template U file: ',trim(flnm_ru)
       read (*,'(a)') flnm_rv
@@ -110,10 +96,8 @@ c --- 'flnm_rv' = name of MOM6 restart v-vel input
       call blkinr(dayout, 'dayout','("blkinr: ",a6," =",f11.4," days")')
 
 ! --- 'symetr' = True if MOM6 has symetric arrays
-! --- 'obc   ' = True if MOM6 has open boundaries
 ! --- 'arctic' = True if global domain and Arctic patch
       call blkinl(lsymetr,  'symetr')
-      call blkinl(lobc,     'obc   ')
       call blkinl(larctic,  'arctic')
 c
 c --- array allocation
@@ -122,19 +106,31 @@ c
 
 c --- mom6 dimensions
 c
-      ntq=idm
-      mtq=jdm
-      nto=idm
-      mto=jdm
-      if (lsymetr) then
-        nto=idm-1
-        mto=jdm-1
-      endif
       if (larctic) then
-        nto=idm
-        mto=jdm-1
-        mtq=jdm-1
-      endif
+        if (lsymetr) then
+          nto=idm
+          mto=jdm-1
+          ntq=idm+1
+          mtq=jdm
+        else
+          nto=idm
+          mto=jdm-1
+          ntq=idm
+          mtq=jdm-1
+        endif !lsymetr:else
+      else !.not.larctic
+        if (lsymetr) then
+          nto=idm-1
+          mto=jdm-1
+          ntq=idm
+          mtq=jdm
+        else
+          nto=idm
+          mto=jdm
+          ntq=idm
+          mtq=jdm
+        endif !lsymetr:else
+      endif !larctic:else
 
       misval = -1.e20  !no missing values in input fields
 c
@@ -163,9 +159,12 @@ c
      &            iexpt,iversn,yrflag,kkin)       ! hycom input
       write(lp,*) 'after getdat'
       write(lp,*) 'artype:',artype
-      lpvel  = artype.lt.0
-      write(lp,*) 'lpvel:',lpvel
-      artype = abs(artype)
+      if (artype.ne.1 .and. artype.ne.2) then
+        write(lp,*)
+        write(lp,*) 'error - artype must be 1 or 2'
+        write(lp,*)
+        stop
+      endif
       if (kkin.ne.kk) then
         write(lp,*)
         write(lp,*) 'error - kkin must be kdm'
@@ -247,46 +246,26 @@ c
 c
 c --- convert baroclinic to total velocities by adding barotropic component
 c --- note that mean archives already contain total velocity
-      if     (.not.lpvel) then
         if     (iu(i,j).eq.1) then
-          if     (artype.eq.1 .and. .not.baclin) then
+          if     (artype.eq.1) then
             u(i,j,k)=u(i,j,k)+ubaro(i,j)  !total velocity
-          elseif (artype.eq.4 .and. .not.baclin) then
-            u(i,j,k)=u(i,j,k)+ubaro(i,j)  !baroclinic velocity
           endif
         else !iu(i,j).ne.1
           u(i,j,k)=0.
         endif
         if     (iv(i,j).eq.1) then
-          if     (artype.eq.1 .and. .not.baclin) then
+          if     (artype.eq.1) then
             v(i,j,k)=v(i,j,k)+vbaro(i,j)  !total velocity
-          elseif (artype.eq.4 .and. .not.baclin) then
-            v(i,j,k)=v(i,j,k)+vbaro(i,j)  !baroclinic velocity
           endif
         else !iv(i,j).ne.1
           v(i,j,k)=0.
         endif
-      else !lpvel
-        if     (ip(i,j).eq.1) then
-          if     (artype.eq.1 .and. .not.baclin) then
-            u(i,j,k)=u(i,j,k)+ubaro(i,j)  !total velocity
-            v(i,j,k)=v(i,j,k)+vbaro(i,j)  !total velocity
-          elseif (artype.eq.4 .and. .not.baclin) then
-            u(i,j,k)=u(i,j,k)+ubaro(i,j)  !baroclinic velocity
-            v(i,j,k)=v(i,j,k)+vbaro(i,j)  !baroclinic velocity
-          endif
-        else !ip(i,j).ne.1
-          u(i,j,k)=0.
-          v(i,j,k)=0.
-        endif !ip
-      endif !.not.lpvel:else
 c
 c --- convert layer thickness to meters
       if     (ip(i,j).eq.1) then
         dp(i,j,k)=dp(i,j,k)/9806.
-        if     (artype.eq.4) then
-          dpsd(i,j,k)=dpsd(i,j,k)/9806.
-        endif
+      else
+        dp(i,j,k)=0.
       endif
 c --- remove huge values
       if     (ip(i,j).eq.0) then
@@ -319,8 +298,7 @@ c
       allocate(Layer(kk))
       allocate(time(1))
       lath = 0.; lonh = 0.; latq=0.;
-      lonq = 0.; Layer = 0. 
-      
+      lonq = 0.; Layer = 0.
 
       allocate(temp_mom(nto,mto,kk,1))
       allocate(saln_mom(nto,mto,kk,1))
@@ -330,22 +308,6 @@ c
       temp_mom = 0.; saln_mom = 0.
       h_mom = 0.; u_mom = 0.; v_mom = 0.
 
-      allocate(temp_inc(nto,mto,kk,1))
-      allocate(saln_inc(nto,mto,kk,1))
-      allocate(h_inc(nto,mto,kk,1))
-      allocate(u_inc(ntq,mto,kk,1))
-      allocate(v_inc(nto,mtq,kk,1))
-      temp_inc = 0.; saln_inc = 0.
-      h_inc = 0.; u_inc = 0.; v_inc = 0.
-
-      if     (lobc) then
-        allocate(tres_x_001(ntq,mto,kk,1))
-        allocate(tres_x_002(ntq,mto,kk,1))
-        allocate(tres_y_001(nto,mtq,kk,1))
-        allocate(tres_y_002(nto,mtq,kk,1))
-        tres_x_001 = 0.; tres_x_002 = 0.
-        tres_y_001 = 0.; tres_y_002 = 0.
-      endif !lobc
 !      write(lp,*) 'After allocate'
 
 c
@@ -353,52 +315,49 @@ c --- put HYCOM uvel on MOM6 u-grid
 c
 c ---   u-vel
 c
-      allocate(  f_nc(idm,jdm) )
-      allocate( field(ntq,mto) )
-      f_nc = 0; field= 0.
+      allocate(  f_nc(idm,jdm) );  f_nc = 0.
+      allocate( field(ntq,mto) ); field = 0.
       do k= 1,kk
         f_nc(:,:) = u(:,:,k)
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                   maxval(f_nc(:,:))
+C     &                                    maxval(f_nc(:,:))
 C
         call h2m_u(f_nc,idm,jdm,1,misval, field,ntq,mto,lsymetr,larctic)
-        write(lp,*) 'convert   u_inc  = ',minval(field(:,:)),
+        write(lp,*) 'convert   u_mom  = ',minval(field(:,:)),
      &                                    maxval(field(:,:))
-        u_inc(:,:,k,1)=field(:,:)
+        u_mom(:,:,k,1)=field(:,:)
       enddo !k
       deallocate(  f_nc )
       deallocate( field )
 c
 c ---   v-vel
 c
-      allocate(  f_nc(idm,jdm) )
-      allocate( field(nto,mtq) )
-      f_nc = 0; field= 0.
+      allocate(  f_nc(idm,jdm) );  f_nc = 0.
+      allocate( field(nto,mtq) ); field = 0.
       do k= 1,kk
         f_nc(:,:) = v(:,:,k)
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
 C     &                                   maxval(f_nc(:,:))
         call h2m_v(f_nc,idm,jdm,1,misval, field,nto,mtq,lsymetr,larctic)
-        write(lp,*) 'convert   v_inc  = ',minval(field(:,:)),
+        write(lp,*) 'convert   v_mom  = ',minval(field(:,:)),
      &                                    maxval(field(:,:))
-        v_inc(:,:,k,1)=field(:,:)
+        v_mom(:,:,k,1)=field(:,:)
       enddo !k
       deallocate(  f_nc )
       deallocate( field )
 c
 c ---   Temperature
 c
-      allocate(  f_nc(idm,jdm) )
-      allocate( field(nto,mto) )
-      f_nc = 0; field= 0.
+      allocate(  f_nc(idm,jdm) );  f_nc = 0.
+      allocate( field(nto,mto) ); field = 0.
       do k= 1,kk
         f_nc(:,:) = temp(:,:,k)
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
 C     &                                   maxval(f_nc(:,:))
         call h2m_p(f_nc,idm,jdm,1,misval, field,nto,mto,lsymetr,larctic)
-        write(lp,*) 'convert   t_inc  = ',minval(field(:,:)),
+        write(lp,*) 'convert   t_mom  = ',minval(field(:,:)),
      &                                    maxval(field(:,:))
-        temp_inc(:,:,k,1)=field(:,:)
+        temp_mom(:,:,k,1)=field(:,:)
       enddo !k
 
 c
@@ -409,9 +368,9 @@ c
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
 C     &                                   maxval(f_nc(:,:))
         call h2m_p(f_nc,idm,jdm,1,misval, field,nto,mto,lsymetr,larctic)
-        write(lp,*) 'convert   s_inc  = ',minval(field(:,:)),
+        write(lp,*) 'convert   s_mom  = ',minval(field(:,:)),
      &                                    maxval(field(:,:))
-        saln_inc(:,:,k,1)=field(:,:)
+        saln_mom(:,:,k,1)=field(:,:)
       enddo !k
 
 c
@@ -427,88 +386,68 @@ C     &                                   maxval(f_nc(:,:))
         h_mom(:,:,k,1)=field(:,:)
       enddo !k
 
-      if     (artype.eq.4) then
-c
-c ---   hinc
-c
-        do k= 1,kk
-          f_nc(:,:) = dpsd(:,:,k)
-C          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                     maxval(f_nc(:,:))
-          call h2m_p(f_nc,idm,jdm,1,misval,
-     &               field,nto,mto,lsymetr,larctic)
-          write(lp,*) 'convert   h_inc  = ',minval(field(:,:)),
-     &                                      maxval(field(:,:))
-          h_inc(:,:,k,1)=field(:,:)
-        enddo !k
-      endif !artype==4
-
       deallocate(  f_nc )
       deallocate( field )
       write(lp,*) 'Finished converting to MOM6 grid'
 
 c --- get coordinates t-points
       call nciopn(flnm_rt,fid)
+      call ncioin(flnm_rt,fid,"lath",ndim)
+      if     (ndim.ne.mto) then
+        write(lp,*)
+        write(lp,*) 'error - MOM6 restart lath has dimension',ndim,
+     &      ' but expected',mto
+        write(lp,*)
+        call flush(lp)
+        stop
+      endif
       call nciorv(flnm_rt,fid,"lath",lath(:))
+      call ncioin(flnm_rt,fid,"lonh",ndim)
+      if     (ndim.ne.nto) then
+        write(lp,*)
+        write(lp,*) 'error - MOM6 restart lonh has dimension',ndim,
+     &      ' but expected',nto
+        write(lp,*)
+        call flush(lp)
+        stop
+      endif
       call nciorv(flnm_rt,fid,"lonh",lonh(:))
       call nciorv(flnm_rt,fid,"Layer",layer(:))
       call nciorv(flnm_rt,fid,"Time",time(:))
       call nciocl(flnm_rt,fid)
 c --- get coordinates u-points
       call nciopn(flnm_ru,fid)
+      call ncioin(flnm_rt,fid,"lonq",ndim)
+      if     (ndim.ne.ntq) then
+        write(lp,*)
+        write(lp,*) 'error - MOM6 restart lonq has dimension',ndim,
+     &      ' but expected',ntq
+        write(lp,*)
+        call flush(lp)
+        stop
+      endif
       call nciorv(flnm_ru,fid,"lonq",lonq(:))
       call nciocl(flnm_ru,fid)
 c --- get coordinates v-points
       call nciopn(flnm_rv,fid)
+      call ncioin(flnm_rt,fid,"latq",ndim)
+      if     (ndim.ne.mtq) then
+        write(lp,*)
+        write(lp,*) 'error - MOM6 restart latq has dimension',ndim,
+     &      ' but expected',mtq
+        write(lp,*)
+        call flush(lp)
+        stop
+      endif
       call nciorv(flnm_rv,fid,"latq",latq(:))
       call nciocl(flnm_rv,fid)
 
-c --- read T,S,U,V and h if only increments
-      if (artype.eq.4) then
-        call nciopn(flnm_rt,fid)
-        call nciorv(flnm_rt,fid,"Temp",temp_mom(:,:,:,1))
-        call nciocl(flnm_rt,fid)
-        call nciopn(flnm_rs,fid)
-        call nciorv(flnm_rs,fid,"Salt",saln_mom(:,:,:,1))
-        call nciocl(flnm_rs,fid)
-        call nciopn(flnm_rh,fid)
-        call nciorv(flnm_rh,fid,"h",h_mom(:,:,:,1))
-        call nciocl(flnm_rh,fid)
-        call nciopn(flnm_ru,fid)
-        call nciorv(flnm_ru,fid,"u",u_mom(:,:,:,1))
-        call nciocl(flnm_ru,fid)
-        call nciopn(flnm_rv,fid)
-        call nciorv(flnm_rv,fid,"v",v_mom(:,:,:,1))
-        call nciocl(flnm_rv,fid)
-      endif
-      if     (lobc) then
-        call nciopn(flnm_rt,fid)
-        call nciorv(flnm_rt,fid,"tres_x_001",tres_x_001(:,:,:,1))
-        call nciorv(flnm_rt,fid,"tres_x_002",tres_x_002(:,:,:,1))
-        call nciorv(flnm_rt,fid,"tres_y_001",tres_y_001(:,:,:,1))
-        call nciorv(flnm_rt,fid,"tres_y_002",tres_y_002(:,:,:,1))
-        call nciocl(flnm_rt,fid)
-      endif !lobc
       write(lp,*) 'Finished reading MOM6 restart'
-
-c --- add increment to MOM6 restart
-      if (artype .ne. 4) then
-        temp_mom(:,:,:,1)=temp_inc(:,:,:,1)
-        saln_mom(:,:,:,1)=saln_inc(:,:,:,1)
-        u_mom(:,:,:,1)=u_inc(:,:,:,1)
-        v_mom(:,:,:,1)=v_inc(:,:,:,1)
-      else
-        temp_mom(:,:,:,1)=temp_mom(:,:,:,1)+temp_inc(:,:,:,1)
-        saln_mom(:,:,:,1)=saln_mom(:,:,:,1)+saln_inc(:,:,:,1)
-        u_mom(:,:,:,1)=u_mom(:,:,:,1)+u_inc(:,:,:,1)
-        v_mom(:,:,:,1)=v_mom(:,:,:,1)+v_inc(:,:,:,1)
-        h_mom(:,:,:,1)=h_mom(:,:,:,1)+h_inc(:,:,:,1)
-      endif
 
 c --- write a MOM6 Restart Netcdf file
 !create file
-      print *, "---------------------"
-      print *, "Writing output file: ", flnm_o
+      write(lp,'(a)')  "---------------------"
+      write(lp,'(2a)') "Writing output file: ", trim(flnm_o)
       filename=trim(flnm_o)
 
       CALL nciocf(filename,fid)
@@ -615,44 +554,6 @@ c --- write a MOM6 Restart Netcdf file
       call nciowa(filename,fid,vname,'long_name','Meridional velocity')
       call nciowa(filename,fid,vname,'units','m s-1')
 
-      if     (lobc) then
-!create data variable
-        vname="tres_x_001"
-        vtype=NF90_DOUBLE
-        vdim4d=(/4,1,5,6/)
-        call nciocv(filename,fid,vname,vtype,vdim4d)
-        call nciowa(filename,fid,vname,'long_name',
-     &                    'Tracer concentration for EW OBCs')
-        call nciowa(filename,fid,vname,'units','Conc')
-
-!create data variable
-        vname="tres_x_002"
-        vtype=NF90_DOUBLE
-        vdim4d=(/4,1,5,6/)
-        call nciocv(filename,fid,vname,vtype,vdim4d)
-        call nciowa(filename,fid,vname,'long_name',
-     &                    'Tracer concentration for EW OBCs')
-        call nciowa(filename,fid,vname,'units','Conc')
-
-!create data variable
-        vname="tres_y_001"
-        vtype=NF90_DOUBLE
-        vdim4d=(/2,3,5,6/)
-        call nciocv(filename,fid,vname,vtype,vdim4d)
-        call nciowa(filename,fid,vname,'long_name',
-     &                     'Tracer concentration for NS OBCs')
-        call nciowa(filename,fid,vname,'units','Conc')
-
-!create data variable
-        vname="tres_y_002"
-        vtype=NF90_DOUBLE
-        vdim4d=(/2,3,5,6/)
-        call nciocv(filename,fid,vname,vtype,vdim4d)
-        call nciowa(filename,fid,vname,'long_name',
-     &                      'Tracer concentration for NS OBCs')
-        call nciowa(filename,fid,vname,'units','Conc')
-      endif !lobc
-
 ! end define mode
       call ncioed(filename,fid)
 
@@ -673,12 +574,6 @@ c --- write a MOM6 Restart Netcdf file
       call nciowv(filename,fid,"u",u_mom)
       call nciowv(filename,fid,"v",v_mom)
 
-      if     (lobc) then
-        call nciowv(filename,fid,"tres_x_001",tres_x_001)
-        call nciowv(filename,fid,"tres_x_002",tres_x_002)
-        call nciowv(filename,fid,"tres_y_001",tres_y_001)
-        call nciowv(filename,fid,"tres_y_002",tres_y_002)
-      endif !lobc
 
 ! close file
       call nciocl(filename,fid)
@@ -697,19 +592,6 @@ c --- write a MOM6 Restart Netcdf file
       deallocate(u_mom)
       deallocate(v_mom)
 
-      deallocate(temp_inc)
-      deallocate(saln_inc)
-      deallocate(h_inc)
-      deallocate(u_inc)
-      deallocate(v_inc)
-
-      if     (lobc) then
-        deallocate(tres_x_001)
-        deallocate(tres_x_002)
-        deallocate(tres_y_001)
-        deallocate(tres_y_002)
-      endif
-
       end program archv2mom6res
 
       subroutine h2m_p(f_nc,ii,jj,kk,misval,
@@ -724,7 +606,7 @@ c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
 ******real, parameter :: spval=2.0**100
       real, parameter :: spval=0.0  !no spval, use 0.0
 c
-c --- convert p-grid mom6 array to hycom.
+c --- convert p-grid hycom array to mom6.
 c
       integer i,ia,j,k
 c
@@ -750,7 +632,7 @@ c
       integer ntq,mto,kk,ii,jj
       real    f_nc(ii,jj,kk),misval,field(ntq,mto,kk)
 c
-c --- convert u-grid mom6 array to hycom u-grid.
+c --- convert u-grid hycom array to mom6.
 c --- mom6  standard has "q" at i+0.5,j+0.5 w.r.t. p.ij
 c --- mom6  symetric has "q" at i-0.5,j-0.5 w.r.t. p.ij
 c --- hycom          has "q" at i-0.5,j-0.5 w.r.t. p.ij
@@ -760,9 +642,17 @@ c
       if     (lsymetr) then
         do k= 1,kk
           do j= 1,mto
-            do i= 1,ntq
+            do i= 1,min(ntq,ii)
               if     (f_nc(i,j,k).ne.misval) then
                  field(i,j,k) = f_nc(i,j,k)
+              else
+                 field(i,j,k) = 0.0
+              endif
+            enddo !i
+c ---       ntq can be ii+1, periodic wrap
+            do i= ii+1,ntq
+              if     (f_nc(i,j,k).ne.misval) then
+                 field(i,j,k) = f_nc(i-ii,j,k)
               else
                  field(i,j,k) = 0.0
               endif
@@ -794,7 +684,7 @@ c
       integer nto,mtq,kk,ii,jj
       real    f_nc(ii,jj,kk),misval,field(nto,mtq,kk)
 c
-c --- convert v-grid mom6 array to hycom.
+c --- convert v-grid hycom array to mom6.
 c --- mom6  standard has "q" at i+0.5,j+0.5 w.r.t. p.ij
 c --- mom6  symetric has "q" at i-0.5,j-0.5 w.r.t. p.ij
 c --- hycom          has "q" at i-0.5,j-0.5 w.r.t. p.ij
