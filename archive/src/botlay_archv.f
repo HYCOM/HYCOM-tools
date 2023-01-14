@@ -1,16 +1,16 @@
-      program trim_archv
+      program botlay_archv
       use mod_plot  ! HYCOM plot array interface
       use mod_za    ! HYCOM array I/O interface
       implicit none
 c
-c --- merge layers near the bottom in a HYCOM 2.0 archive file.
+c --- merge or homogenize layers near the bottom in a HYCOM 2.0 archive file.
 c
       character label*81,text*18,flnm_i*240,flnm_o*240,flnm_b*240
       logical initl,trcout,lsteric,icegln
 c
       integer          artype,iexpt,iversn,yrflag,kpalet,mxlflg
       integer          i,ibad,ip1,j,jp1,k,kkbot,kkin,l
-      real             thbase,hmina,hmaxa
+      real             bothom,onem,thbase,hmina,hmaxa
       double precision time3(3),time,year,
      &                 dpoij,dpsum,kesum,ssum,thsum,tsum,usum,vsum
 c
@@ -19,13 +19,19 @@ c
       data trcout/.false./  ! must be .false. (no tracer remapping)
       data initl /.true. /
 c
+      onem = 9806.0  ! g/thref
+c
       call xcspmd
       call zaiost
       lp=6
 c
 c --- 'flnm_i' = name of original archive file
 c --- 'flnm_o' = name of target   archive file
-c --- 'flnm_b' = name of new bottom layer file
+c --- 'flnm_b' = name of new bottom layer file, or "NONE"
+c --- 'bothom' = homogenize bottom ABS(bothom) of the water column (m)
+c ---              +ve to homogenize   T&S with layer above, or
+c ---              -ve to project down T&S from layer above
+c ---              only present when flnm_b="NONE"
 c --- 'iexpt ' = experiment number x10  (000=from archive file)
 c --- 'yrflag' = days in year flag (0=360J16,1=366J16,2=366J01,3=actual)
 c --- 'idm   ' = longitudinal array size
@@ -41,6 +47,12 @@ c
       read (*,'(a)') flnm_b
       write (lp,'(2a)') 'bottom file: ',trim(flnm_b)
       call flush(lp)
+      bothom = 0.0
+      if     (trim(flnm_b).eq.'NONE') then
+        call blkinr(bothom,
+     &             'bothom','("blkinr: ",a6," =",f11.4," m")')
+        bothom = bothom * onem
+      endif
       call blkini(iexpt, 'iexpt ')
       call blkini(yrflag,'yrflag')
       call blkini(ii,    'idm   ')
@@ -92,10 +104,12 @@ c
 c
 c --- read botlay
 c
-      allocate( botlay(idm,jdm) )
-      call zaiopf(flnm_b, 'old', 915)
-      call zaiord(botlay,ip,.false., hmina,hmaxa, 915)
-      call zaiocl(915)
+      if     (bothom.eq.0.0) then
+        allocate( botlay(idm,jdm) )
+        call zaiopf(flnm_b, 'old', 915)
+        call zaiord(botlay,ip,.false., hmina,hmaxa, 915)
+        call zaiocl(915)
+      endif !bothom
 c
 c --- always allocate ke, for simplicity
 c
@@ -132,6 +146,55 @@ c
         call flush(lp)
         stop
       endif
+c
+      if     (bothom.ne.0.0) then
+c
+c --- homogenize T&S of layers near the bottom
+c ---   +ve bothom preserves total mass, and
+c ---   -ve bothom projects down deepest mass-containing layer
+c
+      do j= 1,jdm
+        do i= 1,idm
+          if     (ip(i,j).eq.1) then
+! ---       locate deepest substantial mass-containing layer.
+            l = 1
+            do k=kkin,2,-1
+              if (dp(i,j,k).gt.abs(bothom)) then
+                l = k
+                exit
+              endif
+            enddo
+c
+            if     (bothom.gt.0.0) then
+c ---         preserve total mass
+              dpoij = dp(i,j,l)
+              dpsum = dpoij
+               tsum = dpoij*temp(i,j,l)
+               ssum = dpoij*saln(i,j,l)
+              thsum = dpoij*th3d(i,j,l)
+              do k= l+1,kkin
+                dpoij = dp(i,j,k)
+                dpsum = dpoij             + dpsum
+                tsum  = dpoij*temp(i,j,k) +  tsum
+                ssum  = dpoij*saln(i,j,k) +  ssum
+                thsum = dpoij*th3d(i,j,k) + thsum
+              enddo !k
+              temp(i,j,l) =  tsum/dpsum
+              saln(i,j,l) =  ssum/dpsum
+              th3d(i,j,l) = thsum/dpsum
+            endif !bothom.gt.0.0
+            do k= l+1,kkin
+              temp(i,j,k) = temp(i,j,l)
+              saln(i,j,k) = saln(i,j,l)
+              th3d(i,j,k) = th3d(i,j,l)
+            enddo !k
+          endif !l
+        enddo !i
+      enddo !j
+c
+      else !bothom.eq.0.0
+c
+c --- merge layers near the bottom
 c
 c --- check that bathymetry is consistent with this botlay.
 c
@@ -243,6 +306,8 @@ c             merge layers l:kkin
           endif !iv
         enddo !i
       enddo !j
+c
+      endif !bothom.ne.0:else
 c
 c --- write the archive file, in "*.[AB]".
 c
