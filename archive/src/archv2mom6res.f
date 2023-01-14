@@ -318,24 +318,33 @@ c
       allocate(lonq(ntq))
       allocate(Layer(kk))
       allocate(time(1))
+      lath = 0.; lonh = 0.; latq=0.;
+      lonq = 0.; Layer = 0. 
+      
 
       allocate(temp_mom(nto,mto,kk,1))
       allocate(saln_mom(nto,mto,kk,1))
       allocate(h_mom(nto,mto,kk,1))
       allocate(u_mom(ntq,mto,kk,1))
       allocate(v_mom(nto,mtq,kk,1))
+      temp_mom = 0.; saln_mom = 0.
+      h_mom = 0.; u_mom = 0.; v_mom = 0.
 
       allocate(temp_inc(nto,mto,kk,1))
       allocate(saln_inc(nto,mto,kk,1))
       allocate(h_inc(nto,mto,kk,1))
       allocate(u_inc(ntq,mto,kk,1))
       allocate(v_inc(nto,mtq,kk,1))
+      temp_inc = 0.; saln_inc = 0.
+      h_inc = 0.; u_inc = 0.; v_inc = 0.
 
       if     (lobc) then
         allocate(tres_x_001(ntq,mto,kk,1))
         allocate(tres_x_002(ntq,mto,kk,1))
         allocate(tres_y_001(nto,mtq,kk,1))
         allocate(tres_y_002(nto,mtq,kk,1))
+        tres_x_001 = 0.; tres_x_002 = 0.
+        tres_y_001 = 0.; tres_y_002 = 0.
       endif !lobc
 !      write(lp,*) 'After allocate'
 
@@ -346,6 +355,7 @@ c ---   u-vel
 c
       allocate(  f_nc(idm,jdm) )
       allocate( field(ntq,mto) )
+      f_nc = 0; field= 0.
       do k= 1,kk
         f_nc(:,:) = u(:,:,k)
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
@@ -363,6 +373,7 @@ c ---   v-vel
 c
       allocate(  f_nc(idm,jdm) )
       allocate( field(nto,mtq) )
+      f_nc = 0; field= 0.
       do k= 1,kk
         f_nc(:,:) = v(:,:,k)
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
@@ -379,6 +390,7 @@ c ---   Temperature
 c
       allocate(  f_nc(idm,jdm) )
       allocate( field(nto,mto) )
+      f_nc = 0; field= 0.
       do k= 1,kk
         f_nc(:,:) = temp(:,:,k)
 C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
@@ -495,6 +507,8 @@ c --- add increment to MOM6 restart
 
 c --- write a MOM6 Restart Netcdf file
 !create file
+      print *, "---------------------"
+      print *, "Writing output file: ", flnm_o
       filename=trim(flnm_o)
 
       CALL nciocf(filename,fid)
@@ -669,6 +683,32 @@ c --- write a MOM6 Restart Netcdf file
 ! close file
       call nciocl(filename,fid)
       write(lp,*) 'Finished writing MOM6 restart'
+
+      deallocate(lath)
+      deallocate(lonh)
+      deallocate(latq)
+      deallocate(lonq)
+      deallocate(Layer)
+      deallocate(time)
+
+      deallocate(temp_mom)
+      deallocate(saln_mom)
+      deallocate(h_mom)
+      deallocate(u_mom)
+      deallocate(v_mom)
+
+      deallocate(temp_inc)
+      deallocate(saln_inc)
+      deallocate(h_inc)
+      deallocate(u_inc)
+      deallocate(v_inc)
+
+      if     (lobc) then
+        deallocate(tres_x_001)
+        deallocate(tres_x_002)
+        deallocate(tres_y_001)
+        deallocate(tres_y_002)
+      endif
 
       end program archv2mom6res
 
