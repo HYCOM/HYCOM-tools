@@ -26,3 +26,9 @@ module   list
 setenv NCDFC	 ${NETCDFC_HOME}
 setenv NCDF	 ${NETCDFFORTRAN_HOME}
 setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -lnetcdf -lnetcdff"
+#
+# --- NASA NCCS systems with mpiifort:
+# module load comp/intel/2021.3.0 mpi/impi/2021.3.0 netcdf4/4.8.1-parallel
+# setenv NCDFC    /usr/local/other/netcdf4/4.8.1/intel/2021.3.0/
+# setenv NCDF     /usr/local/other/netcdf4/4.8.1/intel/2021.3.0/
+# setenv EXTRANCDF `nf-config --flibs`
