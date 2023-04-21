@@ -63,9 +63,9 @@ C
       INTEGER       NARG
       CHARACTER*240 CARG
 C
-      LOGICAL       LSTERIC,LONETA,LWTRFLX,LSEAICE,LUV
+      LOGICAL       LSTERIC,LONETA,LWTRFLX,LSEAICE,LUV,LNOTRC
       INTEGER       IDM,JDM,KDM,KTR,NSURF,NLAY,NDIF,NTRC,IEXPT,YRFLAG
-      INTEGER       NTRC1
+      INTEGER       NTRC1,NTRCP
       INTEGER       ITYPE,NPAD,NX
       INTEGER       IF,IL,II,JF,JL,JI,N,NM
       INTEGER       ARTYPE,SIGVER,NSTEP,NDIFO
@@ -95,6 +95,11 @@ C
         L = L-1
       ELSE
         NDIFO = 0
+      ENDIF
+      LNOTRC = .FALSE.
+      IF     (CARG(L-5:L).EQ.'_notrc') THEN
+        LNOTRC = .TRUE.
+        L = L-6
       ENDIF
       LUV = .FALSE.  !usual case
       IF     (CARG(L-4:L).EQ.'_list') THEN
@@ -247,11 +252,20 @@ C
      +               LSTERIC,LONETA,LWTRFLX,LSEAICE,
      +               ARTYPE,SIGVER,THBASE,TIME3,NSTEP)
       TIME = TIME3(1)
+      IF     (ARTYPE.EQ.2 .AND. SIGVER.GT.0) THEN
+        NLAY = NLAY - 1
+        NTRC = NTRC + 1
+      ENDIF
 C
       IF     (ARTYPE.EQ.3 .OR. ARTYPE.EQ.4) THEN
         NTRC1 = NTRC + 1  !allow for thknss
       ELSE
         NTRC1 = NTRC
+      ENDIF
+      IF     (LNOTRC) THEN
+        NTRCP = 0
+      ELSE
+        NTRCP = NTRC
       ENDIF
 C
       CALL SIG_I(SIGVER)
@@ -328,6 +342,7 @@ C
         OPEN(UNIT=99, FILE=CFILEL, FORM='FORMATTED', STATUS='OLD',
      +           IOSTAT=IOS)
         IF     (IOS.NE.0) THEN
+          write(6,*) 'CFILEL = ',TRIM(CFILEL)
           WRITE(6,*) 'Error: can''t open ',TRIM(CFILEL)
           WRITE(6,*) 'ios   = ',ios
           CALL EXIT(3)
@@ -340,6 +355,7 @@ C
             READ(99,*,IOSTAT=IOS) IP(I),JP(I),SP(I)
           ENDIF
           IF     (IOS.NE.0) THEN
+            write(6,*) 'CFILEL = ',TRIM(CFILEL)
             WRITE(6,*) 'Error: can''t read ',TRIM(CFILEL)
             WRITE(6,*) 'ios   = ',ios
             WRITE(6,*) 'i,n   = ',i,n
@@ -438,6 +454,7 @@ C
       OPEN(UNIT=11, FILE=CFILER, FORM='UNFORMATTED', STATUS='OLD',
      +         ACCESS='DIRECT', RECL=NRECL, IOSTAT=IOS)
       IF     (IOS.NE.0) THEN
+        write(6,*) 'CFILER = ',TRIM(CFILER)
         WRITE(6,*) 'Error: can''t open ',TRIM(CFILER)
         WRITE(6,*) 'ios   = ',ios
         WRITE(6,*) 'nrecl = ',nrecl
@@ -452,7 +469,8 @@ C
         CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
         IF     (IOS.NE.0) THEN
-          WRITE(6,*) 'can''t read ',TRIM(CFILEA)
+          write(6,*) 'CFILER = ',TRIM(CFILER)
+          WRITE(6,*) 'can''t read ',TRIM(CFILER)
           CALL EXIT(4)
         ENDIF
 *       write(6,*) 'REC,A.MIN = ',KREC,MINVAL(A),A(IF,JF)
@@ -466,6 +484,7 @@ C
       OPEN(UNIT=11, FILE=CFILEA, FORM='UNFORMATTED', STATUS='OLD',
      +         ACCESS='DIRECT', RECL=NRECL, IOSTAT=IOS)
       IF     (IOS.NE.0) THEN
+        write(6,*) 'CFILEA = ',TRIM(CFILEA)
         WRITE(6,*) 'Error: can''t open ',TRIM(CFILEA)
         WRITE(6,*) 'ios   = ',ios
         WRITE(6,*) 'nrecl = ',nrecl
@@ -480,6 +499,7 @@ C
         CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
         IF     (IOS.NE.0) THEN
+          write(6,*) 'CFILEA = ',TRIM(CFILEA)
           WRITE(6,*) 'can''t read ',TRIM(CFILEA)
           CALL EXIT(4)
         ENDIF
@@ -534,6 +554,7 @@ C
           CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
           IF     (IOS.NE.0) THEN
+            write(6,*) 'CFILEA = ',TRIM(CFILEA)
             WRITE(6,*) 'can''t read ',TRIM(CFILEA)
             CALL EXIT(4)
           ENDIF
@@ -560,7 +581,7 @@ C
           ELSEIF (ARTYPE.EQ.2) THEN  !mean archive
             UK(K, :) = 0.5*(PROF(1,K,:)+PROU(1,K,:))  !already full layer velocity
             VK(K, :) = 0.5*(PROF(2,K,:)+PROV(2,K,:))  !already full layer velocity
-            P(K+1,:) = P(K,:) + PROF(NLAY-3,K,:)
+            P(K+1,:) = P(K,:) + PROF(4,K,:)
           ELSE  !std. or diff archive
             UK(K, :) = 0.5*(PROF(1,K,:)+PROU(1,K,:))  !already full layer velocity
             VK(K, :) = 0.5*(PROF(2,K,:)+PROV(2,K,:))  !already full layer velocity
@@ -851,6 +872,7 @@ C   from profX, form profIIII.txt, where IIII is i as 4 digits.
               WRITE(CFILEB,'(A,I4.4,".txt")')
      +          CFILEP(1:LEN_TRIM(CFILEP)-4),I
             ENDIF
+*           write(6,*) 'NX,CFILEB =',NX,TRIM(CFILEB)
             IF     (SURF(2,I).GT.1.E20) THEN
               WRITE(6,'(2a)') 'Over Land : ',TRIM(CFILEB)
               CYCLE  !land point
@@ -858,6 +880,7 @@ C   from profX, form profIIII.txt, where IIII is i as 4 digits.
             OPEN(UNIT=IU, FILE=CFILEB, FORM='FORMATTED', STATUS='NEW',
      +           IOSTAT=IOS)
             IF     (IOS.NE.0) THEN
+              write(6,*) 'CFILEB = ',TRIM(CFILEB)
               WRITE(6,'(2a)') 'Can''t open: ',TRIM(CFILEB)
               CYCLE
 *           ELSE
@@ -951,40 +974,40 @@ C
 C         PER LAYER FIELDS.
 C
           IF     (NTRC1.EQ.NTRC) THEN  !the usual case
-            IF     (NTRC.EQ.0) THEN
+            IF     (NTRCP.EQ.0) THEN
               WRITE(CFORMAT,'(a)')
      &          '(3a)'
             ELSE
               WRITE(CFORMAT,'(a,i2,a)')
-     &          '(3a,',NTRC,'(a,i2.2))'
+     &          '(3a,',NTRCP,'(a,i2.2))'
             ENDIF
             IF     (NDIFO.EQ.0) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth',
-     &            ('  trcr',KTR, KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRCP)
             ELSEIF (NDIFO.EQ.1) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty',
-     &            ('  trcr',KTR, KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRCP)
             ELSEIF (NDIFO.EQ.2) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty  t-diff',
-     &            ('  trcr',KTR, KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRCP)
             ELSEIF (NDIFO.EQ.3) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty  t-diff  s-diff',
-     &            ('  trcr',KTR, KTR=1,NTRC)
+     &            ('  trcr',KTR, KTR=1,NTRCP)
             ENDIF
 C
-            IF     (NTRC.EQ.0) THEN
+            IF     (NTRCP.EQ.0) THEN
               IF     (NDIFO.EQ.0) THEN
                 WRITE(CFORMAT,'(a)')
      &          '(i4,2f8.2,3f8.4,f9.3,f10.3,a)'  !last a not used
@@ -995,10 +1018,10 @@ C
             ELSE
               IF     (NDIFO.EQ.0) THEN
                 WRITE(CFORMAT,'(a,i2,a)')
-     &        '(i4,2f8.2,3f8.4,f9.3,f10.3,',NTRC,'f8.4,a)'  !last a not used
+     &        '(i4,2f8.2,3f8.4,f9.3,f10.3,',NTRCP,'f8.4,a)'  !last a not used
               ELSE
                 WRITE(CFORMAT,'(a,i1,a,i2,a)')
-     &        '(i4,2f8.2,3f8.4,f9.3,f10.3,',NDIFO,'f8.2,',NTRC,'f8.4)'
+     &        '(i4,2f8.2,3f8.4,f9.3,f10.3,',NDIFO,'f8.2,',NTRCP,'f8.4)'
               ENDIF !ndifo
             ENDIF !ntrc
 C
@@ -1023,7 +1046,7 @@ C
      &            (P(K+1,I)-P(K,I))    /ONEM,          !m
      &            (P(K+1,I)+P(K,I))*0.5/ONEM,          !m
      &            (DIF(KTR),KTR=1,NDIFO),              !cm^2/s
-     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRC)      !0-99
+     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRCP)     !0-99
               ELSE
                 WRITE(IU,CFORMAT)
      &            K,
@@ -1035,48 +1058,48 @@ C
      &            PROF(NLAY-2,K,I)/ONEM,               !m
      &            (P(K+1,I)+P(K,I))*0.5/ONEM,          !m
      &            (DIF(KTR),KTR=1,NDIFO),              !cm^2/s
-     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRC)      !0-99
+     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRCP)     !0-99
               ENDIF
             ENDDO !k
           ELSE  !NTRC1.NE.NTRC
-            IF     (NTRC.EQ.0) THEN
+            IF     (NTRCP.EQ.0) THEN
               WRITE(CFORMAT,'(a)')
      &          '(4a)'
             ELSE
               WRITE(CFORMAT,'(a,i2,a)')
-     &          '(4a,',NTRC,'a)'
+     &          '(4a,',NTRCP,'a)'
             ENDIF
             IF     (NDIFO.EQ.0) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth',
-     &            ('  tracer',KTR=1,NTRC),
+     &            ('  tracer',KTR=1,NTRCP),
      &             '    thknss'
             ELSEIF (NDIFO.EQ.1) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty',
-     &            ('  tracer',KTR=1,NTRC),
+     &            ('  tracer',KTR=1,NTRCP),
      &             '    thknss'
             ELSEIF (NDIFO.EQ.2) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty  t-diff',
-     &            ('  tracer',KTR=1,NTRC),
+     &            ('  tracer',KTR=1,NTRCP),
      &             '    thknss'
             ELSEIF (NDIFO.EQ.3) THEN
               WRITE(IU,CFORMAT)
      &            '#  k',
      &            '    utot    vtot  p.temp    saln  p.dens',
      &            '    thkns      dpth  viscty  t-diff  s-diff',
-     &            ('  tracer',KTR=1,NTRC),
+     &            ('  tracer',KTR=1,NTRCP),
      &             '    thknss'
             ENDIF
 C
-            IF     (NTRC.EQ.0) THEN
+            IF     (NTRCP.EQ.0) THEN
               IF     (NDIFO.EQ.0) THEN
                 WRITE(CFORMAT,'(a)')
      &          '(i4,2f8.2,3f8.4,f9.3,f10.3,f10.3)'
@@ -1085,14 +1108,14 @@ C
      &          '(i4,2f8.2,3f8.4,f9.3,f10.3,',
      &                          NDIFO,'f8.2,f10.3)'
               ENDIF !ndifo
-            ELSE !NTRC.ne.0
+            ELSE !NTRCP.ne.0
               IF     (NDIFO.EQ.0) THEN
                 WRITE(CFORMAT,'(a,i2,a)')
-     &          '(i4,2f8.2,3f8.4,f9.3,f10.3,',NTRC,'f8.4,f10.3)'
+     &          '(i4,2f8.2,3f8.4,f9.3,f10.3,',NTRCP,'f8.4,f10.3)'
               ELSE
                 WRITE(CFORMAT,'(a,i1,a,i2,a)')
      &          '(i4,2f8.2,3f8.4,f9.3,f10.3,',
-     &                          NDIFO,'f8.2,',NTRC,'f8.4,f10.3)'
+     &                          NDIFO,'f8.2,',NTRCP,'f8.4,f10.3)'
               ENDIF !ndifo
             ENDIF !ntrc
 C
@@ -1117,7 +1140,7 @@ C
      &            (P(K+1,I)-P(K,I))    /ONEM,          !m
      &            (P(K+1,I)+P(K,I))*0.5/ONEM,          !m
      &            (DIF(KTR),KTR=1,NDIFO),              !cm^2/s
-     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRC),     !0-99
+     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRCP),    !0-99
      &             PROF(NLAY+NDIF+NTRC1,K,I)           !thknss
               ELSE
                 WRITE(IU,CFORMAT)
@@ -1130,7 +1153,7 @@ C
      &            PROF(NLAY-2,K,I)/ONEM,               !m
      &            (P(K+1,I)+P(K,I))*0.5/ONEM,          !m
      &            (DIF(KTR),KTR=1,NDIFO),              !cm^2/s
-     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRC),     !0-99
+     &            (PROF(NLAY+KTR,K,I),KTR=1,NTRCP),    !0-99
      &             PROF(NLAY+NDIF+NTRC1,K,I)           !thknss
               ENDIF
             ENDDO !k
