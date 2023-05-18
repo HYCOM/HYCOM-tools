@@ -28,5 +28,6 @@ cat <<'E-o-D'
   17   100   !NCL's    BlAqGrYeOrRe
   18   100   !NCL's    ReOrYeGrAqBl
   19    20   !NRL's    Bl/lt-Bl/Ye/Re
-  20   ???   !input from filename $PALETTE (up to 200 colors)
+  20   ???   !input from filename $PALETTE (up to 249 colors)
+             !examples in HYCOM-tools/plot/PALETTE
 'E-o-D'
