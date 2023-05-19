@@ -18,6 +18,7 @@ C
       INTEGER      IVERSN,IEXPT,YRFLAG,KDM,LEVTOP,MONTH,SIGVER,
      +             NHYBRD,NSIGMA,THFLAG
       INTEGER      JDW
+      REAL*4       DX0KF,DX00,DX00X,DX00F
       REAL*4       DP00S,DP00,DP00X,DP00F,DS00,DS00X,DS00F,ISOTOP,
      +             DP00I,
      +             SIGMA(9999),THBASE,THKMIN,SALMIN,BLK
@@ -46,7 +47,7 @@ C
      +                        PZBOT(:,:),PZTOP(:,:),
      +                        WORK(:,:),
      +                        SIG3D(:,:,:)
-      REAL*4               :: DP0K(  9999),DS0K(  9999),
+      REAL*4               :: DP0K(  9999),DS0K(  9999),DX0K(  9999),
      +                        DPCK(0:9999),DSCK(0:9999)
 C
 C**********
@@ -233,6 +234,9 @@ C
       ELSE
 C
 C ---   'isotop' = shallowest depth for isopycnal layers (m), optional
+C ---   'dx00'   = maximum layer thickness minimum, optional (m)
+C ---   'dx00x'  = maximum layer thickness maximum, optional (m)
+C ---   'dx00f'  = maximum layer thickness stretching factor (1.0=const)
 C ---   'dp00'   = deep    z-level spacing minimum thickness (m)
 C ---   'dp00x'  = deep    z-level spacing maximum thickness (m)
 C ---   'dp00f'  = deep    z-level spacing stretching factor (1.0=const.z)
@@ -254,6 +258,13 @@ C ---    (pure sigma-z also has ds00f=dp00f and ds00x=dp00x*ds00/dp00)
 C ---   for z-sigma (shallow-deep) use a very large dp00 (not recommended)
 C ---   for sigma-only set nsigma=kdm, dp00 large, and ds00 small
 C
+C --- or, in place of 'd?00','d?00x','d?00f' specify:
+C --- 'dx0k  ' = layer k maximum layer thickness (m)
+C --- 'dp0k  ' = layer k deep    z-level spacing minimum thickness (m)
+C ---              k=1,kdm; dp0k must be zero for k>nhybrd
+C --- 'ds0k  ' = layer k shallow z-level spacing minimum thickness (m)
+C ---              k=1,nsigma
+C
 C --- version 2.2.58 definition of deep and shallow z-levels.
 C --- terrain following starts at depth sum(dp0k(k),k=1,nsigma) and
 C --- ends at depth sum(ds0k(k),k=1,nsigma), and the depth of the k-th
@@ -264,13 +275,47 @@ C --- previous to 2.2.58, it was layer thickness (not layer interface
 C --- depth) that varied linearly with total depth.  These two approachs
 C --- are identical for "pure sigma-z", but differ if ds00f/=dp00f.
 C
+C
+        do k=1,kdm
+          dx0k(k)=9999.0
+        enddo
+C
         CALL BLKINR2(BLK,J,'isotop','(a6," =",f10.4," m")',
      &                     'dp00  ','(a6," =",f10.4," m")')
         IF     (J.EQ.1) THEN
           ISOTOP = BLK
-          CALL BLKINR2(BLK,J,'dp0k  ','(a6," =",f10.4," m")',
-     &                       'dp00  ','(a6," =",f10.4," m")')
-          IF     (J.EQ.1) THEN
+          call blkinr9(BLK,J,
+     &                'dp00  ','(a6," =",f10.4," m")',
+     &                'dp0k  ','(a6," =",f10.4," m")',
+     &                'dx00  ','(a6," =",f10.4," m")',
+     &                'dx0k  ','(a6," =",f10.4," m")',
+     &                'XXXXXX','(a6," =",f10.4," ")',
+     &                'XXXXXX','(a6," =",f10.4," ")',
+     &                'XXXXXX','(a6," =",f10.4," ")',
+     &                'XXXXXX','(a6," =",f10.4," ")',
+     &                'XXXXXX','(a6," =",f10.4," ")')
+          if     (j.eq.3) then !dx00
+            dx00 = blk
+            call blkinr(dx00x, 'dx00x ','(a6," =",f10.4," m")')
+            call blkinr(dx00f, 'dx00f ','(a6," =",f10.4," ")')
+! ---       logarithmic k-dependence of dx0
+            dx0kf=1.0
+            dx0k(1)=dx00
+            do k=2,kdm
+              dx0kf=dx0kf*dx00f
+              dx0k(k)=min(dx00*dx0kf,dx00x)
+            enddo !k
+            CALL BLKINR2(BLK,J,'dp00  ','(a6," =",f10.4," m")',
+     &                         'dp0k  ','(a6," =",f10.4," m")')
+          elseif (k.eq.4) then !dx0k
+            dx0k(1) = dp00
+            do k=2,kdm
+              call blkinr(dx0k(k), 'dx0k  ','(a6," =",f10.4," m")')
+            enddo !k
+            CALL BLKINR2(BLK,J,'dp00  ','(a6," =",f10.4," m")',
+     &                         'dp0k  ','(a6," =",f10.4," m")')
+          endif
+          IF     (J.EQ.2) THEN
             DP0K(1) = BLK
             DP00    = -1.0 !no d[sp]00* input
           ELSE
@@ -1062,6 +1107,9 @@ C
                   PM(I,J) = MIN( DEPTH(I,J),
      +                           MAX( PKM1(I,J),
      +                                (1.0-Q)*ZLEV(L) + Q*ZLEV(L+1) ) )
+                ENDIF
+                IF     (PM(I,J) .GT. PKM1(I,J) + DX0K(K)) THEN
+                  PM(I,J) = PKM1(I,J) + DX0K(K)
                 ENDIF
                   if (ldebug .and. i.eq.itest .and. j.eq.jtest) then
                     WRITE(6,'(A,2F10.3)')
