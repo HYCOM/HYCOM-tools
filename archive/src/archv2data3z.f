@@ -1154,7 +1154,7 @@ c ---             flux form for better results from mean archives
                   endif
                   uvp=(dpu0*u(i,  j,k)+
      &                 dpu1*u(ip1,j,k) )/
-     &                        max(2.0*dp(i,j,k),dpu0+dpu1)
+     &                        max(onemm,dpu0+dpu1)
                   else !lpvel
                   uvp=u(i,j,k)
                   endif !.not.lpvel:else
@@ -1180,7 +1180,7 @@ c ---             flux form for better results from mean archives
                     endif
                     vvp=(dpv0*v(i,j,  k)+
      &                   dpv1*v(i,jp1,k) )/
-     &                           max(2.0*dp(i,j,k),dpv0+dpv1)
+     &                           max(onemm,dpv0+dpv1)
                     else !lpvel
                     vvp=v(i,j,k)
                     endif !.not.lpvel:else
@@ -1304,7 +1304,7 @@ c ---             flux form for better results from mean archives
                   endif
                   vvp=(dpv0*v(i,j,  k)+
      &                 dpv1*v(i,jp1,k) )/
-     &                         max(2.0*dp(i,j,k),dpv0+dpv1)
+     &                         max(onemm,dpv0+dpv1)
                   else !lpvel
                   vvp=v(i,j,k)
                   endif !.not.lpvel:else
@@ -1344,7 +1344,7 @@ c ---             flux form for better results from mean archives
                     endif
                     uvp=(dpu0*u(i,  j,k)+
      &                   dpu1*u(ip1,j,k) )/
-     &                           max(2.0*dp(i,j,k),dpu0+dpu1)
+     &                           max(onemm,dpu0+dpu1)
                     else !lpvel
                     uvp=u(i,j,k)
                     endif !.not.lpvel:else
@@ -1498,10 +1498,10 @@ c ---             flux form for better results from mean archives
                   endif
                   uvp         =(dpu0*u(i,  j,k)+
      &                          dpu1*u(ip1,j,k) )/
-     &                         max(2.0*dp(i,j,k),dpu0+dpu1)
+     &                         max(onemm,dpu0+dpu1)
                   vvp         =(dpv0*v(i,j,  k)+
      &                          dpv1*v(i,jp1,k) )/
-     &                         max(2.0*dp(i,j,k),dpv0+dpv1)
+     &                         max(onemm,dpv0+dpv1)
                   else !lpvel
                   uvp=u(i,j,k)
                   vvp=v(i,j,k)
@@ -1828,10 +1828,21 @@ c ---   'trcio ' = tracer I/O unit (0 no I/O)
               enddo
             enddo
           enddo
-          if     (.not.lcell) then !point interpolation
-            call layer2z(utilk,p,utilz,zz,flag,ii,jj,kk,kz,itype)
-          else !cell average
-            call layer2c(utilk,p,utilz,zi,flag,ii,jj,kk,kz,itype)
+          if     (index(ctrc_title(ktr),'viscty').ne.0 .or.
+     &            index(ctrc_title(ktr),'t-diff').ne.0 .or.
+     &            index(ctrc_title(ktr),'s-diff').ne.0     ) then
+            if     (itest.gt.0) then
+            call infac2z_debug(utilk,p,utilz,zz,flag,ii,jj,kk,kz,
+     &                         0,1, itest,jtest,lp)
+            else
+            call infac2z(utilk,p,utilz,zz,flag,ii,jj,kk,kz,0,1)
+            endif !test
+          else
+            if     (.not.lcell) then !point interpolation
+              call layer2z(utilk,p,utilz,zz,flag,ii,jj,kk,kz,itype)
+            else !cell average
+              call layer2c(utilk,p,utilz,zi,flag,ii,jj,kk,kz,itype)
+            endif
           endif
           call horout_3z(utilz,zz, artype,yrflag,time3,iexpt,.true.,
      &                   trim(ctrc_title(ktr)),     ! plot name
