@@ -166,6 +166,9 @@ relaxv:          $(MODS) relaxv.o                 $(LIBS)
 relaxi:          $(MODS) relaxi.o                 $(LIBS)
 	$(LD) $(LDFLAGS) relaxi.o         $(MODS) $(LIBS) -o relaxi
 
+relax_archive:   $(MODS) relax_archive.o          $(LIBS)
+	$(LD) $(LDFLAGS) relax_archive.o  $(MODS) $(LIBS) -o relax_archive
+
 relaxi_dens:     $(MODS) relaxi_dens.o            $(LIBS)
 	$(LD) $(LDFLAGS) relaxi_dens.o    $(MODS) $(LIBS) -o relaxi_dens
 

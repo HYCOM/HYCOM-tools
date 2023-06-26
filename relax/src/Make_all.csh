@@ -16,7 +16,7 @@ if (! -e ../../config/${ARCH}_setup) then
   exit 1
 endif
 #
-foreach m ( bottom iso_density relax_flat_rivers relax_tracer relaxi relaxi_dens relaxv rmu rmu2 rmu_linear tracer_const z_archive z_const z_levitus z_medatlas z_modify sst_pf sst_pf_4km )
+foreach m ( bottom iso_density relax_flat_rivers relax_tracer relaxi relaxi_dens relaxv relax_archive rmu rmu2 rmu_linear tracer_const z_archive z_const z_levitus z_medatlas z_modify sst_pf sst_pf_4km )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"
