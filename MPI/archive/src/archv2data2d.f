@@ -5,7 +5,8 @@ c
 c --- hycom to 2-d diagnostic field extractor
 c
       real,    allocatable, dimension (:,:)   ::
-     &   uflux,vflux, strmf,dpdx,dpdy, util1,work
+     &   uflux,vflux, strmf,dpdx,dpdy, util1,work,
+     &   ssh_mn,dsl_mn
       real,    allocatable, dimension (:,:,:) ::
      &   utilk,w
       real   depthu,depthv,ubi,vbi,s1,s2
@@ -13,19 +14,19 @@ c
 c
       common/conrng/ amn,amx
 c
-      character flnm*240,frmt*80,cline*240
-      character ctrc_title(99)*80,ctrc_units(99)*80,
-     &          ctrc_lname(99)*80,ctrc_sname(99)*80
+      character flnm*240,flnm_b*240,frmt*80,cline*240
+      character ctrc_title(999)*80,ctrc_units(999)*80,
+     &          ctrc_lname(999)*80,ctrc_sname(999)*80
       logical   smooth,mthin,lsteric,icegln,lperiod,baclin,xyward,
      &          barouv,gstruv
 c
       logical          ltheta
       integer          artype,iexpt,iversn,kkin,yrflag,mxlflg
       real             dudxdn,dudxup,dvdydn,dvdyup,dp00f
-
-
+      real             onessh,mssh,thvm,qrho
+c
       double precision time3(3)
-      double precision dsumth,dsumdp
+      double precision dsumth,osumth,dsumdp,dsumds
 c
       real, parameter :: flag = 2.0**100
 c
@@ -122,6 +123,7 @@ c ---   'kdm   ' = number of layers
               call flush(lp)
         endif
               call xcstop('(archv - l.name wrong)')
+              stop
             elseif (   index(ctrc_lname(ktr),'-').ne.0) then
               ! still does not catch all illegal l.names.
         if(mnproc.eq.1)then
@@ -131,6 +133,7 @@ c ---   'kdm   ' = number of layers
               call flush(lp)
       endif
               call xcstop('(archv - l.name wrong)')
+              stop
             endif !l.name check
           enddo
           
@@ -152,6 +155,7 @@ c ---   'kdm   ' = number of layers
             call flush(lp)
           endif
           call xcstop('(archv - wrong idm or jdm)')
+          stop
         endif
 
 c
@@ -203,7 +207,8 @@ c          ii=idm
         write(lp,*)'subregion version not supported: idmp .ne. 0,=',iit
         call flush(lp) 
            endif
-         call xcstop('(archv2data2d_mpi - Subregion error)')
+           call xcstop('(archv2data2d_mpi - Subregion error)')
+           stop
         endif
         if     (jjt.eq.0) then
 c          jj=jdm
@@ -212,7 +217,8 @@ c          jj=jdm
         write(lp,*)'subregion version not supported: jdmp .ne. 0,=',jjt
         call flush(lp) 
            endif
-         call xcstop('(archv2data2d_mpi - Subregion error )')
+           call xcstop('(archv2data2d_mpi - Subregion error )')
+           stop
         endif
 
 c ---   'iorign,jorign' denote the origin of the subgrid to be extracted 
@@ -262,6 +268,7 @@ c
             call flush(lp)
           endif
           call xcstop('(archv3data2d_mpi stddev Archive error)')
+          stop
         endif
         if (kkin.ne.kk) then
           if(mnproc.eq.1)then
@@ -271,6 +278,7 @@ c
             call flush(lp)
           endif  
           call xcstop('(archv2data2d - kk)')
+          stop
         endif
 c
       if     (yrflag.eq.0) then
@@ -360,6 +368,7 @@ c
           call flush(lp)
         endif
           call xcstop('(archv2data2d - topo mismatch)')
+          stop
         endif !ibads.ne.0
         if     (ibadl.ne.0) then
         if(mnproc.eq.1)then
@@ -372,6 +381,7 @@ c
           call flush(lp)
         endif
 *         call xcstop
+*         stop
         endif !ibadl.ne.0
       endif !iversn.ge.20  
 c
@@ -1116,7 +1126,7 @@ c --- 'icvio ' = ice coverage I/O unit (0 no I/O)
           write(lp,'(a)') 'error - no Sea Ice available'
           call flush(lp)
           endif  
-          call xcstop('(archv2data2d - kk)')
+          call xcstop('(archv2data2d - icvio)')
           stop
         endif
         call horout(covice,artype,yrflag,time3,iexpt,.true.,
@@ -1135,7 +1145,7 @@ c --- 'ithio ' = ice thickness I/O unit (0 no I/O)
           write(lp,'(a)') 'error - no Sea Ice available'
           call flush(lp)
           endif  
-          call xcstop('(archv2data2d - kk)')
+          call xcstop('(archv2data2d - ithio)')
           stop
         endif
         call horout(thkice,artype,yrflag,time3,iexpt,.true.,
@@ -1154,7 +1164,7 @@ c --- 'ictio ' = ice temperature I/O unit (0 no I/O)
           write(lp,'(a)') 'error - no Sea Ice available'
           call flush(lp)
           endif  
-          call xcstop('(archv2data2d - kk)')
+          call xcstop('(archv2data2d - ictio)')
           stop
         endif
         call horout(temice,artype,yrflag,time3,iexpt,.true.,
@@ -1169,23 +1179,40 @@ c --- ---------------------
 c --- output surface fields
 c --- ---------------------
 c
-c --- 'oetaio' = one+eta          I/O unit (0 no I/O), OPTIONAL, first
-c --- 'atthio' = average density  I/O unit (0 no I/O), OPTIONAL
-c --- 'bsshio' = bot. pres. SSH   I/O unit (0 no I/O), OPTIONAL, not with atthio
-c --- 'dsshio' = non-b.pres SSH   I/O unit (0 no I/O), always after bsshio
-c --- 'ssshio' = steric     SSH   I/O unit (0 no I/O), OPTIONAL, not with atthio
-c ---                                                  can be after dsshio
-c --- 'nsshio' = non-steric SSH   I/O unit (0 no I/O), OPTIONAL, after ssshio
+c --- in any order, except that sshio must be present and last
+c --- 'oetaio' = one+eta          I/O unit (0 no I/O), OPTIONAL
 c --- 'montio' = Montgomery Pot.  I/O unit (0 no I/O), OPTIONAL
-c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
-      call blkini9(ioin,j, 'atthio','ssshio','montio',
-     &                     'bsshio','sshio ','oetaio',  !read 1 of 6
-     &                     'XXXXXX','XXXXXX','XXXXXX')
-      if (j.eq.6) then !oetaio
+c --- 'atthio' = average density  I/O unit (0 no I/O), OPTIONAL
+c --- 'adthio' = ave 0-depth den. I/O unit (0 no I/O), OPTIONAL
+c --- 'adepth' = depth for adthio, always after adthio
+c --- 'bsshio' = baroclinic SSH   I/O unit (0 no I/O), OPTIONAL
+C ---             reads in fields from HYCOM_BAROCLINIC, see below
+c --- 'nbshio' = non-clinic SSH   I/O unit (0 no I/O), after bsshio
+c --- 'dslaio' = barotropic SLA   I/O unit (0 no I/O), after bsshio
+c --- 'atthio' = average density  I/O unit (0 no I/O), after bsshio
+c --- 'ssshio' = steric     SSH   I/O unit (0 no I/O), OPTIONAL
+c --- 'nsshio' = non-steric SSH   I/O unit (0 no I/O), OPTIONAL
+c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM), LAST
+c
+c --- ssshio reads steric SSH from the input archive
+c --- atthio calculates average density which hycom_stericssh converts to SSSH
+c --- atthio is required after bsshio, but is also one of the optional inputs
+c --- See HYCOM-tools/docs/hycom_baroclinic_ssh.pdf for more information on
+c --- baroclinic SSH which is a drop in replacement for steric SSH
+c
+      do !loop until 'sshio '
+      call blkini9(ioin,j, 'atthio','ssshio',
+     &                     'montio','sshio ','oetaio',
+     &                     'adthio','bsshio','nsshio',
+     &                     'XXXXXX')  !read 1 of 8
+      if (j.eq.5) then !oetaio
         if (ioin.gt.0) then
           if     (.not.loneta) then
+            if(mnproc.eq.1)then
             write(lp,'(a)') 'error - no one+eta available'
             call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - oetaio)')
             stop
           endif
           do j=1,jj
@@ -1209,11 +1236,188 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                ' ',                        ! units
      &                k,ltheta, frmt,ioin)
         endif !ioin
-        call blkini9(ioin,j, 'atthio','ssshio','montio',
-     &                       'bsshio','sshio ','XXXXXX',  !read 1 of 5
-     &                       'XXXXXX','XXXXXX','XXXXXX')
-      endif  !j==5 (oetaio)
-      if (j.eq.1) then !atthio
+       elseif (j.eq.7) then !bsshio
+        if (ioin.gt.0) then
+          if (kk.le.2) then
+            if(mnproc.eq.1)then
+              write(lp,'(a)') 'error - bsshio requires kdm > 2'
+              call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - bsshio)')
+            stop
+          endif
+c
+c ---     environment variable HYCOM_BAROCLINIC is an .a file
+c ---     containing fields from a multi-year model run
+c ---       ssh_mn = mean SSH (m)
+c ---       dsl_mn = mean Barotropic Sea Level (m)
+c
+          flnm_b = ' '
+          call getenv('HYCOM_BAROCLINIC',flnm_b)
+          if     (flnm_b.eq.' ') then
+            if(mnproc.eq.1)then
+            write(lp,'(a)') 'error - HYCOM_BAROCLINIC not defined'
+            call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - HYCOM_BAROCLINIC)')
+            stop
+          endif
+c      
+          allocate( ssh_mn(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy),
+     &              dsl_mn(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
+c
+          if(mnproc.eq.1)then
+          write(lp,'(2a)') 'reading: ',
+     &                       flnm_b(1:len_trim(flnm_b)-2)//'.b'
+          endif !mnproc==1
+          open (unit=14,file=flnm_b(1:len_trim(flnm_b)-2)//'.b',
+     &          status='old',action='read',form='formatted')
+          call zaiopf(flnm_b, 'old', 14)
+c
+          read (14,'(a)') cline
+          if(mnproc.eq.1)then
+            write(lp,'(a)') trim(cline)
+          endif !mnproc==1
+          i = index(cline,':',back=.true.)
+          read (cline(i+1:),*)     amn,amx
+          call getfld( ssh_mn, 14, amn,amx, .false. )
+c
+          read (14,'(a)') cline
+          if(mnproc.eq.1)then
+            write(lp,'(a)') trim(cline)
+          endif !mnproc==1
+          i = index(cline,':',back=.true.)
+          read (cline(i+1:),*)     amn,amx
+          call getfld( dsl_mn, 14, amn,amx, .false. )
+c
+          call zaiocl(14)
+          if(mnproc.eq.1)then
+          close( unit=14)
+          endif !mnproc==1
+c
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+c
+                mssh      = 0.01*srfht(i,j)
+                onessh    = (mssh + p(i,j,kk+1)) / p(i,j,kk+1)
+c
+                dsumdp = 0.d0
+                dsumth = 0.d0
+                dsumds = 0.d0
+                do k=1,kk
+                  osumth = dsumth !from previous layer
+                  dsumdp = dsumdp + onessh*dp(i,j,k)
+                  dsumth = dsumth + onessh*dp(i,j,k)*
+     &                                  (th3d(i,j,k)-thbase)
+                  dsumds = dsumds + onessh*dp(i,j,k)*
+     &                              0.5*(osumth+dsumth)
+                enddo !k
+                thvm = dsumth/dsumdp
+                qrho = 1.0/(1000.0 + thbase + thvm)
+!               use utilk as temporary arrays
+                utilk(i,j,1) = thvm !atth
+                utilk(i,j,2) = -(dsumds/dsumdp)*qrho !barotropic SLA
+                util1(i,j)   = ssh_mn(i,j) + utilk(i,j,2) - dsl_mn(i,j)
+                utilk(i,j,3) = mssh - util1(i,j) !non-Baroclinic SSH
+              else
+                util1(i,j) = flag
+              endif
+            enddo
+          enddo
+          k = 0
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' baroclinic SSH   ',       ! plot name
+     &                'baroclinic_ssh',           ! ncdf
+     &                ' ',                        ! ncdf standard_name
+     &                'm',                        ! units
+     &                k,ltheta, frmt,ioin)
+        endif
+        j = ioin
+C ---   always after bsshio
+c ---   'nbshio' = non-clinic  SSH  I/O unit (0 no I/O)
+c ---   'dslaio' = barotropic SLA  I/O unit (0 no I/O)
+c ---   'atthio' = average density  I/O unit (0 no I/O)
+c ---              hycom_stericssh converts atth to steric SSH
+        call blkini(ioin,'nbshio')
+        if (ioin.gt.0) then
+          if     (j.le.0) then
+            if(mnproc.eq.1)then
+            write(lp,'(a)') 'error - nbshio=1 but bsshio=0'
+            call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - nbshio)')
+            stop
+          endif
+        endif
+        do j=1,jj
+          do i=1,ii
+            if (ip(i,j).ne.0) then
+              util1(i,j)=utilk(i,j,3)
+            else
+              util1(i,j)=flag
+            endif
+          enddo
+        enddo
+        call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &              'non-baroclinic SSH',       ! plot name
+     &              'nonbaroclinic_ssh',        ! ncdf
+     &              ' ',                        ! ncdf standard_name
+     &              'm',                        ! units
+     &              k,ltheta, frmt,ioin)
+        call blkini(ioin,'dslaio')
+        if (ioin.gt.0) then
+          if     (j.le.0) then
+            if(mnproc.eq.1)then
+            write(lp,'(a)') 'error - dslaio=1 but bsshio=0'
+            call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - dslaio)')
+            stop
+          endif
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=utilk(i,j,2)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &              'Barotropic SLA',           ! plot name
+     &              'barotropic_sla',           ! ncdf
+     &              ' ',                        ! ncdf standard_name
+     &              'm',                        ! units
+     &              k,ltheta, frmt,ioin)
+        endif !dslaio
+        call blkini(ioin,'atthio')
+        if (ioin.gt.0) then
+          if     (j.le.0) then
+            if(mnproc.eq.1)then
+            write(lp,'(a)') 'error - atthio=1 but bsshio=0'
+            call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - atthio)')
+            stop
+          endif
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=utilk(i,j,1)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                'average HYCOM th3d',       ! plot name
+     &                'avth',                     ! ncdf name
+     &                ' ',                        ! ncdf standard_name
+     &                'kg/m^3',                   ! units
+     &                k,ltheta, frmt,ioin)
+        endif !atthio, after bsshio
+      elseif (j.eq.1) then !atthio, stand-alone
         if (ioin.gt.0) then
           do j=1,jj
             do i=1,ii
@@ -1238,8 +1442,6 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                'kg/m^3',                   ! units
      &                k,ltheta, frmt,ioin)
         endif
-        call blkini(ioin,'sshio ')
-        j = 1
       elseif (j.eq.3) then !montio
         if (ioin.gt.0) then
           do j=1,jj
@@ -1258,57 +1460,14 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                'm',                        ! units
      &                k,ltheta, frmt,ioin)
         endif
-        call blkini(ioin,'sshio ')
-        j = 1
-      elseif (j.eq.4) then !bsshio
-        if (ioin.gt.0) then
-          do j=1,jj
-            do i=1,ii
-              if (ip(i,j).ne.0) then
-                util1(i,j)=(srfht(i,j)-montg(i,j))/(thref*9806.0)  !MKS
-              else
-                util1(i,j)=flag
-              endif
-            enddo
-          enddo
-          k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,.true.,
-     &                ' bot.prs.anom SSH ',       ! plot name
-     &                'bp_ssh',                   ! ncdf name
-     &                ' ',                        ! ncdf standard_name
-     &                'm',                        ! units
-     &                k,ltheta, frmt,ioin)
-        endif !ioin
-        call blkini(ioin,'dsshio')
-        if (ioin.gt.0) then
-          do j=1,jj
-            do i=1,ii
-              if (ip(i,j).ne.0) then
-                util1(i,j)=montg(i,j)/(thref*9806.0)  !MKS
-              else
-                util1(i,j)=flag
-              endif
-            enddo
-          enddo
-          k = 0
-          call horout(util1, artype,yrflag,time3,iexpt,.true.,
-     &                ' non-b.p.a  SSH   ',       ! plot name
-     &                'nonbp_ssh',                ! ncdf name
-     &                ' ',                        ! ncdf standard_name
-     &                'm',                        ! units
-     &                k,ltheta, frmt,ioin)
-        endif !ioin
-        call blkini2(ioin,j, 'sshio ','ssshio')  !read one of two
-      endif !atthio:montio:bsshio
-c --- ssshio?
-      if     (j.eq.2) then !ssshio
+      elseif (j.eq.2) then !ssshio
         if (ioin.gt.0) then
           if     (.not.lsteric) then
             if(mnproc.eq.1)then
             write(lp,'(a)') 'error - no Steric SSH available'
             call flush(lp)
             endif  
-            call xcstop('(archv2data2d - kk)')
+            call xcstop('(archv2data2d - ssshio)')
             stop
           endif
           do j=1,jj
@@ -1328,73 +1487,72 @@ c --- ssshio?
      &                'm',                        ! units
      &                k,ltheta, frmt,ioin)
         endif !ioin
-        call blkini2(ioin,j, 'nsshio','sshio ')  !read one of two
-        if (j.eq.1) then !nsshio
-          if (ioin.gt.0) then
-            if     (.not.lsteric) then
-              if(mnproc.eq.1)then
-              write(lp,'(a)') 'error - no Steric SSH available'
-              call flush(lp)
-              endif  
-              call xcstop('(archv2data2d - kk)')
-              stop
-            endif
-            do j=1,jj
-              do i=1,ii
-                if (ip(i,j).ne.0) then
-                  util1(i,j)=(srfht(i,j)-steric(i,j))/(thref*9806.0)  !MKS
-                else
-                  util1(i,j)=flag
-                endif
-              enddo
+      elseif (j.eq.8) then !nsshio
+        if (ioin.gt.0) then
+          if     (.not.lsteric) then
+            if(mnproc.eq.1)then
+            write(lp,'(a)') 'error - no Steric SSH available'
+            call flush(lp)
+            endif  
+            call xcstop('(archv2data2d - nsshio)')
+            stop
+          endif
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=(srfht(i,j)-steric(i,j))/(thref*9806.0)  !MKS
+              else
+                util1(i,j)=flag
+              endif
             enddo
-            k = 0
-            call horout(util1, artype,yrflag,time3,iexpt,.true.,
-     &                  ' non-steric SSH   ',       ! plot name
-     &                  'nonsteric_ssh',            ! ncdf name
-     &                  ' ',                        ! ncdf standard_name
-     &                  'm',                        ! units
-     &                  k,ltheta, frmt,ioin)
-          endif !ioin
-          call blkini(ioin,'sshio ')
-        endif !nsshio
-      endif !ssshio
-c --- sshio
-      if (ioin.gt.0) then
-        do j=1,jj
-          do i=1,ii
-            if (ip(i,j).ne.0) then
-              util1(i,j)=srfht(i,j)/(thref*9806.0)  !MKS
-            else
-              util1(i,j)=flag
-            endif
           enddo
-        enddo
-        k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,.true.,
-     &              ' sea surf. height ',       ! plot name
-     &              'ssh',                      ! ncdf name (mersea)
-     &              'sea_surface_elevation',    ! ncdf standard_name
-     &              'm',                        ! units
-     &              k,ltheta, frmt,ioin)
-      elseif (ioin.lt.0) then
-        do j=1,jj
-          do i=1,ii
-            if (ip(i,j).ne.0) then
-              util1(i,j)=srfht(i,j)/(thref*9806.0)  !MKS
-            else
-              util1(i,j)=0.0
-            endif
+          k = 0
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' non-steric SSH   ',       ! plot name
+     &                'nonsteric_ssh',            ! ncdf name
+     &                ' ',                        ! ncdf standard_name
+     &                'm',                        ! units
+     &                k,ltheta, frmt,ioin)
+        endif !ioin
+      elseif (j.eq.4) then !sshio, always last
+        if (ioin.gt.0) then
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=srfht(i,j)/(thref*9806.0)  !MKS
+              else
+                util1(i,j)=flag
+              endif
+            enddo
           enddo
-        enddo
-        k = 0
-        call horout(util1, artype,yrflag,time3,iexpt,.true.,
-     &              ' sea surf. height ',       ! plot name
-     &              'ssh',                      ! ncdf name (mersea)
-     &              'sea_surface_elevation',    ! ncdf standard_name
-     &              'm',                        ! units
-     &              k,ltheta, frmt,-ioin)
-      endif
+          k = 0
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' sea surf. height ',       ! plot name
+     &                'ssh',                      ! ncdf name (mersea)
+     &                'sea_surface_elevation',    ! ncdf standard_name
+     &                'm',                        ! units
+     &                k,ltheta, frmt,ioin)
+        elseif (ioin.lt.0) then
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=srfht(i,j)/(thref*9806.0)  !MKS
+              else
+                util1(i,j)=0.0
+              endif
+            enddo
+          enddo
+          k = 0
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' sea surf. height ',       ! plot name
+     &                'ssh',                      ! ncdf name (mersea)
+     &                'sea_surface_elevation',    ! ncdf standard_name
+     &                'm',                        ! units
+     &                k,ltheta, frmt,-ioin)
+        endif !ioin
+        exit  !after sshio
+      endif !blkini9
+      enddo
 c
       if     (artype.gt.1) then  ! mean or std. archive
 c ---   'bkeio ' = baro. kinetic energy I/O unit (0 no I/O)

@@ -6,7 +6,8 @@ c --- hycom/micom 2-d diagnostic field extractor
 c
       real, allocatable, dimension (:,:)   ::
      &   uflux,vflux,strmf,
-     &   dpdx,dpdy, util1,work
+     &   dpdx,dpdy, util1,work,
+     &   ssh_mn,dsl_mn
       real, allocatable, dimension (:,:,:) ::
      &   utilk,w
       real   adepth,depthu,depthv,ubi,vbi,s1,s2
@@ -14,17 +15,19 @@ c
 c
       common/conrng/ amn,amx
 c
-      character flnm*240,frmt*80,cline*240
-      character ctrc_title(99)*80,ctrc_units(99)*80,
-     &          ctrc_lname(99)*80,ctrc_sname(99)*80
+      character flnm*240,flnm_b*240,frmt*80,cline*240
+      character ctrc_title(999)*80,ctrc_units(999)*80,
+     &          ctrc_lname(999)*80,ctrc_sname(999)*80
       logical   smooth,mthin,lsteric,icegln,lperiod,baclin,xyward,
      &          barouv,gstruv,lpvel
 c
       logical          ltheta
       integer          artype,iexpt,iversn,kkin,yrflag,mxlflg
+      integer          itest,jtest
       real             dudxdn,dudxup,dvdydn,dvdyup,dp00f
+      real             onessh,mssh,thvm,qrho
       double precision time3(3)
-      double precision dsumth,dsumdp
+      double precision dsumth,osumth,dsumdp,dsumds
 c
       real, parameter :: flag = 2.0**100
 c
@@ -59,6 +62,8 @@ c ---      the field name must only contain alphanumerics and "_", and
 c ---      the standard_name is either blank or from the CF 1.0 conventions
 c ---   'idm   ' = longitudinal array size
 c ---   'jdm   ' = latitudinal  array size
+c ---   'itest ' = longitudinal sampled test point (optional, default 0)
+c ---   'jtest ' = latitudinal  sampled test point (optional, default 0)
 c ---   'kdm   ' = number of layers
         read (*,'(a)') flnm
         write (lp,'(2a)') ' input file: ',trim(flnm)
@@ -127,7 +132,16 @@ c ---   'kdm   ' = number of layers
           ii     = i
         endif
         call blkini(jj,    'jdm   ')
-        call blkini(kk,    'kdm   ')
+        call blkini2(i,j,  'itest ','kdm   ')  !read itest  or kdm
+        if (j.eq.1) then !itest
+          itest = i
+          call blkini(jtest ,'jtest ')
+          call blkini(kk,    'kdm   ')
+        else !kdm
+          itest = 0
+          jtest = 0
+          kk    = i
+        endif
         if     (ii.ne.idm .or. jj.ne.jdm) then
           write(lp,*)
           write(lp,*) 'error - wrong idm or jdm (should be:',
@@ -1075,16 +1089,32 @@ c --- ---------------------
 c --- output surface fields
 c --- ---------------------
 c
-c --- 'oetaio' = one+eta          I/O unit (0 no I/O), OPTIONAL, first
-c --- 'atthio' = average density  I/O unit (0 no I/O), OPTIONAL
-c --- 'adthio' = ave 0-depth den. I/O unit (0 no I/O), OPTIONAL, after atthio
-c --- 'adepth' = depth for adthio, OPTIONAL, always after adthio
-c --- 'ssshio' = steric     SSH   I/O unit (0 no I/O), OPTIONAL, not with atthio
-c --- 'nsshio' = non-steric SSH   I/O unit (0 no I/O), OPTIONAL, after ssshio
+c --- in any order, except that sshio must be present and last
+c --- 'oetaio' = one+eta          I/O unit (0 no I/O), OPTIONAL
 c --- 'montio' = Montgomery Pot.  I/O unit (0 no I/O), OPTIONAL
-c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
-      call blkini5(ioin,j, 'atthio','ssshio',
-     &                     'montio','sshio ','oetaio')  !read 1 of 5
+c --- 'atthio' = average density  I/O unit (0 no I/O), OPTIONAL
+c --- 'adthio' = ave 0-depth den. I/O unit (0 no I/O), OPTIONAL
+c --- 'adepth' = depth for adthio, always after adthio
+c --- 'bsshio' = baroclinic SSH   I/O unit (0 no I/O), OPTIONAL
+C ---             reads in fields from HYCOM_BAROCLINIC, see below
+c --- 'nbshio' = non-clinic SSH   I/O unit (0 no I/O), after bsshio
+c --- 'dslaio' = barotropic SLA   I/O unit (0 no I/O), after bsshio
+c --- 'atthio' = average density  I/O unit (0 no I/O), after bsshio
+c --- 'ssshio' = steric     SSH   I/O unit (0 no I/O), OPTIONAL
+c --- 'nsshio' = non-steric SSH   I/O unit (0 no I/O), OPTIONAL
+c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM), LAST
+c
+c --- ssshio reads steric SSH from the input archive
+c --- atthio calculates average density which hycom_stericssh converts to SSSH
+c --- atthio is required after bsshio, but is also one of the optional input
+c --- See HYCOM-tools/doc/hycom_baroclinic_ssh.pdf for more information on
+c --- baroclinic SSH which is a drop in replacement for steric SSH
+c
+      do !loop until 'sshio '
+      call blkini9(ioin,j, 'atthio','ssshio',
+     &                     'montio','sshio ','oetaio',
+     &                     'adthio','bsshio','nsshio',
+     &                     'DUMMY ')  !read 1 of 8
       if (j.eq.5) then !oetaio
         if (ioin.gt.0) then
           if     (.not.loneta) then
@@ -1112,9 +1142,175 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                ' ',                        ! units
      &                k,ltheta, frmt,ioin)
         endif !ioin
-        call blkini4(ioin,j, 'atthio','ssshio','montio','sshio ')  !read 1 of 4
-      endif  !j==5 (oetaio)
-      if (j.eq.1) then !atthio
+      elseif (j.eq.7) then !bsshio
+        if (ioin.gt.0) then
+          if (kk.le.2) then 
+            write(lp,'(a)') 'error - bsshio requires kdm > 2'
+            call flush(lp)
+            stop
+          endif
+c
+c ---     environment variable HYCOM_BAROCLINIC is an .a file
+c ---     containing fields from a multi-year model run
+c ---       ssh_mn = mean SSH (m)
+c ---       dsl_mn = mean Barotropic Sea Level (m)
+c
+          flnm_b = ' '
+          call getenv('HYCOM_BAROCLINIC',flnm_b)
+          if     (flnm_b.eq.' ') then
+            write(lp,'(a)') 'error - HYCOM_BAROCLINIC not defined'
+            call flush(lp)
+            stop
+          endif
+c       
+          allocate( ssh_mn(ii,jj), dsl_mn(ii,jj) )
+c
+          write(lp,'(2a)') 'reading: ',
+     &                       flnm_b(1:len_trim(flnm_b)-2)//'.b'
+          open (unit=14,file=flnm_b(1:len_trim(flnm_b)-2)//'.b',
+     &          status='old',action='read',form='formatted')
+          call zaiopf(flnm_b, 'old', 14)
+c
+          read( 14,'(a)') cline
+          write(lp,'(a)') trim(cline)
+          call zaiord(  work,ip,.false., amn,amx, 14)
+          call extrct_p(work,idm,jdm,iorign,jorign,
+     &                  ssh_mn,ii,jj)
+c
+          read( 14,'(a)') cline
+          write(lp,'(a)') trim(cline)
+          call zaiord(  work,ip,.false., amn,amx, 14)
+          call extrct_p(work,idm,jdm,iorign,jorign,
+     &                  dsl_mn,ii,jj)
+c
+          call zaiocl(14)
+          close( unit=14)
+c
+          if     (itest.ne.0) then
+            i = itest
+            j = jtest
+            write(lp,'(a,2f10.6)') 'dsl_mn:',ssh_mn(i,j),dsl_mn(i,j)
+          endif !test
+c
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+c
+                mssh   = 0.01*srfht(i,j)
+                onessh = (mssh + p(i,j,kk+1)) / p(i,j,kk+1)
+c
+                dsumdp = 0.d0
+                dsumth = 0.d0
+                dsumds = 0.d0
+                do k=1,kk
+                  osumth = dsumth !from previous layer
+                  dsumdp = dsumdp + onessh*dp(i,j,k)
+                  dsumth = dsumth + onessh*dp(i,j,k)*
+     &                                  (th3d(i,j,k)-thbase)
+                  dsumds = dsumds + onessh*dp(i,j,k)*
+     &                              0.5*(osumth+dsumth)
+                  if     (i.eq.itest .and. j.eq.jtest) then
+                    qrho = 1.0/(1000.0 + thbase)
+                    write(lp,'(a,i4,f10.2,2f12.6)') 'bssh:',
+     &                k,dsumdp,-dsumth*qrho,(dsumds/dsumdp)*qrho
+                  endif !test
+                enddo !k
+                thvm = dsumth/dsumdp
+                qrho = 1.0/(1000.0 + thbase + thvm)
+!               use utilk as temporary arrays
+                utilk(i,j,1) = thvm !atth
+                utilk(i,j,2) = -(dsumds/dsumdp)*qrho !barotropic SLA
+                util1(i,j)   = ssh_mn(i,j) + utilk(i,j,2) - dsl_mn(i,j)
+                utilk(i,j,3) = mssh - util1(i,j) !non-Baroclinic SSH
+              else
+                util1(i,j) = flag
+              endif
+            enddo
+          enddo
+          k = 0
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                ' baroclinic SSH   ',       ! plot name
+     &                'baroclinic_ssh',           ! ncdf
+     &                ' ',                        ! ncdf standard_name
+     &                'm',                        ! units
+     &                k,ltheta, frmt,ioin)
+        endif
+        j = ioin
+C ---   always after bsshio
+c ---   'nbshio' = non-clinic  SSH  I/O unit (0 no I/O)
+c ---   'dslaio' = barotropic SLA  I/O unit (0 no I/O)
+c ---   'atthio' = average density  I/O unit (0 no I/O)
+c ---              hycom_stericssh converts atth to steric SSH
+        call blkini(ioin,'nbshio')
+        if (ioin.gt.0) then
+          if     (j.le.0) then
+            write(lp,'(a)') 'error - nbshio=1 but bsshio=0'
+            call flush(lp)
+            stop
+          endif
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=utilk(i,j,3)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &              'non-baroclinic SSH',       ! plot name
+     &              'nonbaroclinic_ssh',        ! ncdf
+     &              ' ',                        ! ncdf standard_name
+     &              'm',                        ! units
+     &              k,ltheta, frmt,ioin)
+        endif !nbshio
+        call blkini(ioin,'dslaio')
+        if (ioin.gt.0) then
+          if     (j.le.0) then
+            write(lp,'(a)') 'error - dslaio=1 but bsshio=0'
+            call flush(lp)
+            stop
+          endif
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=utilk(i,j,2)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &              'Barotropic SLA',           ! plot name
+     &              'barotropic_sla',           ! ncdf
+     &              ' ',                        ! ncdf standard_name
+     &              'm',                        ! units
+     &              k,ltheta, frmt,ioin)
+        endif !dslaio
+        call blkini(ioin,'atthio')
+        if (ioin.gt.0) then
+          if     (j.le.0) then
+            write(lp,'(a)') 'error - atthio=1 but bsshio=0'
+            call flush(lp)
+            stop
+          endif
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=utilk(i,j,1)
+              else
+                util1(i,j)=flag
+              endif
+            enddo
+          enddo
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
+     &                'average HYCOM th3d',       ! plot name
+     &                'avth',                     ! ncdf name
+     &                ' ',                        ! ncdf standard_name
+     &                'kg/m^3',                   ! units
+     &                k,ltheta, frmt,ioin)
+        endif !atthio, after bsshio
+      elseif (j.eq.1) then !atthio, stand-alone
         if (ioin.gt.0) then
           do j=1,jj
             do i=1,ii
@@ -1139,8 +1335,7 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                'kg/m^3',                   ! units
      &                k,ltheta, frmt,ioin)
         endif
-        call blkini2(ioin,j, 'adthio','sshio ')  !read one of two
-        if (j.eq.1) then !adthio
+      elseif (6.eq.1) then !adthio
           call blkinr(adepth,
      &               'adepth','("blkinr: ",a6," =",f11.4," m")')
           if (ioin.gt.0) then
@@ -1176,8 +1371,6 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                  'kg/m^3',                    ! units
      &                  k,ltheta, frmt,ioin)
           endif !ioin
-          call blkini(ioin,'sshio ')
-        endif !adthio
       elseif (j.eq.2) then !ssshio
         if (ioin.gt.0) then
           if     (.not.lsteric) then
@@ -1201,8 +1394,7 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                'm',                        ! units
      &                k,ltheta, frmt,ioin)
         endif !ioin
-        call blkini2(ioin,j, 'nsshio','sshio ')  !read one of two
-        if (j.eq.1) then !nsshio
+      elseif (j.eq.8) then !nsshio
           if (ioin.gt.0) then
             if     (.not.lsteric) then
               write(lp,'(a)') 'error - no Steric SSH available'
@@ -1225,8 +1417,6 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                  'm',                        ! units
      &                  k,ltheta, frmt,ioin)
           endif !ioin
-          call blkini(ioin,'sshio ')
-        endif !nsshio
       elseif (j.eq.3) then !montio
         if (ioin.gt.0) then
           do j=1,jj
@@ -1245,42 +1435,43 @@ c --- 'sshio ' = total      SSH   I/O unit (0 no I/O, -ve MKS for NCOM)
      &                'm',                        ! units
      &                k,ltheta, frmt,ioin)
         endif
-        call blkini(ioin,'sshio ')
-      endif !atthio:ssshio:montio
-c --- sshio
-      if (ioin.gt.0) then
-        do j=1,jj
-          do i=1,ii
-            if (ip(i,j).ne.0) then
-              util1(i,j)=0.01*srfht(i,j)  !MKS
-            else
-              util1(i,j)=flag
-            endif
+      elseif (j.eq.4) then !sshio, always last
+        if (ioin.gt.0) then
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=0.01*srfht(i,j)  !MKS
+              else
+                util1(i,j)=flag
+              endif
+            enddo
           enddo
-        enddo
-        call horout(util1, artype,yrflag,time3,iexpt,.true.,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              ' sea surf. height ',       ! plot name
      &              'ssh',                      ! ncdf name (mersea)
      &              'sea_surface_elevation',    ! ncdf standard_name
      &              'm',                        ! units
      &              k,ltheta, frmt,ioin)
-      elseif (ioin.lt.0) then
-        do j=1,jj
-          do i=1,ii
-            if (ip(i,j).ne.0) then
-              util1(i,j)=0.01*srfht(i,j)  !MKS
-            else
-              util1(i,j)=0.0
-            endif
+        elseif (ioin.lt.0) then
+          do j=1,jj
+            do i=1,ii
+              if (ip(i,j).ne.0) then
+                util1(i,j)=0.01*srfht(i,j)  !MKS
+              else
+                util1(i,j)=0.0
+              endif
+            enddo
           enddo
-        enddo
-        call horout(util1, artype,yrflag,time3,iexpt,.true.,
+          call horout(util1, artype,yrflag,time3,iexpt,.true.,
      &              ' sea surf. height ',       ! plot name
      &              'ssh',                      ! ncdf name (mersea)
      &              'sea_surface_elevation',    ! ncdf standard_name
      &              'm',                        ! units
      &              k,ltheta, frmt,-ioin)
-      endif
+        endif !ioin
+        exit  !after sshio
+      endif !blkini9
+      enddo
 c
       if     (artype.gt.1) then  ! mean or std. archive
 c ---   'bkeio ' = baro. kinetic energy I/O unit (0 no I/O)
