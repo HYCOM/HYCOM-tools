@@ -121,10 +121,9 @@ c
              !in getdat.f
       allocate(      p(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax+1) )
 	p=0.0
-      allocate(   uflx(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
-        uflx=0.0
-      allocate(   vflx(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
-        vflx=0.0
+*     allocate(   uflx(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
+*     allocate(   vflx(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
+             !in archv2strmf.f
 c
       allocate(  ubaro(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy) )
 	ubaro=0.0

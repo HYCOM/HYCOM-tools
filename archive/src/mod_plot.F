@@ -100,8 +100,8 @@ c
 c
       allocate(      u(ii,jj,kkmax) )
       allocate(      v(ii,jj,kkmax) )
-      allocate(   uflx(ii,jj,kkmax) ) !!Alex
-      allocate(   vflx(ii,jj,kkmax) ) !!Alex
+*     allocate(   uflx(ii,jj,kkmax) )  !!Alex, in archv2strmf_nc.f
+*     allocate(   vflx(ii,jj,kkmax) )  !!Alex, in archv2strmf_nc.f
 *     allocate(     ke(ii,jj,kkmax) );  ke = 0.0    !in getdat.f
       allocate(   temp(ii,jj,kkmax) )
       allocate(   saln(ii,jj,kkmax) )

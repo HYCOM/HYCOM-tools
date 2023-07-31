@@ -159,6 +159,10 @@
 
 ! --- array allocation
       call plot_alloc
+      allocate(   uflx(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
+      allocate(   vflx(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy,kkmax) )
+      uflx(:,:,:) = 0.0
+      vflx(:,:,:) = 0.0
 
 ! --- temporary arrays
       allocate(    util(1-nbdy:idm+nbdy,1-nbdy:jdm+nbdy))

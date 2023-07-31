@@ -140,6 +140,10 @@
 
 ! --- array allocation
       call plot_alloc
+      if (uvflx.eq.1) then
+        allocate( uflx(ii,jj,kkmax) )
+        allocate( vflx(ii,jj,kkmax) )
+      endif
 
 ! --- temporary arrays
       allocate(   util(ii,jj     ))
