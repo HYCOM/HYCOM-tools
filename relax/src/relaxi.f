@@ -33,6 +33,7 @@ C     INPUT CLIM ARRAYS.
 C
       REAL*4               :: ZLEV(999)
       REAL*4,  ALLOCATABLE :: TZ(:,:,:),SZ(:,:,:),RZ(:,:,:)
+      LOGICAL, ALLOCATABLE :: LDX0K(:,:)
 C
 C     OUTPUT ARRAYS
 C
@@ -120,6 +121,7 @@ C
       ALLOCATE( TZ(KZ+1,IDM,JDM) )
       ALLOCATE( SZ(KZ+1,IDM,JDM) )
       ALLOCATE( RZ(KZ+1,IDM,JDM) )
+      ALLOCATE(   LDX0K(IDM,JDM) )
       ALLOCATE(    PMIX(IDM,JDM) )
       ALLOCATE(      PM(IDM,JDM) )
       ALLOCATE(      TM(IDM,JDM) )
@@ -1052,6 +1054,7 @@ C
                 RM(I,J) =     SIG3D(I,J,K)
               ELSE
                 RM(I,J) = MIN(SIG3D(I,J,1),RZ(1,I,J))
+                LDX0K(I,J) = .FALSE.
               ENDIF
 C
 C             FIND RM AND PM.
@@ -1110,6 +1113,7 @@ C
                 ENDIF
                 IF     (PM(I,J) .GT. PKM1(I,J) + DX0K(K)) THEN
                   PM(I,J) = PKM1(I,J) + DX0K(K)
+                  LDX0K(I,J) = .TRUE.
                 ENDIF
                   if (ldebug .and. i.eq.itest .and. j.eq.jtest) then
                     WRITE(6,'(A,2F10.3)')
@@ -1199,9 +1203,10 @@ C
                     THK    = 1.0
                     THIKMN = 1.0
                   ENDIF
-                  IF     (        THIKMN .EQ.ZERO .OR.
-     +                    ABS(THK-THIKMN).GT.0.01     ) THEN
-                    RM(I,J) = MAX(RKM1(I,J),SIG3D(I,J,K))
+                  IF     (.NOT. LDX0K(I,J) .AND.
+     +                    (THIKMN .EQ.ZERO .OR.
+     +                     ABS(THK-THIKMN).GT.0.01)) THEN
+                    RM(I,J) = MAX( RKM1(I,J), SIG3D(I,J,K) )
                   ELSE
 C
 C                   LOWEST NON-ZERO LAYER IS NOT-ISOPYCNAL.
