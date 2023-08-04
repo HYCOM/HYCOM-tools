@@ -1188,7 +1188,7 @@ c --- 'adepth' = depth for adthio, always after adthio
 c --- 'bsshio' = baroclinic SSH   I/O unit (0 no I/O), OPTIONAL
 C ---             reads in fields from HYCOM_BAROCLINIC, see below
 c --- 'nbshio' = non-clinic SSH   I/O unit (0 no I/O), after bsshio
-c --- 'dslaio' = barotropic SLA   I/O unit (0 no I/O), after bsshio
+c --- 'dslaio' = av. press. SLA   I/O unit (0 no I/O), after bsshio
 c --- 'atthio' = average density  I/O unit (0 no I/O), after bsshio
 c --- 'ssshio' = steric     SSH   I/O unit (0 no I/O), OPTIONAL
 c --- 'nsshio' = non-steric SSH   I/O unit (0 no I/O), OPTIONAL
@@ -1317,7 +1317,7 @@ c
                 qrho = 1.0/(1000.0 + thbase + thvm)
 !               use utilk as temporary arrays
                 utilk(i,j,1) = thvm !atth
-                utilk(i,j,2) = -(dsumds/dsumdp)*qrho !barotropic SLA
+                utilk(i,j,2) = -(dsumds/dsumdp)*qrho !av. press. SLA
                 util1(i,j)   = ssh_mn(i,j) + utilk(i,j,2) - dsl_mn(i,j)
                 utilk(i,j,3) = mssh - util1(i,j) !non-Baroclinic SSH
               else
@@ -1336,7 +1336,7 @@ c
         j = ioin
 C ---   always after bsshio
 c ---   'nbshio' = non-clinic  SSH  I/O unit (0 no I/O)
-c ---   'dslaio' = barotropic SLA  I/O unit (0 no I/O)
+c ---   'dslaio' = av. press. SLA  I/O unit (0 no I/O)
 c ---   'atthio' = average density  I/O unit (0 no I/O)
 c ---              hycom_stericssh converts atth to steric SSH
         call blkini(ioin,'nbshio')
@@ -1385,8 +1385,8 @@ c ---              hycom_stericssh converts atth to steric SSH
             enddo
           enddo
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
-     &              'Barotropic SLA',           ! plot name
-     &              'barotropic_sla',           ! ncdf
+     &              'Ave. Pressure SLA',        ! plot name
+     &              'av_press_sla',             ! ncdf
      &              ' ',                        ! ncdf standard_name
      &              'm',                        ! units
      &              k,ltheta, frmt,ioin)
