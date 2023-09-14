@@ -16,15 +16,17 @@ c
       integer          i,ia,ibad,j,ja,k,k2,kbot,kkin,kkout,l,n,newtop
       integer          itest,jtest
       integer          nhybrd,nsigma
-      real             skmap(0:999),s2,s2old
+      real             skmap(0:9999),s2,s2old,pold
+      real             dx00,dx00x,dx00f,dx0k(9999),dx0kf
       real             dp00,dp00x,dp00f,ds00,ds00x,ds00f,dp0ij,
-     &                 dp0k(999),dp0kf,dpm,dpms,dpns,
-     &                 ds0k(999),ds0kf,dsm,dsms,dsns,qdep,
+     &                 dp0k(9999),dp0kf,dpm,dpms,dpns,
+     &                 ds0k(9999),ds0kf,dsm,dsms,dsns,qdep,
      &                 dpij,dpold,dpthin,dpthick
-      real             u1(999),v1(999),t1(999),s1(999),r1(999),
-     &                 uz(999),vz(999),tz(999),sz(999),rz(999),
-     &                 p1(0:999),pz(0:999)
-      real             sigma(999),thbase,depthu,depthv,onem,qonem
+      real             u1(9999),v1(9999),t1(9999),s1(9999),r1(9999),
+     &                 uz(9999),vz(9999),tz(9999),sz(9999),rz(9999),
+     &                 p1(0:9999),pz(0:9999)
+      real             sigma(9999),thbase,depthu,depthv,
+     &                 onemm,onem,qonem
       real             hmina,hmaxa
       double precision time3(3),time,year
 c
@@ -39,6 +41,7 @@ c
 c
       onem  = 9806.0   ! g/thref
       qonem = 1.0/onem
+      onemm = 0.001*onem
 c
 c --- 'flnm_i' = name of original archive file
 c --- 'flnm_o' = name of target   archive file
@@ -140,6 +143,9 @@ c
 c
 c --- 'nhybrd' = new number of hybrid levels (0=all isopycnal)
 c --- 'nsigma' = new number of sigma  levels (nhybrd-nsigma z-levels)
+c --- 'dx00'   = new maximum layer thickness minimum, optional (m)
+c --- 'dx00x'  = new maximum layer thickness maximum, optional (m)
+c --- 'dx00f'  = new maximum layer thickness stretching factor (1.0=const)
 c --- 'dp00'   = new deep    z-level spacing minimum thickness (m)
 c --- 'dp00x'  = new deep    z-level spacing maximum thickness (m)
 c --- 'dp00f'  = new deep    z-level spacing stretching factor (1.0=const.z)
@@ -158,6 +164,7 @@ c --- for z-sigma (shallow-deep) use a very large dp00 (not recommended)
 c --- for sigma-only set nsigma=kdm, dp00 large, and ds00 small
 c
 c --- or, in place of 'dp00','dp00x','dp00f','ds00','ds00x','ds00f' specify:
+c --- 'dx0k  ' = layer k maximum layer thickness (m)
 c --- 'dp0k  ' = layer k deep    z-level spacing minimum thickness (m)
 c ---              k=1,kdm; dp0k must be zero for k>nhybrd
 c --- 'ds0k  ' = layer k shallow z-level spacing minimum thickness (m)
@@ -175,9 +182,46 @@ c --- are identical for "pure sigma-z", but differ if ds00f/=dp00f.
 c
 !     call blkini(nhybrd,'nhybrd') handled by blkini2 above
       call blkini(nsigma,'nsigma')
-      call blkinr2(dp00,k,
+c
+      call blkinr9(dp00,k,
      &                   'dp00  ','(a6," =",f10.4," m")',
-     &                   'dp0k  ','(a6," =",f10.4," m")' )
+     &                   'dp0k  ','(a6," =",f10.4," m")',
+     &                   'dx00  ','(a6," =",f10.4," m")',
+     &                   'dx0k  ','(a6," =",f10.4," m")',
+     &                   'XXXXXX','(a6," =",f10.4," ")',
+     &                   'XXXXXX','(a6," =",f10.4," ")',
+     &                   'XXXXXX','(a6," =",f10.4," ")',
+     &                   'XXXXXX','(a6," =",f10.4," ")',
+     &                   'XXXXXX','(a6," =",f10.4," ")')
+      if     (k.eq.3) then !dx00
+        dx00 = dp00*onem
+        call blkinr(dx00x, 'dx00x ','(a6," =",f10.4," m")')
+        call blkinr(dx00f, 'dx00f ','(a6," =",f10.4," ")')
+        dx00x  =dx00x*onem
+! ---   logarithmic k-dependence of dx0
+        dx0kf=1.0
+        dx0k(1)=dx00
+        write(lp,'(a,f10.4,a)') 'dx0k   =',dx0k(1)*qonem,' m'
+        do k=2,kkout
+          dx0kf=dx0kf*dx00f
+          dx0k(k)=min(dx00*dx0kf,dx00x)
+          write(lp,'(a,f10.4,a)') 'dx0k   =',dx0k(k)*qonem,' m'
+        enddo !k
+        call blkinr2(dp00,k,'dp00  ','(a6," =",f10.4," m")',
+     &                      'dp0k  ','(a6," =",f10.4," m")')
+      elseif (k.eq.4) then !dx0k
+        dx0k(1) = dp00*onem
+        do k=2,kkout
+          call blkinr(dx0k(k), 'dx0k  ','(a6," =",f10.4," m")')
+          dx0k(k) = dx0k(k)*onem
+        enddo !k
+        call blkinr2(dp00,k,'dp00  ','(a6," =",f10.4," m")',
+     &                      'dp0k  ','(a6," =",f10.4," m")')
+      else !no dx0
+        do k=1,kkout
+          dx0k(k)=9999.0*onem
+        enddo
+      endif !dx00:dx0k:else
       if     (k.eq.1) then !dp00
         call blkinr(dp00x, 'dp00x ','(a6," =",f10.4," m")')
         call blkinr(dp00f, 'dp00f ','(a6," =",f10.4," ")')
@@ -255,10 +299,19 @@ c
         endif
       endif !dp00 used
 c
+c --- 'bthick' = near bottom layer thickness (m), OPTIONAL default 1000.0
 c --- 'thbase' = new reference density (sigma units)
 c
-      call blkinr(thbase,
-     &           'thbase','("blkinr: ",a6," =",f11.4," sig")')
+      call blkinr2(thbase,n,
+     &             'bthick','("blkinr: ",a6," =",f11.4," m")',
+     &             'thbase','("blkinr: ",a6," =",f11.4," sig")')
+      if     (n.eq.1) then !dthick
+        dpthick = thbase*onem
+        call blkinr(thbase,
+     &             'thbase','("blkinr: ",a6," =",f11.4," sig")')
+      else !thbase
+        dpthick = 1000.0*onem
+      endif 
 c
 c --- new layer structure
 c
@@ -501,7 +554,6 @@ c --- form interface depths.
 c
       allocate( pout(idm,jdm,kkout+1) )
 c
-      dpthick = 1000.0*onem
       do j= 1,jdm
         do i= 1,idm
           if     (ip(i,j).eq.1) then
@@ -621,9 +673,27 @@ c ---               detect thick terrain-following layers
                     endif !test
                   endif !skmap is int:else
                 endif !vskmap:else
+                if     (pout(i,j,k+1).gt.pout(i,j,k)+dx0k(k)) then
+                  pout(i,j,k+1) = pout(i,j,k) + dx0k(k)
+                endif
               endif !k>newtop
             enddo !k
             pout(i,j,kkout+1)=depths(i,j)
+            do k= 1,kkout-1
+              ! If layer is too thick, move interface up
+               pold = pout(i,j,k+1)
+              dpold = pout(i,j,k+1)-pout(i,j,k)
+              if (dpold .gt. dx0k(k)) then
+                pout(i,j,k+1) = pout(i,j,k) + dx0k(k)
+              endif !dx0k
+              if     (i.eq.itest .and. j.eq.jtest) then
+                write(lp,'(a,i4,3f10.4)') 
+     &            'pout.k+1 - k = ',
+     &                k,
+     &                pout(i,j,k+1)*qonem,pold*qonem,dpold*qonem
+                call flush(lp)
+              endif !test
+            enddo !k  vertical coordinate relocation for maximum thickness
           endif
         enddo
       enddo
@@ -686,7 +756,11 @@ c
               if     (th3d(i,j,k).lt.th3d(i,j,k+1)) then
                 exit
               endif
-c ---         layers k and k+1 have same density
+              if     (abs(dp(i,j,k)  -dx0k(k)  ).lt.onemm .or. 
+     &                abs(dp(i,j,k+1)-dx0k(k+1)).lt.onemm     ) then
+                exit
+              endif
+c ---         layers k and k+1 have same density, and are not dx0k limited
               if     (i.eq.itest .and. j.eq.jtest) then
                 write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
      &            'orig   - i,j,k,dp,th = ',i,j,k,
