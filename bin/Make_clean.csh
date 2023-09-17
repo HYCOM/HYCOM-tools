@@ -65,7 +65,7 @@ foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_ij2lonlat hycom_islands hycom_iselect hycom_larger \
             hycom_lonlat2ij hycom_lonlat2xy hycom_mask hycom_mass hycom_mean \
             hycom_meanfit hycom_median hycom_meridional hycom_meridional_lon \
-            hycom_mixlay hycom_mxthrd hycom_NaN \
+            hycom_mixlay hycom_mxthrd hycom_NaN hycom_NaN_fix \
             hycom_pad_fix hycom_pad_ok hycom_potdens \
             hycom_perturbation hycom_perturbation_scale hycom_print hycom_diff_print \
             hycom_random hycom_range hycom_range_ij hycom_rivers hycom_rotate \

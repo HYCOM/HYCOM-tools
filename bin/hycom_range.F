@@ -14,6 +14,7 @@ C
 C  this version for "serial" Unix systems.
 C
 C  Alan J. Wallcraft,  Naval Research Laboratory,  January 2001.
+C  Updated to skip NaN's, September 2023.
 C
       REAL*4, ALLOCATABLE :: A(:,:)
       REAL*4              :: PAD(4096)
@@ -153,14 +154,22 @@ C
 #ifdef sun
             IF     (IR_ISNAN(A(I,J)).NE.1) THEN
               IF     (A(I,J).NE.SPVAL) THEN
-                AMN = MIN( AMN, A(I,J) )
-                AMX = MAX( AMX, A(I,J) )
+               IF     (A(I,J).LT.AMN) THEN
+                  AMN = A(I,J)
+                ENDIF
+                IF     (A(I,J).GT.AMX) THEN
+                  AMX = A(I,J)
+                ENDIF
               ENDIF
             ENDIF
 #else
             IF     (A(I,J).NE.SPVAL) THEN
-              AMN = MIN( AMN, A(I,J) )
-              AMX = MAX( AMX, A(I,J) )
+              IF     (A(I,J).LT.AMN) THEN
+                AMN = A(I,J)
+              ENDIF
+              IF     (A(I,J).GT.AMX) THEN
+                AMX = A(I,J)
+              ENDIF
             ENDIF
 #endif
   212     CONTINUE
