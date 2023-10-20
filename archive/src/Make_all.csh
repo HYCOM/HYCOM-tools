@@ -19,7 +19,7 @@ endif
 #
 # --- archive modifying programs
 #
-foreach m ( hycomarchv botlay_archv conv_archv hybgen_archv mrgl_archv \
+foreach m ( hycomarchv addbot_archv botlay_archv conv_archv hybgen_archv mrgl_archv \
             ncoda_archv ncoda_archv_inc ncoda_archv_inc2 \
             remap_archv remaph_archv remapi_archv \
             insitu_archv potden_archv steric_archv stats_archv trim_archv \

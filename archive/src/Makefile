@@ -152,6 +152,9 @@ archv2oam_m:        $(MODB) archv2oam_m.o   $(DATAH_OBJ)
 archv2restart:      $(MODR) archv2restart.o $(DATAX_OBJ)
 	$(LD) $(LDFLAGS) -o archv2restart archv2restart.o $(MODR) $(DATAX_OBJ)
 
+addbot_archv:       $(MODS) addbot_archv.o $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o addbot_archv  addbot_archv.o  $(MODS) $(ARCHV_OBJ)
+
 cooperhaines_archv: $(MODS) cooperhaines_archv.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o cooperhaines_archv cooperhaines_archv.o $(MODS) $(ARCHV_OBJ)
 
