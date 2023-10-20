@@ -18,9 +18,10 @@ c
       integer          nhybrd,nsigma
       real             skmap(0:9999),s2,s2old,pold
       real             dx00,dx00x,dx00f,dx0k(9999),dx0kf
-      real             dp00,dp00x,dp00f,ds00,ds00x,ds00f,dp0ij,
+      real             dp00,dp00x,dp00f,dp00i,ds00,ds00x,ds00f,dp0ij,
+     &                 dp0cum(9999),
      &                 dp0k(9999),dp0kf,dpm,dpms,dpns,
-     &                 ds0k(9999),ds0kf,dsm,dsms,dsns,qdep,
+     &                 ds0k(9999),ds0kf,dsm,dsms,dsns,q,qdep,
      &                 dpij,dpold,dpthin,dpthick
       real             u1(9999),v1(9999),t1(9999),s1(9999),r1(9999),
      &                 uz(9999),vz(9999),tz(9999),sz(9999),rz(9999),
@@ -299,9 +300,12 @@ c
         endif
       endif !dp00 used
 c
+c --- 'dp00i'  = deep iso-pycnal spacing minimum thickness (m)
 c --- 'bthick' = near bottom layer thickness (m), OPTIONAL default 1000.0
 c --- 'thbase' = new reference density (sigma units)
 c
+      call blkinr(dp00i,
+     &           'dp00i ','("blkinr: ",a6," =",f11.4," m")')
       call blkinr2(thbase,n,
      &             'bthick','("blkinr: ",a6," =",f11.4," m")',
      &             'thbase','("blkinr: ",a6," =",f11.4," sig")')
@@ -575,9 +579,23 @@ c ---       enforce non-negative layers.
             enddo !k (in)
             p(i,j,kkin+1) = depths(i,j)
 c ---       minimum output depths (sigma-Z only).
+            dp0cum(  1) = 0.0
             pout(i,j,1) = 0.0
             do k= 1,kkout-1
               dp0ij = qdep*dp0k(k) + (1.0-qdep)*ds0k(k)
+c ---         q is dp0ij when in surface fixed coordinates
+c ---         q is dp00i when much deeper than surface fixed coordinates
+              if     (dp0ij.le.dp00i) then
+                q  =      dp0ij
+              else
+                q  = max( dp00i,
+     &                    dp0ij   * dp0ij  /
+     &                              max( dp0ij,
+     &                                   pout(i,j,k)-dp0cum(k) ) )
+              endif
+              dp0ij = min( q, dp0ij )
+              dp0cum(  k+1) = min(dp0cum(  k) + dp0ij,
+     &                            depths(i,j))
               pout(i,j,k+1) = min(pout(i,j,k) + dp0ij,
      &                            depths(i,j))
 c ---         interface depths from the input
@@ -599,8 +617,9 @@ c ---         interface depths from the input
                     s2 = k2-skm(i,j,k)  !non-negative
 c ---               detect thick terrain-following layers
                     dpij = p(i,j,k2+1)-p(i,j,k2)
-                    if     (dpij.gt.dpthick .and. k.gt.1 .and.
-     &                      dpij.gt.0.8*(p(i,j,kk+1)-p(i,j,k2))) then
+                    if     (k.gt.1 .and.
+     &                      dpij.gt.dp0ij .and. dpij.gt.dpthick .and.
+     &                      dpij.gt.0.8*(p(i,j,kk+1)-p(i,j,k2)) ) then
                       s2old = s2
                       if     (skm(i,j,k-1).lt.k2-0.99) then
                         s2 = 1.0 - dp0ij/dpij
@@ -644,8 +663,9 @@ c ---               detect thick terrain-following layers
                     s2 = k2-skmap(k)  !non-negative
 c ---               detect thick terrain-following layers
                     dpij = p(i,j,k2+1)-p(i,j,k2)
-                    if     (dpij.gt.dpthick .and. k.gt.1 .and.
-     &                      dpij.gt.0.8*(p(i,j,kk+1)-p(i,j,k2))) then
+                    if     (k.gt.1 .and.
+     &                      dpij.gt.dp0ij .and. dpij.gt.dpthick .and.
+     &                      dpij.gt.0.8*(p(i,j,kk+1)-p(i,j,k2)) ) then
                       s2old = s2
                       if     (skmap(k-1).lt.k2-0.99) then
                         s2 = 1.0 - dp0ij/dpij
@@ -772,9 +792,10 @@ c ---         layers k and k+1 have same density, and are not dx0k limited
               endif !test
               if     (abs(th3d(i,j,k+1)+thbase-sigma(k+1)).ge.
      &                abs(th3d(i,j,k)  +thbase-sigma(k)  )    ) then
-c ---           remove layer k+1
-                dp(i,j,k)   = dp(i,j,k) + dp(i,j,k+1)
-                dp(i,j,k+1) = 0.0
+c ---           remove layer k+1, up to dx0k
+                q      = min( (dp(i,j,k) + dp(i,j,k+1)), dx0k(k) )
+                dp(i,j,k+1) = (dp(i,j,k) + dp(i,j,k+1)) - q
+                dp(i,j,k)   = q
                 if     (i.eq.itest .and. j.eq.jtest) then
                   write(lp,'(a,2i4,i3,f10.2,2f10.4)') 
      &              'remove - i,j,k,dp,th = ',i,j,k,
@@ -790,6 +811,15 @@ c ---           minimize layer k
      &                                 (depths(i,j) - dsns)/
      &                                 (dpns        - dsns)  ) )
                 dp0ij = qdep*dp0k(k) + (1.0-qdep)*ds0k(k)
+                if     (dp0ij.le.dp00i) then
+                  q  =      dp0ij
+                else
+                  q  = max( dp00i,
+     &                      dp0ij   * dp0ij  /
+     &                                max( dp0ij,
+     &                                     pout(i,j,k)-dp0cum(k) ) )
+                endif
+                dp0ij = min( q, dp0ij )
                 dpold = dp(i,j,k)
                 dp(i,j,k)   = min(dp(i,j,k), dp0ij)
                 dp(i,j,k+1) = dp(i,j,k+1) + (dpold - dp(i,j,k))
