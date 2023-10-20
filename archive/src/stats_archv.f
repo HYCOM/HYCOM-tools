@@ -19,7 +19,7 @@ c
       real             hmina,hmaxa
       double precision time3(3),time,year
       double precision area,onemm,sum1,sum2,sum3,sum4,sum5,sum6,
-     &                 sum1a,sum2a,sum3a,sum4a,sum5a
+     &                 sum1a,sum2a,sum3a,sum4a,sum5a,sum6a
       real             smn1,smx1,smn2,smx2,utotp,vtotp
 c
       integer   thflag
@@ -152,7 +152,8 @@ c --- tripole (arctic) grid?
 c
       larctic = .false.
       do i= 1,ii
-        if     (ip(i,jj).eq.0) then
+        if     (ip(i,jj).eq.1) then  !sea point
+          write(lp,*) 'arctic: ',i,jj,ip(i,jj),depths(i,jj)*qonem
           larctic = .true.
           exit
         endif
@@ -262,6 +263,10 @@ c
           endif !ip
         enddo !i
       enddo !j
+      write (11, '(i9,a,
+     &    ''         area (m^2):'',es20.10)')
+     &  nstep,c_ydh,
+     &  area
       write (11, '(i9,a,
      &    '' mean HFLUX (w/m^2):'',f8.2)')
      &  nstep,c_ydh,
@@ -490,6 +495,7 @@ c
       sum3a =  0.d0
       sum4a =  0.d0
       sum5a =  0.d0
+      sum6a =  0.d0
       do k= 1,kk
         if     (artype.eq.1) then
           call th3d_p(temp(1,1,k),saln(1,1,k),
@@ -500,6 +506,7 @@ c
         sum3 =  0.d0
         sum4 =  0.d0
         sum5 =  0.d0
+        sum6 =  0.d0
         do j= 1,jja
           jp1 = max(j+1,jj)
           do i= 1,ii
@@ -525,6 +532,7 @@ c
                 write(lp,*) 'i,j,ub = ',i,j,ubaro(i,j),ubaro(ip1,j)
                 l = l + 1
                 if     (l.gt.20) then
+                  write(lp,*) 'to many huge velocities'
                   stop
                 endif
               endif
@@ -533,9 +541,12 @@ c
                 write(lp,*) 'i,j,vb = ',i,j,vbaro(i,j),vbaro(i,jp1)
                 l = l + 1
                 if     (l.gt.20) then
+                  write(lp,*) 'to many huge velocities'
                   stop
                 endif
               endif
+              sum6 = sum6 + dp(i,j,k)*scp2(i,j)*
+     &                      0.5*(utotp**2+vtotp**2)
               sum4 = sum4 + dp(i,j,k)*scp2(i,j)*
      &                          (1000.0+thbase+th3d(i,j,k))*
      &                      0.5*(utotp**2+vtotp**2)
@@ -547,6 +558,7 @@ c
           enddo !i
         enddo !j
         sum4a = sum4a + sum4
+        sum6a = sum6a + sum6
         sum1a = sum1a + sum1
         sum2a = sum2a + sum2
         sum3a = sum3a + sum3
@@ -575,9 +587,14 @@ c
         call flush(lp)
       enddo !k
       sum4 = sum4a/(area*onem)
+      sum6 = sum6a/sum1a
       sum2 = sum2a/sum1a
       sum3 = sum3a/sum1a
       sum5 = sum5a/sum1a
+      write (11,'(i9,a,
+     &              ''      volume mean Kin. Energy:'',es20.10)')
+     &    nstep,c_ydh,
+     &      sum6
       write (11,'(i9,a,
      &              '' region-wide mean Kin. Energy:'',f20.10)')
      &    nstep,c_ydh,
@@ -594,6 +611,10 @@ c
      &              '' region-wide mean Density Dev:'',f20.10)')
      &    nstep,c_ydh,
      &      sum5
+      write (lp,'(i9,a,
+     &              ''      volume mean Kin. Energy:'',es20.10)')
+     &    nstep,c_ydh,
+     &      sum6
       write (lp,'(i9,a,
      &              '' region-wide mean Kin. Energy:'',f20.10)')
      &    nstep,c_ydh,
