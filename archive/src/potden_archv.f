@@ -15,7 +15,6 @@ c
       real             hmina,hmaxa
       double precision time3(3),time,year,sumth,sumdp,onemm
 c
-      data trcout/.false./  ! must be .false. (no tracer remapping)
       data initl /.true. /
 c
       call xcspmd
@@ -35,6 +34,7 @@ c --- 'jdm   ' = latitudinal  array size
 c --- 'itest ' = grid point where detailed diagnostics are desired, or 0
 c --- 'jtest ' = grid point where detailed diagnostics are desired, or 0
 c --- 'kdm'    = original number of layers
+c --- 'ntracr' = number of tracers (to output, optional with default 0)
 c --- 'sigver' = EoS version (odd sigma-0; even sigma-2; 1-2 7-term; 5-6 17-term)
 c
       read (*,'(a)') flnm_i
@@ -64,7 +64,15 @@ c
       call blkini(kkin,  'kdm   ')
       kkout = kkin
 c
-      call blkini(newsig,'sigver')
+      call blkini2(i,j,  'ntracr','sigver')  !read ntracr or sigver
+      if (j.eq.1) then
+        ntracr = i
+        call blkini(newsig,'sigver')
+      else
+        ntracr = 0
+        newsig = i
+      endif
+      trcout = ntracr .gt. 0
 c
 c --- 'thbase' = reference density (sigma units)
 c

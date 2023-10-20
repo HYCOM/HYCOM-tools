@@ -15,7 +15,7 @@ c
       character*8 ctype
 c
       real      coord,xmin,xmax
-      integer   i,j,k,ktr,jversn,l,nop
+      integer   i,j,k,ktr,itr,jversn,l,nop
       data nop/24/
 c
       l = len_trim(flnm)
@@ -261,11 +261,13 @@ c
         call flush( lp)
       endif !sigver==0
       if(ntracr.gt.0) then
+        itr = 0
         do ktr= 1,ntracr
           call zaiowr(trcr(1,1,k,ktr),ip,.true.,
      &                xmin,xmax, nop, .false.)
           if     (itrcr_type(ktr).eq.0) then
-            ctype = 'tracer  '
+            itr = itr + 1
+            write(ctype,'(a6,i2.2)') 'tracer',itr
           elseif (itrcr_type(ktr).eq.1) then
             ctype = 'viscty  '
           elseif (itrcr_type(ktr).eq.2) then
