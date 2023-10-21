@@ -309,7 +309,7 @@ C
             enddo !k
             CALL BLKINR2(BLK,J,'dp00  ','(a6," =",f10.4," m")',
      &                         'dp0k  ','(a6," =",f10.4," m")')
-          elseif (k.eq.4) then !dx0k
+          elseif (j.eq.4) then !dx0k
             dx0k(1) = dp00
             do k=2,kdm
               call blkinr(dx0k(k), 'dx0k  ','(a6," =",f10.4," m")')
