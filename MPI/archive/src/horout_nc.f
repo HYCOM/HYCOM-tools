@@ -193,7 +193,7 @@ c
           stop
         endif
 c
-        call ncrange_1d(array,jj, fill_value, hmin,hmax)
+        call ncrange_1d(array,jj, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
 
@@ -678,7 +678,7 @@ c
           stop
         endif
 c
-        call ncrange_2d(array,jj,kz, fill_value, hmin,hmax)
+        call ncrange_2d(array,jj,kz, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -1240,6 +1240,10 @@ c     the NetCDF title and institution are taken from environment
 c      variables CDF_TITLE and CDF_INST.
 c     NAVO convention: public release notice turned on by environment
 c      variable CDF_PUBLIC.
+c     NAVO convention: Distro C release notice turned on by environment
+c      variable CDF_DISTROC.
+c     NAVO convention: Distro D release notice turned on by environment
+c      variable CDF_DISTROD.
 c     NAVO convention: hours since analysis is taken from environment
 c      variable CDF_TAU.
 c
@@ -1285,6 +1289,24 @@ c
       character cmonth(12)*3
       data      cmonth/'Jan','Feb','Mar','Apr','May','Jun',
      &                 'Jul','Aug','Sep','Oct','Nov','Dec'/
+c
+      character(len=17)  :: date_str
+      character(len=262) :: distC_str
+      character(len=271) :: distD_str
+c
+      call get_DDMonYYYY(date_str)
+      distC_str = "Distribution Statement C. Distribution authorized to"
+     & // " U.S. Government agencies and their contractors, "
+     & // "Administrative/Operational, "
+     & // trim(date_str)
+     & // ". Other requests must be referred to the Commanding Officer,"
+     & // " Fleet Numerical Meteorology and Oceanography Center."
+      distD_str = "Distribution Statement D. Distribution authorized to"
+     & // " the Department of Defense and U.S. DoD contractors only, "
+     & // "Administrative/Operational, "
+     & // trim(date_str)
+     & // ". Other requests must be referred to the Commanding Officer,"
+     & // " Fleet Numerical Meteorology and Oceanography Center."
 c
       if     (iotype.eq.-1) then
 c
@@ -1704,6 +1726,38 @@ c
      &                                   "not applicable"))
               endif !PUBLIC
               ncenv = ' '
+              call getenv('CDF_DISTROC',ncenv)
+              if     (ncenv.ne.' ') then
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_level",
+     &                                   "UNCLASSIFIED"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "distribution_statement",
+     &                                   distC_str))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "downgrade_date",
+     &                                   "not applicable"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_authority",
+     &                                   "not applicable"))
+              endif !Distro C
+              ncenv = ' '
+              call getenv('CDF_DISTROD',ncenv)
+              if     (ncenv.ne.' ') then
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_level",
+     &                                   "CUI"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "distribution_statement",
+     &                                   distD_str))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "downgrade_date",
+     &                                   "not applicable"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_authority",
+     &                                   "not applicable"))
+              endif !Distro D
+              ncenv = ' '
               call getenv('CDF_INST',ncenv)
               if     (ncenv.ne.' ') then
                 call nchek('nf90_put_att( institution',
@@ -2042,6 +2096,11 @@ c
               navo_code = 32
               scale_f   = 0.001
               add_off   = 0.0
+            elseif (namec.eq.'steric_ssh') then
+              namecv    = 'steric_ssh'
+              navo_code = 0
+              scale_f   = 0.001
+              add_off   = 0.0
             elseif (namec.eq.'u_barotropic_velocity') then
               namecv    = 'water_bu'
               navo_code = 0
@@ -2082,24 +2141,143 @@ c
               navo_code = 0
               scale_f   = 0.001
               add_off   = 20.0
-            elseif (namec.eq.'ssu' .or.
-     &              namec.eq.'ssv' .or.
-     &              namec.eq.'siu' .or.
-     &              namec.eq.'siv'     ) then
+            elseif (namec.eq.'ssu'   .or.
+     &              namec.eq.'ssv'   .or.
+     &              namec.eq.'siu'   .or.
+     &              namec.eq.'siv'   .or.
+     &              namec.eq.'surtx' .or.
+     &              namec.eq.'surty' .or.
+     &              namec.eq.'uocn'  .or.
+     &              namec.eq.'vocn'  .or.
+     &              namec.eq.'uvel'  .or.
+     &              namec.eq.'vvel'      ) then
               namecv    = namec
               navo_code = 0
               scale_f   = 0.001
               add_off   = 0.0
-            elseif (namec.eq.'sih') then
+            elseif (namec.eq.'sih' .or.
+     &              namec.eq.'hi'  .or.      ! ice thickness
+     &              namec.eq.'vicen01'  .or. ! volume category 01
+     &              namec.eq.'vicen02'  .or. ! volume category 02
+     &              namec.eq.'vicen03'  .or. ! volume category 03
+     &              namec.eq.'vicen04'  .or. ! volume category 04
+     &              namec.eq.'vicen05') then ! volume category 05
               namecv    = namec
               navo_code = 0
               scale_f   = 0.001
               add_off   = 0.0    !maintains accuracy at zero
-            elseif (namec.eq.'sic') then
+            elseif (namec.eq.'hs'       .or. ! snow thickness
+     &              namec.eq.'vsnon01'  .or. ! volume category 01
+     &              namec.eq.'vsnon02'  .or. ! volume category 02
+     &              namec.eq.'vsnon03'  .or. ! volume category 03
+     &              namec.eq.'vsnon04'  .or. ! volume category 04
+     &              namec.eq.'vsnon05') then ! volume category 05
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.001
+              add_off   = 0.0    !maintains accuracy at zero
+            elseif (namec.eq.'sic'      .or.
+     &              namec.eq.'aice'     .or.
+     &              namec.eq.'aicen01'  .or. ! category 01
+     &              namec.eq.'aicen02'  .or. ! category 02
+     &              namec.eq.'aicen03'  .or. ! category 03
+     &              namec.eq.'aicen04'  .or. ! category 04
+     &              namec.eq.'aicen05') then ! category 05
               namecv    = namec
               navo_code = 0
               scale_f   = 0.0001
               add_off   = 0.0    !maintains accuracy at zero
+            elseif (namec.eq.'albsni') then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.004
+              add_off   = 0.0    !maintains accuracy at zero
+            elseif (namec.eq.'frzmlt'     .or.
+     &              namec.eq.'fswdn'      .or.
+     &              namec.eq.'flwdn'      .or.
+     &              namec.eq.'flwup_ai'   .or.
+     &              namec.eq.'fswabs_ai'  .or.
+     &              namec.eq.'flat_ai'    .or.
+     &              namec.eq.'fsens_ai'   .or.
+     &              namec.eq.'fhocn_ai'   .or.
+     &              namec.eq.'fswthru_ai'     ) then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.1
+              add_off   = 0.0    !maintains accuracy at zero
+            elseif (namec.eq.'Tsfc'  .or.
+     &              namec.eq.'Tair'     ) then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.002
+              if     (units.eq.'degC') then
+                add_off   = 0.0    !maintains accuracy at zero degC
+              elseif (units.eq.'K') then
+                add_off   = 273.15 !maintains accuracy at zero degC
+              else
+                write(lp,'(/4a/)')
+     &            'error in horout - wrong units (',
+     &            trim(units),
+     &            ') for ',trim(namec)
+                call flush(lp)
+                stop
+              endif
+            elseif (namec.eq.'snow_ai' .or.
+     &              namec.eq.'rain_ai' .or.
+     &              namec.eq.'congel'  .or.
+     &              namec.eq.'frazil'  .or.
+     &              namec.eq.'snoice'  .or.
+     &              namec.eq.'meltt'   .or.
+     &              namec.eq.'meltb'   .or.
+     &              namec.eq.'meltl'   .or.
+     &              namec.eq.'evap_ai' .or.
+     &              namec.eq.'fresh_ai'    ) then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.001
+              add_off   = 0.0    !maintains accuracy at zero
+            elseif (namec.eq.'strength') then
+              namecv    = namec
+              navo_code =  0
+              scale_f   = 40.0
+              add_off   =  0.0   !maintains accuracy at zero
+            elseif (namec.eq.'opening' .or.
+     &              namec.eq.'divu'        ) then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 1.0
+              add_off   = 0.0   !maintains accuracy at zero
+            elseif (namec.eq.'fswfac') then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.0001
+              add_off   = 1.0    !maintains accuracy at one
+            elseif (namec.eq.'straire' .or.
+     &              namec.eq.'strairn' .or.
+     &              namec.eq.'strcore' .or.
+     &              namec.eq.'strcorn' .or.
+     &              namec.eq.'strocne' .or.
+     &              namec.eq.'strocnn'     ) then
+              namecv    = namec
+              navo_code = 0
+              scale_f   = 0.001
+              add_off   = 0.0
+            elseif (namec.eq.'fsalt_ai') then
+              namecv    = namec
+              navo_code = 0
+              add_off   = 0.0    !maintains accuracy at zero
+              if     (units.eq.'kg/m^2/s') then
+                scale_f   = 1.e-8
+              elseif (units.eq.'kg/m^2/day') then
+                scale_f   = 0.001
+              else
+                write(lp,'(/4a/)')
+     &            'error in horout - wrong units (',
+     &            trim(units),
+     &            ') for ',trim(namec)
+                call flush(lp)
+                stop
+              endif
             else
               write(lp,'(/a)')   'error in horout - unknown name'
               write(lp,'(3a)')   'namec  = "',trim(namec),'"'
@@ -2523,6 +2701,10 @@ c     the NetCDF title and institution are taken from environment
 c      variables CDF_TITLE and CDF_INST.
 c     NAVO convention: public release notice turned on by environment
 c      variable CDF_PUBLIC.
+c     NAVO convention: Distro C release notice turned on by environment
+c      variable CDF_DISTROC.
+c     NAVO convention: Distro D release notice turned on by environment
+c      variable CDF_DISTROD.
 c     NAVO convention: hours since analysis is taken from environment
 c      variable CDF_TAU.
 c
@@ -2725,7 +2907,8 @@ c
           stop
         endif
 c
-      call ncrange(array(1,1,kf),ii,jj,kl-kf+1,fill_value,hmin,hmax)
+        call ncrange(array(1,1,kf),ii,jj,kl-kf+1,fill_value,
+     &               hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -3388,6 +3571,10 @@ c     the NetCDF title and institution are taken from environment
 c      variables CDF_TITLE and CDF_INST.
 c     NAVO convention: public release notice turned on by environment
 c      variable CDF_PUBLIC.
+c     NAVO convention: Distro C release notice turned on by environment
+c      variable CDF_DISTROC.
+c     NAVO convention: Distro D release notice turned on by environment
+c      variable CDF_DISTROD.
 c     NAVO convention: hours since analysis is taken from environment
 c      variable CDF_TAU.
 c
@@ -3437,6 +3624,23 @@ c
       data      cmonth/'Jan','Feb','Mar','Apr','May','Jun',
      &                 'Jul','Aug','Sep','Oct','Nov','Dec'/
 c
+      character(len=17) :: date_str
+      character(len=262) :: distC_str
+      character(len=271) :: distD_str
+
+      CALL get_DDMonYYYY(date_str)
+      distC_str = "Distribution Statement C. Distribution authorized to"
+     & // " U.S. Government agencies and their contractors, "
+     & // "Administrative/Operational, "
+     & // trim(date_str)
+     & // ". Other requests must be referred to the Commanding Officer,"
+     & // " Fleet Numerical Meteorology and Oceanography Center."
+      distD_str = "Distribution Statement D. Distribution authorized to"
+     & // " the Department of Defense and U.S. DoD contractors only, "
+     & // "Administrative/Operational, "
+     & // trim(date_str)
+     & // ". Other requests must be referred to the Commanding Officer,"
+     & // " Fleet Numerical Meteorology and Oceanography Center."
 c
       if     (iotype.eq.-1) then
 c
@@ -3615,7 +3819,7 @@ c
           stop
         endif
 c
-        call ncrange(array,ii,jj,kz, fill_value, hmin,hmax)
+        call ncrange(array,ii,jj,kz, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -3865,6 +4069,38 @@ c
      &                                   "classification_authority",
      &                                   "not applicable"))
               endif !PUBLIC
+              ncenv = ' '
+              call getenv('CDF_DISTROC',ncenv)
+              if     (ncenv.ne.' ') then
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_level",
+     &                                   "UNCLASSIFIED"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "distribution_statement",
+     &                                   distC_str))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "downgrade_date",
+     &                                   "not applicable"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_authority",
+     &                                   "not applicable"))
+              endif !Distro C
+              ncenv = ' '
+              call getenv('CDF_DISTROD',ncenv)
+              if     (ncenv.ne.' ') then
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_level",
+     &                                   "CUI"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "distribution_statement",
+     &                                   distD_str))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "downgrade_date",
+     &                                   "not applicable"))
+                call ncheck(nf90_put_att(ncfileID,nf90_global,
+     &                                   "classification_authority",
+     &                                   "not applicable"))
+              endif !Distro D
               ncenv = ' '
               call getenv('CDF_INST',ncenv)
               if     (ncenv.ne.' ') then
@@ -4760,3 +4996,26 @@ c
       hmin = hhmin
       hmax = hhmax
       end subroutine ncrange_1d
+
+      subroutine get_DDMonYYYY(date_str)
+      implicit none
+c
+      character(len=17), intent(out) :: date_str
+c
+c     return current date (day month year)
+c
+      character(len=2) :: dd_tmp
+      character(len=9) :: mons_tmp(12)
+      character(len=4) :: yr_tmp
+      integer          :: values_tmp(8)
+c
+      mons_tmp = ['January','February','March','April','May','Jun',
+     & 'July','August','September','October','November','December']
+c
+      call DATE_AND_TIME(VALUES=values_tmp)
+c
+      write(dd_tmp,'(i2)') values_tmp(3)
+      write(yr_tmp,'(i4)') values_tmp(1)
+c
+      date_str = dd_tmp//" "//trim(mons_tmp(values_tmp(2)))//" "//yr_tmp
+      end subroutine get_DDMonYYYY
