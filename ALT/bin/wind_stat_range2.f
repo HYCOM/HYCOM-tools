@@ -2,25 +2,45 @@
       IMPLICIT NONE
 C
       CHARACTER*40         CTITLE
-      INTEGER              IWI,JWI,NREC
-      REAL                 WDAY(9000),XFIN,YFIN,DXIN,DYIN
+      INTEGER              IPT,JPT,IWI,JWI,NREC
+      REAL                 WDAY(20000),XFIN,YFIN,DXIN,DYIN
       REAL, ALLOCATABLE :: W(:,:,:)
 C
-      CHARACTER*240    CFILE
-      INTEGER          KREC,IOS,N
+      CHARACTER*240    CFILE,CENV
+      INTEGER          KREC,IOS,N,NN
       REAL             JDAY,YEAR
-      DOUBLE PRECISION WDAYHR
+      DOUBLE PRECISION WDAY15
 C
 C**********
 C*
 C 1)  PRINT MODEL WIND FILE STATISTICS, FOR 2 FIELD RECORDS.
-C     CORRECT WIND DAYS TO NEAREST HOUR.
+C     CORRECT WIND DAYS TO NEAREST 15 MIN.
 C
 C 2)  WIND FILE ON UNIT 55, OR USE THE ENVIRONEMENT VARIABLE FOR055.
+C     IF IPT AND JPT ARE DEFINED, PRINT THAT LOCATION
 C
 C 3)  ALAN J. WALLCRAFT,  FEBRUARY 1993.
+C     IPT,JPT ADDED MARCH 2024.
 C*
 C**********
+C
+C     CHECK FOR IPT,JPT
+C
+      CENV = ' '
+      CALL GETENV('IPT',CENV)
+      IF     (CENV.EQ.' ') THEN
+        IPT = 0
+      ELSE
+        READ(CENV,*) IPT
+      ENDIF
+C
+      CENV = ' '
+      CALL GETENV('JPT',CENV)
+      IF     (CENV.EQ.' ') THEN
+        JPT = 0
+      ELSE
+        READ(CENV,*) JPT
+      ENDIF
 C
 C     OPEN THE FILE.
 C
@@ -45,12 +65,14 @@ C
         CALL EXIT(2)
         STOP
       ENDIF
-      READ( 55)     IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC,WDAY(1:6000)
-      IF     (NREC.GE.9000) THEN
-        WRITE(0,*) 'wind_stat_range: maximum nrec is 8999'
+      READ(55) IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC
+      IF     (NREC.GE.20000) THEN
+        WRITE(0,*) 'wind_stat_range: maximum nrec is 19999'
+        WRITE(0,*) CTITLE
+        WRITE(0,*) IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC
         CALL EXIT(3)
         STOP
-      ELSEIF (NREC.GE.6000) THEN
+      ELSE
         REWIND(55)
         READ(  55)
         READ(  55) IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC,WDAY(1:NREC+1)
@@ -59,20 +81,26 @@ C
 C     STATISTICS.
 C
       WRITE(6,6000) CTITLE
-      WRITE(6,6100) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
-     +              NREC
+      IF     (MIN(IPT,JPT).LE.0) THEN
+        WRITE(6,6100) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
+     +                NREC
+      ELSE
+        WRITE(6,6110) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
+     +                IPT,JPT,NREC
+      ENDIF
 *     CALL FLUSH(6)
 C
 C     READ NREC WIND RECORDS, AND PRINT RANGES.
 C
-      ALLOCATE( W(IWI,JWI,2), STAT=IOS )
+      NN = 2
+      ALLOCATE( W(IWI,JWI,NN), STAT=IOS )
       IF     (IOS.NE.0) THEN
         WRITE(6,*) 'Error in wind_stat_range: could not allocate ',
-     +             IWI*JWI*5,' 4-byte words'
+     +             IWI*JWI*NN,' 4-byte words'
         CALL EXIT(2)
       ENDIF
-C
       W(:,:,:) = 0.0
+C
       DO KREC= 1,NREC
         READ( 55,IOSTAT=IOS) W
         IF     (IOS.NE.0) THEN
@@ -80,21 +108,28 @@ C
           CALL EXIT(1)
           STOP
         ENDIF
-        WDAYHR     = WDAY(KREC)
-        WDAYHR     = NINT(WDAYHR*24.D0)/24.D0
-        WDAY(KREC) = WDAYHR
-        DO N= 1,2
-          WRITE(6,'(f10.3,3x,1p2e16.8)') WDAY(KREC),
-     &                                   MINVAL(W(:,:,N)),
-     &                                   MAXVAL(W(:,:,N))
-        ENDDO !n
-      ENDDO !krec
+        WDAY15     = WDAY(KREC)
+        WDAY15     = NINT(WDAY15*96.D0)/96.D0
+        WDAY(KREC) = WDAY15
+        DO N= 1,NN
+          IF     (MIN(IPT,JPT).LE.0) THEN
+            WRITE(6,'(f10.3,3x,1p2e16.8)') WDAY(KREC),
+     &                                     MINVAL(W(:,:,N)),
+     &                                     MAXVAL(W(:,:,N))
+          ELSE
+            WRITE(6,'(f10.3,3x,1p3e16.8)') WDAY(KREC),
+     &                                     MINVAL(W(:,:,N)),
+     &                                     MAXVAL(W(:,:,N)),
+     &                                        W(IPT,JPT,N)
+          ENDIF
+        ENDDO !N
+      ENDDO !KREC
       CLOSE(UNIT=55)
 C
       KREC=NREC+1
-      WDAYHR     = WDAY(KREC)
-      WDAYHR     = NINT(WDAYHR*24.D0)/24.D0
-      WDAY(KREC) = WDAYHR
+      WDAY15     = WDAY(KREC)
+      WDAY15     = NINT(WDAY15*96.D0)/96.D0
+      WDAY(KREC) = WDAY15
 C
 C     SUMMARY.
 C
@@ -112,7 +147,13 @@ C
      +      'IWI,JWI =',I4,',',I4,
      +   3X,'XFIN,YFIN =',F9.3,',',F9.3,
      +   3X,'DXIN,DYIN =',F7.4,',',F7.4 /
-     +      'NREC =',I5,5X,'WDAY =' / (8F10.3) )
+     +      'NREC =',I5,5X,'WDAY =' / )
+ 6110 FORMAT(
+     +      'IWI,JWI =',I4,',',I4,
+     +   3X,'XFIN,YFIN =',F9.3,',',F9.3,
+     +   3X,'DXIN,DYIN =',F7.4,',',F7.4 /
+     +      'IPT,JPT =',I4,',',I4,
+     +      3X,'NREC =',I5,5X,'WDAY =' / )
  6200 FORMAT(I5,' RECORD CLIMATOLOGY STARTING ON',F7.2,'/',I4,
      +   ' COVERING',F9.2,' DAYS')
  6250 FORMAT(I5,' WIND RECORDS STARTING ON',F7.2,'/',I4,

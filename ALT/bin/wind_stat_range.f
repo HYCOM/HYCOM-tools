@@ -2,11 +2,11 @@
       IMPLICIT NONE
 C
       CHARACTER*40         CTITLE
-      INTEGER              IWI,JWI,NREC
+      INTEGER              IPT,JPT,IWI,JWI,NREC
       REAL                 WDAY(20000),XFIN,YFIN,DXIN,DYIN
       REAL, ALLOCATABLE :: W(:,:)
 C
-      CHARACTER*240     CFILE
+      CHARACTER*240    CFILE,CENV
       INTEGER          KREC,IOS
       REAL             JDAY,YEAR
       DOUBLE PRECISION WDAY15
@@ -17,10 +17,30 @@ C 1)  PRINT MODEL WIND FILE STATISTICS.
 C     CORRECT WIND DAYS TO NEAREST 15 MIN.
 C
 C 2)  WIND FILE ON UNIT 55, OR USE THE ENVIRONEMENT VARIABLE FOR055.
+C     IF IPT AND JPT ARE DEFINED, PRINT THAT LOCATION
 C
 C 3)  ALAN J. WALLCRAFT,  FEBRUARY 1993.
+C     IPT,JPT ADDED MARCH 2024.
 C*
 C**********
+C
+C     CHECK FOR IPT,JPT
+C
+      CENV = ' '
+      CALL GETENV('IPT',CENV)
+      IF     (CENV.EQ.' ') THEN
+        IPT = 0
+      ELSE
+        READ(CENV,*) IPT
+      ENDIF
+C
+      CENV = ' '
+      CALL GETENV('JPT',CENV)
+      IF     (CENV.EQ.' ') THEN
+        JPT = 0
+      ELSE
+        READ(CENV,*) JPT
+      ENDIF
 C
 C     OPEN THE FILE.
 C
@@ -61,8 +81,13 @@ C
 C     STATISTICS.
 C
       WRITE(6,6000) CTITLE
-      WRITE(6,6100) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
-     +              NREC
+      IF     (MIN(IPT,JPT).LE.0) THEN
+        WRITE(6,6100) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
+     +                NREC
+      ELSE
+        WRITE(6,6110) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
+     +                IPT,JPT,NREC
+      ENDIF
 *     CALL FLUSH(6)
 C
 C     READ NREC WIND RECORDS, AND PRINT RANGES.
@@ -84,9 +109,16 @@ C
         WDAY15     = WDAY(KREC)
         WDAY15     = NINT(WDAY15*96.D0)/96.D0
         WDAY(KREC) = WDAY15
-        WRITE(6,'(f10.3,3x,1p2e16.8)') WDAY(KREC),
-     &                                 MINVAL(W(:,:)),
-     &                                 MAXVAL(W(:,:))
+        IF     (MIN(IPT,JPT).LE.0) THEN
+          WRITE(6,'(f10.3,3x,1p2e16.8)') WDAY(KREC),
+     &                                   MINVAL(W(:,:)),
+     &                                   MAXVAL(W(:,:))
+        ELSE
+          WRITE(6,'(f10.3,3x,1p3e16.8)') WDAY(KREC),
+     &                                   MINVAL(W(:,:)),
+     &                                   MAXVAL(W(:,:)),
+     &                                   W(IPT,JPT)
+        ENDIF
       ENDDO
       CLOSE(UNIT=55)
 C
@@ -111,7 +143,13 @@ C
      +      'IWI,JWI =',I4,',',I4,
      +   3X,'XFIN,YFIN =',F9.3,',',F9.3,
      +   3X,'DXIN,DYIN =',F7.4,',',F7.4 /
-     +      'NREC =',I5,5X,'WDAY =' / (8F10.3) )
+     +      'NREC =',I5,5X,'WDAY =' / )
+ 6110 FORMAT(
+     +      'IWI,JWI =',I4,',',I4,
+     +   3X,'XFIN,YFIN =',F9.3,',',F9.3,
+     +   3X,'DXIN,DYIN =',F7.4,',',F7.4 /
+     +      'IPT,JPT =',I4,',',I4,
+     +      3X,'NREC =',I5,5X,'WDAY =' / )
  6200 FORMAT(I5,' RECORD CLIMATOLOGY STARTING ON',F7.2,'/',I4,
      +   ' COVERING',F9.2,' DAYS')
  6250 FORMAT(I5,' WIND RECORDS STARTING ON',F7.2,'/',I4,

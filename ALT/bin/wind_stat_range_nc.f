@@ -3,10 +3,10 @@
       IMPLICIT NONE
 C
       CHARACTER*40     CTITLE
-      INTEGER          IWI,JWI,N,NREC,IOS
+      INTEGER          IPT,JPT,IWI,JWI,N,NREC,IOS
       REAL             XFIN,YFIN,DXIN,DYIN
 C
-      CHARACTER*240    CFILE
+      CHARACTER*240    CFILE,CENV
       INTEGER          ncFID,ncDID,ncVID,nV,NF
       INTEGER          KREC
       REAL             JDAY,YEAR
@@ -19,12 +19,32 @@ C
 C**********
 C*
 C 1)  PRINT MODEL WIND FILE STATISTICS, FOR EACH FIELD.
+C     IF IPT AND JPT ARE DEFINED, PRINT THAT LOCATION
 C
 C 2)  NRL-style NetCDF WIND FILE FROM ENVIRONEMENT VARIABLE CDF055.
 C
 C 3)  ALAN J. WALLCRAFT,  JULY 2010.
+C     IPT,JPT ADDED MARCH 2024.
 C*
 C**********
+C
+C     CHECK FOR IPT,JPT
+C
+      CENV = ' '
+      CALL GETENV('IPT',CENV)
+      IF     (CENV.EQ.' ') THEN
+        IPT = 0
+      ELSE
+        READ(CENV,*) IPT
+      ENDIF
+C
+      CENV = ' '
+      CALL GETENV('JPT',CENV)
+      IF     (CENV.EQ.' ') THEN
+        JPT = 0
+      ELSE
+        READ(CENV,*) JPT
+      ENDIF
 C
 C     OPEN THE FILE.
 C
@@ -116,8 +136,13 @@ C
 C     STATISTICS.
 C
       WRITE(6,6000) CTITLE
-      WRITE(6,6100) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
-     +              NREC
+      IF     (MIN(IPT,JPT).LE.0) THEN
+        WRITE(6,6100) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
+     +                NREC
+      ELSE
+        WRITE(6,6110) IWI,JWI,XFIN,YFIN,DXIN,DYIN,
+     +                IPT,JPT,NREC
+      ENDIF
 *     CALL FLUSH(6)
 C
 C     READ NREC WIND RECORDS, AND PRINT RANGES.
@@ -148,7 +173,12 @@ C
 
           WMIN = SCALE_F*MINVAL(W(:,:)) + ADD_OFF
           WMAX = SCALE_F*MAXVAL(W(:,:)) + ADD_OFF
-          WRITE(6,'(f10.3,3x,1p2e16.8)') WDAY(KREC),WMIN,WMAX
+          IF     (MIN(IPT,JPT).LE.0) THEN
+            WRITE(6,'(f10.3,3x,1p2e16.8)') WDAY(KREC),WMIN,WMAX
+          ELSE
+            WRITE(6,'(f10.3,3x,1p3e16.8)') WDAY(KREC),WMIN,WMAX,
+     &                              SCALE_F*W(IPT,JPT) + ADD_OFF
+          ENDIF
         ENDDO !n
       ENDDO !krec
 C
@@ -168,7 +198,13 @@ C
      +      'IWI,JWI =',I4,',',I4,
      +   3X,'XFIN,YFIN =',F9.3,',',F9.3,
      +   3X,'DXIN,DYIN =',F6.3,',',F6.3 /
-     +      'NREC =',I5,5X,'WDAY =' / (8F10.3) )
+     +      'NREC =',I5,5X,'WDAY =' / )
+ 6110 FORMAT(
+     +      'IWI,JWI =',I4,',',I4,
+     +   3X,'XFIN,YFIN =',F9.3,',',F9.3,
+     +   3X,'DXIN,DYIN =',F7.4,',',F7.4 /
+     +      'IPT,JPT =',I4,',',I4,
+     +      3X,'NREC =',I5,5X,'WDAY =' / )
  6200 FORMAT(I5,' RECORD CLIMATOLOGY STARTING ON',F7.2,'/',I4,
      +   ' COVERING',F9.2,' DAYS')
  6250 FORMAT(I5,' WIND RECORDS STARTING ON',F7.2,'/',I4,

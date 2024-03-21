@@ -3,7 +3,7 @@
 C
       CHARACTER*40     CTITLE
       INTEGER          IWI,JWI,NREC
-      REAL             WDAY(9000),XFIN,YFIN,DXIN,DYIN
+      REAL             WDAY(20000),XFIN,YFIN,DXIN,DYIN
 C
       CHARACTER*240     CFILE
       INTEGER          KREC,IOS
@@ -12,6 +12,7 @@ C
 C**********
 C*
 C 1)  PRINT MODEL WIND FILE STATISTICS.
+C     ORIGINAL, UNCORRECTED, WIND DAYS.
 C
 C 2)  WIND FILE ON UNIT 55, OR USE THE ENVIRONEMENT VARIABLE FOR055.
 C
@@ -42,12 +43,12 @@ C
         CALL EXIT(2)
         STOP
       ENDIF
-      READ( 55)     IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC,WDAY(1:6000)
-      IF     (NREC.GE.9000) THEN
-        WRITE(0,*) 'wind_stat: maximum nrec is 8999'
+      READ(55) IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC
+      IF     (NREC.GE.20000) THEN
+        WRITE(0,*) 'wind_stat: maximum nrec is 19999'
         CALL EXIT(3)
         STOP
-      ELSEIF (NREC.GE.6000) THEN
+      ELSE
         REWIND(55)
         READ(  55)
         READ(  55) IWI,JWI,XFIN,YFIN,DXIN,DYIN,NREC,WDAY(1:NREC+1)

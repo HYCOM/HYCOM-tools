@@ -150,7 +150,8 @@ foreach f ( wind_stat_nc wind_stat_range_nc )
   else
     echo "${f}_${OS} is already up to date"
   endif
-  touch       ${f}
-  /bin/rm -f  ${f}
+  touch       ${f}.exe
+  /bin/rm -f  ${f}.exe
   chmod a+rx  ${f}_${OS}
+  /bin/ln -s  ${f}_${OS} ${f}.exe
 end

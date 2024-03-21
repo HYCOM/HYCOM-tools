@@ -5,19 +5,28 @@
 # Usage:   wind_stat -s f1
 # or       wind_stat -l f1
 # or       wind_stat f1
+# or       wind_stat_range f1
+# or       wind_stat_range -i I -j J f1
 #
 #          f1   is the wind file, NRL .D or .nc
 #          -s   indicates the short, 2 line form
 #          -l   indicates the long form
+#          -i   indicates the i-point to be printed
+#          -j   indicates the j-point to be printed
 #
 #          if -s and -l are omitted, -l is assumed
+#
+# use wind_stat_raw to get the original, uncorrected, wind days
+# use wind_stat_check to confirm that all wind records are present
+#
+# the wind file can be .D or .nc
 #
 # Most the the work is done by a Fortran program.
 #
 # Alan J. Wallcraft, Planning Systems Inc., February 1993.
 #
 
-if ($#argv != 1 && $#argv != 2) then
+if ($#argv != 1 && $#argv != 2 && $#argv != 5) then
     echo2 "Usage:  wind_stat [-s] [-l] f1"
     exit 1
 endif
@@ -26,13 +35,17 @@ if ($#argv == 1) then
     set op='-l'
     set f1=$1
     set fx=$1:e
-else
+else if ($#argv == 2) then
     set op=$1
     set f1=$2
     set fx=$2:e
+else
+    set op=-i
+    set f1=$5
+    set fx=$5:e
 endif
 
-if ("$op" != '-s' && "$op" != '-l') then
+if ("$op" != '-s' && "$op" != '-l' && "$op" != '-i') then
     echo2 "Usage:  wind_stat [-s] [-l] f1"
     exit 1
 endif
@@ -52,6 +65,10 @@ if (${fx} == "nc") then
   if ( "$op" == '-s' ) then
       $0_nc.exe | head -1
       $0_nc.exe | tail -1
+  else if ( "$op" == '-i' ) then
+      setenv IPT $2
+      setenv JPT $4
+      $0_nc.exe
   else
       $0_nc.exe
   endif
@@ -61,6 +78,10 @@ else
   if ( "$op" == '-s' ) then
       $0.exe | head -1
       $0.exe | tail -1
+  else if ( "$op" == '-i' ) then
+      setenv IPT $2
+      setenv JPT $4
+      $0.exe
   else
       $0.exe
   endif
