@@ -247,6 +247,10 @@ if (! -e hycom_profile_lib.o  ) then
     else
       $FC $FFLAGS ${f}.f $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
     endif
+    touch       ${f}
+    /bin/rm -f  ${f}
+    chmod a+rx  ${f}_${OS}
+    /bin/ln -s  ${f}_${OS} ${f}
   end
 else if ( -f `find hycom_profile_lib.F -prune -newer hycom_profile_lib.o` ) then
   $FC $FFLAGS -c hycom_profile_lib.F
@@ -258,6 +262,10 @@ else if ( -f `find hycom_profile_lib.F -prune -newer hycom_profile_lib.o` ) then
     else
       $FC $FFLAGS ${f}.f $FLIBS hycom_profile_lib.o hycom_endian_io.o parse.o -o ${f}_${OS}
     endif
+    touch       ${f}
+    /bin/rm -f  ${f}
+    chmod a+rx  ${f}_${OS}
+    /bin/ln -s  ${f}_${OS} ${f}
   end
 else
   foreach f ( hycom_profile_list hycom_profile_argo hycom_profile_isop hycom_profile_newsig \
@@ -278,9 +286,9 @@ else
     else
       echo "${f}_${OS} is already up to date"
     endif
+    touch       ${f}
+    /bin/rm -f  ${f}
+    chmod a+rx  ${f}_${OS}
+    /bin/ln -s  ${f}_${OS} ${f}
   end
-  touch       ${f}
-  /bin/rm -f  ${f}
-  chmod a+rx  ${f}_${OS}
-  /bin/ln -s  ${f}_${OS} ${f}
 endif
