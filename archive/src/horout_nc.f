@@ -6545,8 +6545,20 @@ c
       character(len=4) :: yr_tmp
       integer          :: values_tmp(8)
 c
-      mons_tmp = ['January','February','March','April','May','Jun',
-     & 'July','August','September','October','November','December']
+!      mons_tmp = ['January','February','March','April','May','Jun',
+!     & 'July','August','September','October','November','December']
+      mons_tmp = ['January  ',
+     &            'February ',
+     &            'March    ',
+     &            'April    ',
+     &            'May      ',
+     &            'June     ',
+     &            'July     ',
+     &            'August   ',
+     &            'September',
+     &            'October  ',
+     &            'November ',
+     &            'December ']
 c
       call DATE_AND_TIME(VALUES=values_tmp)
 c
