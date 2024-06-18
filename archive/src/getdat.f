@@ -692,6 +692,23 @@ c ---   std. thickness. is next, put in dpsd
 c
       read (ni,'(a)',end=6) cline
       write(lp,'(a)')       cline(1:len_trim(cline))
+c
+      if     (cline(1:8).eq.'u_flux  ') then
+c ---   discard u_flux and v_flux
+        i = index(cline,'=')
+        read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
+        call getfld(  work, ni, hminb,hmaxb, .true., lrange)
+        write(lp,'("skip   ",a)') cline(1:8)
+        read (ni,'(a)',end=6) cline
+        write(lp,'(a)')       cline(1:len_trim(cline))
+        i = index(cline,'=')
+        read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
+        call getfld(  work, ni, hminb,hmaxb, .true., lrange)
+        write(lp,'("skip   ",a)') cline(1:8)
+        read (ni,'(a)',end=6) cline
+        write(lp,'(a)')       cline(1:len_trim(cline))
+      endif
+c
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
       call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
@@ -1030,6 +1047,8 @@ c
         stop
       endif
 c
+      kkin=1
+c
       if     (.not.l_arch(1)) then
       nodens = .true.
       sigver = 4     !a guess
@@ -1338,8 +1357,7 @@ c
       write(lp,'("input  ",a," into ",a)') cline(1:8),'vbaro   '
       endif !l_arch
 c
-      kkin=1
-      do 14 k=1,kkin
+      k=1
       if     (.not.l_arch(13)) then
       u(:,:,k) = 0.0
       else
@@ -1459,7 +1477,6 @@ c
       write(lp,'(a,f9.5)') 'finished reading data for layer',thet
       call flush(lp)
       theta(k)=thet
- 14   continue
 c
       close( unit=ni)
       call zaiocl(ni)
