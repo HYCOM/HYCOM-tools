@@ -34,7 +34,7 @@ ln -s ${NCDF}/include/typesizes.mod .
 #
 # --- netCDF programs
 #
-foreach m ( ssh_modas sst_modas sst_gdem3 sst_gdem4 sst_woa z_gdem3 z_gdem4 z_gdem42 z_woa13 z_woa_tracer mom6_gdem42 )
+foreach m ( ssh_modas sst_modas sst_gdem3 sst_gdem4 sst_woa z_gdem3 z_gdem4 z_gdem42 z_woa13 z_woa_tracer mom6_gdem42 woa18_to_woa13_format )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"

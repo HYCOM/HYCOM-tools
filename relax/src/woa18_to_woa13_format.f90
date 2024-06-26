@@ -1,8 +1,8 @@
 program woa18_to_woa13_format
   use netcdf
   implicit none
-  character(len=199) :: fname, pgm
-  character(len=199) :: standard_name, long_name, cell_methods, grid_mapping
+  character(len=256) :: fname, cline, WOA
+  character(len=256) :: standard_name, long_name, cell_methods, grid_mapping
   real(4), dimension(:,:,:),allocatable :: dat
   real(4), dimension(:),allocatable :: lon,lat,depth
   real(4) :: FillValue
@@ -13,15 +13,18 @@ program woa18_to_woa13_format
 
   !-- Usage -----------------------------------------------------------+
   if (iargc()>0) then
-    call getarg(1,pgm)
-    if (pgm(1:2)=='-h' .or. pgm(1:3)=='--h') then
-      call getarg(0,pgm)
+    call getarg(1,cline)
+    if (cline(1:2)=='-h' .or. cline(1:3)=='--h') then
+      call getarg(0,cline)
       write(0,*)'Reformat WOA18 data similar to WOA13_v2.tgz'
       write(0,*)'  1) Monthly data (MM=01..12) padded with quarterly data (MM=13..16) for deeper layers'
       write(0,*)'  2) Interpolate over land. Ugly looking plots but needed for HYCOM relax fields using z_woa13'
       write(0,*)''
-      write(0,*)"USAGE:  "//trim(pgm)//" (NO-arguments, but run in the same directory as input files)"
-      write(0,*)"        "//trim(pgm)//" --help"
+      write(0,*)"USAGE:  "//trim(cline)//" {WOAxx}"
+      write(0,*)"        "//trim(cline)//" --help"
+      write(0,*)''
+      write(0,*)'Arguments:'
+      write(0,*)'   WOAxx:  Data source: woa18/woa23. Default: woa18'
       write(0,*)''
       write(0,*)'Input:  woa18_decav_s<MM>_04.nc'
       write(0,*)'        woa18_decav_t<MM>_04.nc'
@@ -29,20 +32,29 @@ program woa18_to_woa13_format
       write(0,*)'        WOA18_TEMP_m<MM>.nc'
       write(0,*)''
       write(0,*)'WOA18 data source:'
-      write(0,*)'  https://data.nodc.noaa.gov/woa/WOA18/DATA/salinity/netcdf/decav/0.25/'
-      write(0,*)'  https://data.nodc.noaa.gov/woa/WOA18/DATA/temperature/netcdf/decav/0.25/'
+      write(0,*)'  https://www.ncei.noaa.gov/data/oceans/woa/WOA18/DATA/temperature/netcdf/decav/0.25/'
+      write(0,*)'  https://www.ncei.noaa.gov/data/oceans/woa/WOA18/DATA/salinity/netcdf/decav/0.25/'
       write(0,*)''
-      write(0,*)'WOA18 info:'
-      write(0,*)'  https://www.nodc.noaa.gov/OC5/woa18/'
+      write(0,*)'WOAxx info:'
+      write(0,*)'  https://www.ncei.noaa.gov/products/world-ocean-atlas'
 !      write(0,*)'Mads Hvid Ribergaard, DMI'
       call exit(1)
+      stop
     endif
+  endif
+
+  !-- Read WOAxx from argument 1 --
+  if (iargc()>0) then
+    call getarg(1,cline)
+    WOA = trim(cline)
+  else
+    WOA = 'woa18'
   endif
 
   !-- Read dimensions ------------------------------------------------+
   
   ! Quarter fields
-  fname='woa18_decav_s16_04.nc'
+  fname=trim(WOA)//'_decav_s16_04.nc'
   call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
   call nc_check('nc inquire',nf90_inquire_variable(ncid,varid,dimids=dims(:4)))
@@ -52,7 +64,7 @@ program woa18_to_woa13_format
   call nc_check('nc close',  nf90_close(ncid))
 
   ! Monthly fields
-  fname='woa18_decav_s01_04.nc'
+  fname=trim(WOA)//'_decav_s01_04.nc'
   call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
   call nc_check('nc inquire',nf90_inquire_variable(ncid,varid,dimids=dims(:4)))
@@ -65,7 +77,7 @@ program woa18_to_woa13_format
   allocate(lon(nx),lat(ny),depth(nz),dat(nx,ny,nz))
 
   !-- Read stationary fields: lon,lat,depth --------------------------+
-  fname='woa18_decav_s16_04.nc'
+  fname=trim(WOA)//'_decav_s16_04.nc'
   call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
   call nc_check('nc varid',  nf90_inq_varid(ncid,'lon',varid))
   call nc_check('nc get_var',nf90_get_var(ncid,varid,lon(:)))
@@ -102,7 +114,7 @@ program woa18_to_woa13_format
     !-- Salinity ------------------------------------------------------+
 
     ! Surface: Monthly
-    write(fname,'(a,i2.2,a)')'woa18_decav_s',mm,'_04.nc'
+    write(fname,'(a,i2.2,a)')trim(WOA)//'_decav_s',mm,'_04.nc'
     write(*,*)'Read: ',trim(fname)
     call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
@@ -117,7 +129,7 @@ program woa18_to_woa13_format
     call nc_check('nc close',  nf90_close(ncid))
 
     ! Bottom: Quarterly
-    write(fname,'(a,i2.2,a)')'woa18_decav_s',qq,'_04.nc'
+    write(fname,'(a,i2.2,a)')trim(WOA)//'_decav_s',qq,'_04.nc'
     write(*,*)'Read: ',trim(fname)
     call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'s_an',varid))
@@ -130,7 +142,7 @@ program woa18_to_woa13_format
     call fillmiss(dat,nx,ny,nz,FillValue) 
 
     !-- Write: NetCDF file -- 
-    write(fname,'(a,i2.2,a)')'WOA18_SALT_m',mm,'.nc'
+    write(fname,'(a,i2.2,a)')trim(to_upper(WOA))//'_SALT_m',mm,'.nc'
     write(*,*)'Write: ',trim(fname)
     call nc_check('nc create: '//trim(fname),nf90_create(trim(fname), nf90_clobber, ncid))
     call nc_check('nc def nx',nf90_def_dim(ncid,'lon',nx, nxid))
@@ -149,9 +161,9 @@ program woa18_to_woa13_format
     call nc_check('nc month',nf90_put_att(ncid,nf90_global,'month',mm))
     call nc_check('nc quarter',nf90_put_att(ncid,nf90_global,'quarter',qq))
     call nc_check('nc title',nf90_put_att(ncid,nf90_global,'title',&
-                    'Monthly WOA18 climatorology in WOA13 format using quarter values at depth'))
+                    'Monthly '//trim(to_upper(WOA))//' climatorology in WOA13 format using quarter values at depth'))
     call nc_check('nc source',nf90_put_att(ncid,nf90_global,'source',&
-                     'https://www.nodc.noaa.gov/cgi-bin/OC5/woa18/woa18.pl'))
+                     'https://www.ncei.noaa.gov/products/world-ocean-atlas'))
     call nc_check('nc enddef',nf90_enddef(ncid))
     call nc_check('nc close',nf90_close(ncid))
 
@@ -172,7 +184,7 @@ program woa18_to_woa13_format
     !-- Temperature ---------------------------------------------------+
   
     ! Surface: Monthly
-    write(fname,'(a,i2.2,a)')'woa18_decav_t',mm,'_04.nc'
+    write(fname,'(a,i2.2,a)')trim(WOA)//'_decav_t',mm,'_04.nc'
     write(*,*)'Read: ',trim(fname)
     call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'t_an',varid))
@@ -187,7 +199,7 @@ program woa18_to_woa13_format
     call nc_check('nc close',  nf90_close(ncid))
 
     ! Bottom: Quarterly
-    write(fname,'(a,i2.2,a)')'woa18_decav_t',qq,'_04.nc'
+    write(fname,'(a,i2.2,a)')trim(WOA)//'_decav_t',qq,'_04.nc'
     write(*,*)'Read: ',trim(fname)
     call nc_check('nc open: '//trim(fname), nf90_open(trim(fname), nf90_nowrite, ncid))
     call nc_check('nc varid',  nf90_inq_varid(ncid,'t_an',varid))
@@ -200,7 +212,7 @@ program woa18_to_woa13_format
     call fillmiss(dat,nx,ny,nz,FillValue) 
 
     !-- Write: NetCDF file -- 
-    write(fname,'(a,i2.2,a)')'WOA18_TEMP_m',mm,'.nc'
+    write(fname,'(a,i2.2,a)')trim(to_upper(WOA))//'_TEMP_m',mm,'.nc'
     write(*,*)'Write: ',trim(fname)
     call nc_check('nc create: '//trim(fname),nf90_create(trim(fname), nf90_clobber, ncid))
     call nc_check('nc def nx',nf90_def_dim(ncid,'lon',nx, nxid))
@@ -254,7 +266,7 @@ subroutine nc_check(cnf90,status)
 
   character*(*), intent(in) :: cnf90
   integer,       intent(in) :: status
-  character(len=199) :: pgm
+  character(len=256) :: pgm
 
   if (status /= nf90_noerr) then
     call getarg(0,pgm)
@@ -333,5 +345,50 @@ subroutine fillmiss(dat,nx,ny,nz,FillValue)
   enddo ! k
   
 end subroutine fillmiss
+
+!----------------------------------------------------------------------
+function to_upper(strIn) result(strOut)
+  ! Adapted from http://www.star.le.ac.uk/~cgp/fortran.html (25 May 2012)
+  ! Original author: Clive Page
+
+  implicit none
+
+  character(len=*), intent(in) :: strIn
+  character(len=len(strIn)) :: strOut
+  integer :: i,j
+
+  do i = 1, len(strIn)
+       j = iachar(strIn(i:i))
+       if (j>= iachar("a") .and. j<=iachar("z") ) then
+            strOut(i:i) = achar(iachar(strIn(i:i))-32)
+       else
+            strOut(i:i) = strIn(i:i)
+       end if
+  end do
+
+end function to_upper
+
+!----------------------------------------------------------------------
+function to_lower(strIn) result(strOut)
+  ! Adapted from http://www.star.le.ac.uk/~cgp/fortran.html (25 May 2012)
+  ! Original author: Clive Page
+
+  implicit none
+
+  character(len=*), intent(in) :: strIn
+  character(len=len(strIn)) :: strOut
+  integer :: i,j
+
+  do i = 1, len(strIn)
+       j = iachar(strIn(i:i))
+       if (j>= iachar("A") .and. j<=iachar("Z") ) then
+            strOut(i:i) = achar(iachar(strIn(i:i))+32)
+       else
+            strOut(i:i) = strIn(i:i)
+       end if
+  end do
+
+end function to_lower
+
 
 end program woa18_to_woa13_format
