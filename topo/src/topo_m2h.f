@@ -117,5 +117,5 @@ c
       write(61,6100) dhmin,dhmax
       write(6, 6100) dhmin,dhmax
       write(6, *)
- 6100 format('min,max depth = ',2f10.3)
+ 6100 format("min,max depth = ",2f12.5)
       end

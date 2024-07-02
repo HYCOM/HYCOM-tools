@@ -94,6 +94,6 @@ c
       write(61,6100) hmina,hmaxa
       write(6, 6100) hmina,hmaxa
       write(6, *)
- 6100 format('min,max depth = ',2f10.3)
+ 6100 format("min,max depth = ",2f12.5)
 c
       end

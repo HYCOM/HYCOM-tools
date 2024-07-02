@@ -134,7 +134,7 @@ c
         write(6, 6110) hmina,hmaxa
       endif
       write(6, *)
- 6100 format('min,max depth = ',2f10.3)
+ 6100 format("min,max depth = ",2f12.5)
  6110 format('min,max depth = ',2f12.5)
 c
       end
