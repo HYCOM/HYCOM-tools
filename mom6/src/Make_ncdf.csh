@@ -34,7 +34,7 @@ ln -s ${NCDF}/include/typesizes.mod .
 #
 # --- netCDF programs
 #
-foreach m ( hycom2vgrid mom6nc2archv mom6nc2tide mom6nc2field mom6nc2field3d mom6nc2uvfield mom6nc82field)
+foreach m ( hycom2vgrid mom6vgrid mom6nc2archv mom6nc2tide mom6nc2field mom6nc2field3d mom6nc2uvfield mom6nc82field mom6nc8hz2h )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"

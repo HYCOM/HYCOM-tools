@@ -40,7 +40,7 @@ c
       logical          larctic,lsymetr
       logical          lsteric,lbpa,
      &                 icegln,trcout,lgprime,lsig2,lsigw,ldenrd
-      integer          i,im1,ip1,ierr,irec,j,jja,jm1,jp1,jerr,k,l
+      integer          i,im1,ip1,ierr,icrec,irec,j,jja,jm1,jp1,jerr,k,l
       integer          mro,nvo
       integer          artype,iexpt,iversn,yrflag,itest,jtest
       integer          jday,ihour,iyear
@@ -48,7 +48,7 @@ c
       real             onem,qoneta,tmljmp,thbase,
      &                 errmax,errbot,errdep,errssh,
      &                 denij
-      double precision time3(3),pij
+      double precision time3(3),pij,bpij
       double precision area,onemm,sum1,sum2,sum3,sum4,sum5,sum6,
      &                 sum1a,sum2a,sum3a,sum4a,sum5a
       real             smn1,smx1,smn2,smx2,smn3,smx3,
@@ -66,6 +66,13 @@ c
       ii     = idm
       jj     = jdm
       yrflag = 3
+c
+      name_c = ' '
+      call getenv('YRFLAG',name_c)
+      if     (name_c.ne.' ') then
+        read(name_c,*) yrflag
+      endif
+      write (lp,'(a,i2)') 'yrflag =',yrflag
 c
       flnm_b = ' '
       call getenv('MOM6_STERIC',flnm_b)
@@ -105,14 +112,16 @@ c --- 'name_p' = name of mom6  h    field
 c --- 'flnm_e' = name of mom6  ssh  file  (enter SAME to use flnm_p,
 c ---                                      used for ssh, Qnet and P-E)
 c --- 'name_e' = name of mom6  ssh  field (lsteric/lbpa: hbt field)
+c ---                                     (enter ZERO for zero field)
 c --- 'name_b' = name of mom6  pbt  field (lsteric/lbpa only)
+c ---                                     (enter CALC to calculate)
 c --- 'name_o' = name of mom6  obl  field (enter NONE to use dpmixl)
 c --- 'name_n' = name of mom6  Qnet field (enter ZERO for zero field)
 c --- 'name_m' = name of mom6  P-E  field (enter ZERO for zero field)
 c --- 'flnm_u' = name of mom6  u    file  (enter SAME to use flnm_e)
-c --- 'name_u' = name of mom6  u    field
+c --- 'name_u' = name of mom6  u    field (enter ZERO for zero field)
 c --- 'flnm_v' = name of mom6  v    file  (enter SAME to use flnm_u)
-c --- 'name_v' = name of mom6  v    field
+c --- 'name_v' = name of mom6  v    field (enter ZERO for zero field)
 c --- 'flnm_k' = name of mom6  ke   file  (enter SAME to use flnm_v, and
 c ---                                      enter NONE if no ke, i.e. snapshot)
 c --- 'name_k' = name of mom6  ke   field
@@ -129,6 +138,8 @@ c --- 'name_h' = name of mom6  sih  field (ignored if flnm_c==NONE)
 c --- 'name_i' = name of mom6  sit  field (ignored if flnm_c==NONE)
 c --- 'flnm_o' = name of hycom archive file (output)
 c --- 'in_rec' = time record to read in (for potT)
+c --- 'icerec' = time record to read in (for sic), optional default 0
+c ---             =0 to find time3 in the time axis
 c --- 'iexpt ' = experiment number x10
 c --- 'itest ' = i-index for debugging printout (0 no debug)
 c --- 'jtest ' = j-index for debugging printout (0 no debug)
@@ -157,6 +168,7 @@ c
         thbase = 0.0  !rho0 is 1000
         yrflag = 2
         sigver = 1    !equation of state is (nominally) 7-term sigma-0
+        write (lp,'(a,i2)') 'yrflag =',yrflag
 c
         read (*,'(a)') name_t
         read(name_t,*) rho1
@@ -258,9 +270,21 @@ c
         write (lp,'(2a)') ' input MOM6  hbt  field: ',trim(name_e)
         read (*,'(a)') name_b
         write (lp,'(2a)') ' input MOM6  pbt  field: ',trim(name_b)
+        if     (trim(name_b) .eq. 'CALC' .or.
+     &          trim(name_e) .eq. 'CALC'     ) then
+          if     (trim(name_b) .ne. 'CALC' .or.
+     &            trim(name_e) .ne. 'CALC'     ) then
+            write(lp,*) 
+            write(lp,*) 'error - hbt and pbt must both be CALC'
+            write(lp,*) 
+            call zhflsh(lp)
+            stop
+          endif
+        endif
       else
         read (*,'(a)') name_e
         write (lp,'(2a)') ' input MOM6  ssh  field: ',trim(name_e)
+        name_b = ''
       endif
       call flush(lp)
       read (*,'(a)') name_o
@@ -400,20 +424,30 @@ c
       call flush(lp)
 c
       call blkini(irec,  'in_rec')
-      call blkini(iexpt, 'iexpt ')
+      call blkini2(i,j,  'icerec','iexpt ')  !icerec or iexpt
+      if     (j.eq.1) then
+        icrec = i
+        call blkini(iexpt, 'iexpt ')
+      else
+        iexpt = i
+        icrec = 0
+      endif
       call blkini(itest, 'itest ')
       call blkini(jtest, 'jtest ')
       call blkinr(tmljmp,'tmljmp','(a6," =",f10.4," degC")')
 c
-      yrflag = 3
-c
 c --- mom6 dimensions
 c
-      call rd_dimen(nvo,mvo,kk,mro, flnm_v,name_v)
       if     (lgprime) then
         call rd_dimen(nto,mto,kk,mro, flnm_p,name_p)
       else
         call rd_dimen(nto,mto,kk,mro, flnm_t,name_t)
+      endif
+      if     (trim(name_v) .eq. 'ZERO') then
+        nvo = nto
+        mvo = mto
+      else
+        call rd_dimen(nvo,mvo,kk,mro, flnm_v,name_v)
       endif
 c
       lsymetr = mto .lt. mvo
@@ -531,28 +565,36 @@ c
      &                 time3,  !HYCOM time
      &                 name_p,flnm_p)
         call zhflsh(lp)
-        call m2h_p(s_nc,nto,mto,kk, dp,idm,jdm,lsymetr,larctic)
+        call m2h_pz(s_nc,nto,mto,kk, dp,idm,jdm,lsymetr,larctic)
 c
         if     (flnm_u.ne.flnm_t) then
           irec = 0  ! use time to select the record
         endif
-        s_nc(:,:,:) = 1.0e20
-        call rd_out3nc(nto,mto,kk,irec,
-     &                 s_nc,
-     &                 time3,  !HYCOM time
-     &                 name_u,flnm_u)
-        call zhflsh(lp)
+        if     (trim(name_u) .eq. 'ZERO') then
+          s_nc(:,:,:) = 0.0
+        else
+          s_nc(:,:,:) = 1.0e20
+          call rd_out3nc(nto,mto,kk,irec,
+     &                   s_nc,
+     &                   time3,  !HYCOM time
+     &                   name_u,flnm_u)
+          call zhflsh(lp)
+        endif
         call m2h_u(s_nc,nto,mto,kk, u,idm,jdm,lsymetr,larctic)
 c
         if     (flnm_v.ne.flnm_t) then
           irec = 0  ! use time to select the record
         endif
-        v_nc(:,:,:) = 1.0e20
-        call rd_out3nc(nto,mvo,kk,irec,
-     &                 v_nc,
-     &                 time3,  !HYCOM time
-     &                 name_v,flnm_v)
-        call zhflsh(lp)
+        if     (trim(name_v) .eq. 'ZERO') then
+          v_nc(:,:,:) = 0.0
+        else
+          v_nc(:,:,:) = 1.0e20
+          call rd_out3nc(nto,mvo,kk,irec,
+     &                   v_nc,
+     &                   time3,  !HYCOM time
+     &                   name_v,flnm_v)
+          call zhflsh(lp)
+        endif
         call m2h_v(v_nc,nto,mvo,kk, v,idm,jdm,lsymetr,larctic)
 c
         if     (flnm_k.ne.'NONE') then
@@ -582,6 +624,11 @@ c ---       tracer must be on p-grid and layers 1:kk are used
             call zhflsh(lp)
             call m2h_p(s_nc,nto,mto,kk,
      &                 trcr(1,1,1,ktr),idm,jdm,lsymetr,larctic)
+           if     (min(itest,jtest).gt.0) then
+              write(lp,*) 'ktr,s,trcr = ',
+     &                     ktr,s_nc(itest,jtest,3),
+     &                         trcr(itest,jtest,2,ktr)
+            endif !debug
           enddo !ktr
           do ktr= ltracr+1,ltracr+ltracu
 c ---       tracer must be on u-grid,
@@ -643,28 +690,40 @@ c ---       tracer must be on p-grid and interfaces 2:kk+1 are used
             call zhflsh(lp)
             call m2h_p(s_nc(1,1,2),    nto,mto,kk,
      &                 trcr(1,1,1,ktr),idm,jdm,lsymetr,larctic)
+            if     (min(itest,jtest).gt.0) then
+              write(lp,*) 'ktr,s,trcr = ',
+     &                     ktr,s_nc(itest,jtest,3),
+     &                         trcr(itest,jtest,2,ktr)
+            endif !debug
           enddo !ktr
         endif !trcout
 c
         if     (flnm_e.ne.flnm_t) then
           irec = 0  ! use time to select the record
         endif
-        f_nc(:,:) = 1.0e20
-        call rd_out2nc(nto,mto,irec,
-     &                 f_nc,
-     &                 time3,  !HYCOM time
-     &                 name_e,flnm_e)
-        call zhflsh(lp)
-        call m2h_p(f_nc,nto,mto,1, srfht,idm,jdm,lsymetr,larctic)  !ssh or hbt
-c
-        if     (lsteric .or. lbpa) then
+        if     (trim(name_e) .eq. 'ZERO' .or.
+     &          trim(name_e) .eq. 'CALC'     ) then
+          f_nc(:,:) =  0.0  !CALC recalculated below
+        else
           f_nc(:,:) = 1.0e20
           call rd_out2nc(nto,mto,irec,
      &                   f_nc,
      &                   time3,  !HYCOM time
-     &                   name_b,flnm_e)
+     &                   name_e,flnm_e)
           call zhflsh(lp)
-          call m2h_p(f_nc,nto,mto,1, steric,idm,jdm,lsymetr,larctic)  !pbt
+        endif
+        call m2h_p(f_nc,nto,mto,1, srfht,idm,jdm,lsymetr,larctic)  !ssh or hbt
+c
+        if     (lsteric .or. lbpa) then
+          if     (trim(name_b) .ne. 'CALC') then
+            f_nc(:,:) = 1.0e20
+            call rd_out2nc(nto,mto,irec,
+     &                     f_nc,
+     &                     time3,  !HYCOM time
+     &                     name_b,flnm_e)
+            call zhflsh(lp)
+            call m2h_p(f_nc,nto,mto,1, steric,idm,jdm,lsymetr,larctic)  !pbt
+          endif !.not.CALC
         endif
 c
         if     (trim(name_o) .eq. 'NONE') then
@@ -704,7 +763,7 @@ c
         call m2h_p(f_nc,nto,mto,1, pmne,idm,jdm,lsymetr,larctic)
 c
         if     (flnm_c.ne.'NONE') then
-          irec      =  0  ! use time to select the record
+          irec      =  -icrec  !negative to skip time variable 
           f_nc(:,:) = 1.0e20
           call rd_out2nc(nto,mto,irec,
      &                   f_nc,
@@ -742,8 +801,8 @@ c
             pij      = 0.0d0
             p(i,j,1) = pij
             do k= 1,kk
-               pij        =  pij + dp(i,j,k)
-               p(i,j,k+1) =  pij
+              pij        = pij + dp(i,j,k)
+              p(i,j,k+1) = pij
             enddo !k
             montg(i,j) = p(i,j,kk+1)-depths(i,j)  !ssh?
             if     (lsteric .or. lbpa) then
@@ -752,9 +811,18 @@ c ---         in addition replace montg with (lsteric) bottom pressure
 c ---         anomaly (m) or (lbpa) ssh minus bottom pressure anomaly (m)
 c ---         both assume that ssh_mn and den_mn are entirely steric
 c
-               montg(i,j) = steric(i,j)/(9.8*den_mn(i,j)) -  !bpa=pbt/(g*rho)-h.mn
-     &                     (depths(i,j) + ssh_mn(i,j))
-                    denij = steric(i,j)/(9.8* srfht(i,j))    !den=pbt/(g*hbt)
+              if     (trim(name_b) .eq. 'CALC') then
+                bpij = 0.0d0
+                do k= 1,kk
+                  bpij = bpij + dp(i,j,k)*(th3d(i,j,k) + 1000.d0)
+                enddo !k
+                steric(i,j) = bpij*9.8  !bpa
+                 srfht(i,j) = pij       !hbt
+              endif !CALC
+c
+              montg(i,j) = steric(i,j)/(9.8*den_mn(i,j)) -  !bpa=pbt/(g*rho)-h.mn
+     &                       (depths(i,j) + ssh_mn(i,j))
+                   denij = steric(i,j)/(9.8* srfht(i,j))    !den=pbt/(g*hbt)
 *
                   if     (i.eq.itest .and. j.eq.jtest) then
                     write(lp,'(a,2i5,3g19.8)')
@@ -845,6 +913,30 @@ c
      &      'i,j,k,t,s,dp  = ',i,j,k,
      &                         temp(i,j,k),saln(i,j,k),dp(i,j,k)/onem
         enddo !k
+      endif !debug
+*
+      if     (min(itest,jtest).gt.0) then
+        i = itest
+        j = jtest
+        do l= 1,ntracr
+          do k= 1,kk
+            write(lp,'(a,2i5,i3,i2,g20.5,f15.5)')
+     &        'i,j,k,l,tr,dp  = ',i,j,k,l,
+     &                         trcr(i,j,k,l),dp(i,j,k)/onem
+          enddo !k
+        enddo !l
+      endif !debug
+*
+      if     (min(itest,jtest).gt.0) then
+        i = itest
+        j = jtest
+        do l= 1,ntracr
+          do k= 1,kk
+            write(lp,'(a,2i5,i3,i2,g20.5,f15.5)')
+     &        'i,j,k,l,tr,dp  = ',i,j,k,l,
+     &                         trcr(i,j,k,l),dp(i,j,k)/onem
+          enddo !k
+        enddo !l
       endif !debug
 *
       do j= 1,jj
@@ -1552,8 +1644,10 @@ c
           do i= 1,nto
             if     (f_nc(i,j,k).ne.1.0e20) then
                field(i,j,k) = f_nc(i,j,k)
-            else
+            elseif (k.eq.1) then
                field(i,j,k) = spval
+            else
+               field(i,j,k) = field(i,j,k-1)  !for ocnz
             endif
           enddo !i
         enddo !j
@@ -1568,6 +1662,44 @@ c
           enddo !i
           do j= 1,jj
             field(ii,j,k) = spval
+          enddo !j
+        endif !larctic:lsymetr
+      enddo !k
+      return
+      end
+
+      subroutine m2h_pz(f_nc,nto,mto,kk, field,ii,jj,lsymetr,larctic)
+      implicit none
+c
+      logical lsymetr,larctic
+      integer nto,mto,kk,ii,jj
+      real    f_nc(nto,mto,kk),field(ii,jj,kk)
+c
+c --- convert p-grid mom6 array to hycom, replace data void with zero.
+c
+      integer i,ia,j,k
+c
+      do k= 1,kk
+        do j= 1,mto
+          do i= 1,nto
+            if     (f_nc(i,j,k).ne.1.0e20) then
+               field(i,j,k) = f_nc(i,j,k)
+            else
+               field(i,j,k) = 0.0
+            endif
+          enddo !i
+        enddo !j
+        if     (larctic) then  !p-grid scalar field, mto=jj-1
+          do i= 1,nto
+            ia = nto-mod(i-1,nto)
+            field(i,jj,k) = field(ia,jj-1,k)
+          enddo !i
+        elseif (lsymetr) then
+          do i= 1,nto
+            field(i,jj,k) = 0.0
+          enddo !i
+          do j= 1,jj
+            field(ii,j,k) = 0.0
           enddo !j
         endif !larctic:lsymetr
       enddo !k
@@ -1597,8 +1729,10 @@ c
             do i= 1,nto
               if     (f_nc(i,j,k).ne.1.0e20) then
                  field(i,j,k) = f_nc(i,j,k)
-              else
+              elseif (k.eq.1) then
                  field(i,j,k) = spval
+              else
+                 field(i,j,k) = field(i,j,k-1)  !for ocnz
               endif
             enddo !i
           enddo !j
@@ -1631,8 +1765,10 @@ c
               ia = mod(i,nto)+1
               if     (f_nc(i,j,k).ne.1.0e20) then
                  field(ia,j,k) = f_nc(i,j,k)
-              else
+              elseif (k.eq.1) then
                  field(ia,j,k) = spval
+              else
+                 field(ia,j,k) = field(ia,j,k-1)  !for ocnz
               endif
             enddo !i
           enddo !j
@@ -1674,8 +1810,10 @@ c
             do i= 1,nto
               if     (f_nc(i,j,k).ne.1.0e20) then
                  field(i,j,k) = f_nc(i,j,k)
-              else
+              elseif (k.eq.1) then
                  field(i,j,k) = spval
+              else
+                 field(i,j,k) = field(i,j,k-1)  !for ocnz
               endif
             enddo !i
           enddo !j
@@ -1696,8 +1834,10 @@ c
             do i= 1,nto
               if     (f_nc(i,j,k).ne.1.0e20) then
                  field(i,j+1,k) = f_nc(i,j,k)
-              else
+              elseif (k.eq.1) then
                  field(i,j+1,k) = spval
+              else
+                 field(i,j+1,k) = field(i,j+1,k-1)  !for ocnz
               endif
             enddo !i
           enddo !j

@@ -31,10 +31,11 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm -f *.o *.a *.mod M*log *2vgrid *2archv *2field *2field3d *2tide *2uvfield
+	/bin/rm -f *.o *.a *.mod M*log *vgrid *2archv *2field *2field3d *2tide *2uvfield *hz2h
 
 MODS      =	mod_mom6.o mod_xc.o mod_za.o wtime.o
 MODM      =	mod_mom6.o mod_xc.o mod_za.o wtime.o mom_eos_wright.o
+MODZ      =	mod_mom6.o mod_xc.o mod_za.o wtime.o mom_eos_wright.o mod_mom6r8.o
 
 ARCHV_OBJ = 	bigrid.o blkin.o  \
 		forday.o  \
@@ -49,12 +50,19 @@ FIELD_OBJ = 	blkin.o  \
 VGRID_OBJ = 	blkin.o  \
 		zh.o    dum_gks.o 
 
+HZ2H_OBJ = 	blkin.o  \
+                getdat.o putdat_nc.o \
+		dum_gks.o 
+
 #
 # --- executables.
 #
 
 hycom2vgrid:        $(MODS) hycom2vgrid.o  $(VGRID_OBJ)
 	$(LD) $(LDFLAGS) -o hycom2vgrid   hycom2vgrid.o   $(VGRID_OBJ) $(MODS) $(EXTRANCDF)
+
+mom6vgrid:          $(MODS) mom6vgrid.o    $(VGRID_OBJ)
+	$(LD) $(LDFLAGS) -o mom6vgrid     mom6vgrid.o     $(VGRID_OBJ) $(MODS) $(EXTRANCDF)
 
 mom6nc2archv:       $(MODM) mom6nc2archv.o $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o mom6nc2archv  mom6nc2archv.o  $(ARCHV_OBJ) $(MODM) $(EXTRANCDF)
@@ -74,11 +82,16 @@ mom6nc2uvfield:     $(MODS) mom6nc2uvfield.o  $(FIELD_OBJ)
 mom6nc82field:      $(MODS) mom6nc82field.o  $(FIELD_OBJ)
 	$(LD) $(LDFLAGS) -o mom6nc82field  mom6nc82field.o  $(FIELD_OBJ) $(MODS) $(EXTRANCDF)
 
+mom6nc8hz2h:        $(MODZ) mom6nc8hz2h.o $(HZ2H_OBJ)
+	$(LD) $(LDFLAGS) -o mom6nc8hz2h mom6nc8hz2h.o $(HZ2H_OBJ) $(MODZ) $(EXTRANCDF)
+
 #
 # --- explicit dependencies for each .[fF] file.
 #
 
 hycom2vgrid.o:       hycom2vgrid.f       mod_xc.o
+
+mom6vgrid.o:         mom6vgrid.f         mod_xc.o
 
 mom6nc2archv.o:      mom6nc2archv.f      mod_mom6.o mod_za.o mom_eos_wright.o
 
@@ -92,6 +105,8 @@ mom6nc2uvfield.o:    mom6nc2uvfield.f    mod_mom6.o mod_za.o
 
 mom6nc82field.o:     mom6nc82field.f     mod_mom6.o mod_za.o
 
+mom6nc8hz2h.o:       mom6nc8hz2h.f      mod_mom6r8.o mom_eos_wright.o
+
 bigrid.o:   bigrid.f      mod_mom6.o
 blkin.o:    blkin.f
 dum_gks.o:  dum_gks.f
@@ -103,6 +118,9 @@ wtime.o:    wtime.F
 mod_mom6.o: mod_mom6.F
 mod_xc.o:   mod_xc.F   
 mod_za.o:   mod_za.F   mod_xc.o
+
+mod_mom6r8.o: mod_mom6r8.F
+putdat_nc.o:  putdat_nc.f
 
 mom_eos_wright.o: mom_eos_wright.f
 

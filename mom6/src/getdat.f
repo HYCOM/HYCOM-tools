@@ -14,45 +14,60 @@ c
 c  subroutine arguments:
 c       n,m     = horizontal grid dimensions.
 c       irec    = time record to input (0-> input record "time")
-c                  unchanged on output if >0, set to read record otherwise
+c                  unchanged on output if not 0, set to read record otherwise
+c                  if <0, rec=-irec and time is not read (time3 unchanged)
 c       flnm_t  = filename of the netCDF input.
-c       name_t  =     name of the netCDF field.
+c       name_t  =     name of the netCDF field or "ZERO" to skip.
 c
 c       t       = field
 c       time3   = days since 1901-01-01 00:00:00
 c                  time3(1) = start time interval
 c                  time3(2) = end   time interval
 c                  time3(3) = mid   time interval
-c                  output if irec>0, input if irec=0
+c                  output    if irec>0, input if irec=0,
+c                  unchanged if irec<0
 c
       character*(NF90_MAX_NAME)     :: cD
       character*(256)               :: flnm_p
       logical                       :: lexist
       integer                       :: ncFID,ncVID,ncNID,ncSTATUS
       integer                       :: ncDIDs(nf90_max_var_dims)
-      integer                       :: i,k,nc,nc1st,nclst
+      integer                       :: i,ir,k,nc,nc1st,nclst
       integer                       :: np,mp,nx(4),ny(4),tto
       real, allocatable             :: p(:,:)
       double precision, allocatable :: t_rec(:)
       double precision              :: tbnds(2)
+*
+*     write(6,*) "rd_out2nc-file  = ",trim(flnm_t)
+*     write(6,*) "rd_out2nc-name  = ",trim(name_t)
+*     write(6,*)
+c
+      if     (name_t.eq.'ZERO') then
+        write(6,*) "name  = ",trim(name_t)
+        t(:,:) = 0.0
+        return
+      endif
 c
       write(6,*) "irec  = ",irec
 c
       i = len_trim(flnm_t)
       if     (flnm_t(i-2:i).eq.'.nc') then
 c ---   single netCDF file
-        call nchek('nf90_open-T',
+        call nchek('rd_out2nc-nf90_open-T',
      &              nf90_open(trim(flnm_t), nf90_nowrite, ncFID))
-        call nchek('nf90_inq_varid-Time',
+        if     (irec.lt.0) then
+        ir = -irec
+        else   !irec.ge.0
+        call nchek('rd_out2nc-nf90_inq_varid-Time',
      &              nf90_inq_varid(ncFID,'Time',  ncVID))
         if     (irec.eq.0) then
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out2nc-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(1:1)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out2nc-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), len=tto))
           allocate( t_rec(tto) )
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out2nc-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                (/ 1 /) ))
           do k= 1,tto
@@ -71,17 +86,19 @@ c ---   single netCDF file
             stop
           endif !irec==0
           deallocate( t_rec )
-        else
-          call nchek('nf90_get_var-Time',
+          ir = irec
+        else !irec.gt.0
+          ir = irec
+          call nchek('rd_out2nc-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, time3(3),
-     &                                                (/ irec /) ))
-        endif
+     &                                                (/ ir /) ))
+        endif !irec.eq.0:irec.gt.0
         ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
         if     (ncSTATUS.eq.NF90_NOERR) then
 c ---     time-mean fields
-          call nchek('nf90_get_var-Time_bnds',
+          call nchek('rd_out2nc-nf90_get_var-Time_bnds',
      &                nf90_get_var(  ncFID, ncVID, tbnds(1:2),
-     &                                           (/ 1,irec /) ))
+     &                                           (/ 1,ir /) ))
           time3(1) = tbnds(1)
           time3(2) = tbnds(2)
         else
@@ -89,13 +106,17 @@ c ---     instantaneous fields
           time3(1) = time3(3)
           time3(2) = time3(3)
         endif
+        endif  !irec.lt.0:else
         write(6,*) "name  = ",trim(name_t)
-        write(6,*) "time3 = ",time3
-        call nchek('nf90_inq_varid-'//trim(name_t),
+        if     (irec.eq.ir) then
+*         write(6,*) "irec  = ",ir
+          write(6,*) "time  = ",time3(3)
+        endif
+        call nchek('rd_out2nc-nf90_inq_varid-'//trim(name_t),
      &              nf90_inq_varid(ncFID,trim(name_t), ncVID))
-        call nchek('nf90_get_var-'//trim(name_t),
+        call nchek('rd_out2nc-nf90_get_var-'//trim(name_t),
      &              nf90_get_var(  ncFID,              ncVID, t(:,:),
-     &                                               (/ 1,1,irec /) ))
+     &                                               (/ 1,1,ir /) ))
         call nchek("nf90_close",
      &              nf90_close(ncFID))
       else
@@ -114,17 +135,20 @@ c ---   multiple netCDF files
             write (6,'(2a)') '  skip MOM6  file: ',trim(flnm_p)
             cycle
           endif
-          call nchek('nf90_inq_varid-Time',
+          call nchek('rd_out2nc-nf90_inq_varid-Time',
      &                nf90_inq_varid(ncFID,'Time',  ncVID))
+          if     (irec.lt.0) then
+            ir = -irec
+          else   !irec.ge.0
           if     (irec.eq.0) then
-            call nchek('nf90_inq_variable(dimids)',
+            call nchek('rd_out2nc-nf90_inq_variable(dimids)',
      &                  nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(1:1)))
-            call nchek('nf90_inquire_dimension-1',
+            call nchek('rd_out2nc-nf90_inquire_dimension-1',
      &                  nf90_inquire_dimension(ncFID, ncDIDs(1),
      &                                                len=tto))
             allocate( t_rec(tto) )
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out2nc-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                  (/ 1 /) ))
             do k= 1,tto
@@ -143,17 +167,19 @@ c ---   multiple netCDF files
               stop
             endif !irec==0
             deallocate( t_rec )
+            ir = irec
           else
-            call nchek('nf90_get_var-Time',
+            ir = irec
+            call nchek('rd_out2nc-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, time3(3),
-     &                                                  (/ irec /) ))
+     &                                                  (/ ir /) ))
           endif
           ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
           if     (ncSTATUS.eq.NF90_NOERR) then
 c ---       time-mean fields
-            call nchek('nf90_get_var-Time_bnds',
+            call nchek('rd_out2nc-nf90_get_var-Time_bnds',
      &                  nf90_get_var(  ncFID, ncVID, tbnds(1:2),
-     &                                             (/ 1,irec /) ))
+     &                                             (/ 1,ir /) ))
             time3(1) = tbnds(1)
             time3(2) = tbnds(2)
           else
@@ -161,32 +187,36 @@ c ---       instantaneous fields
             time3(1) = time3(3)
             time3(2) = time3(3)
           endif
+          endif  !irec.lt.0:else
           if     (nc.eq.nc1st) then
             write(6,*) "name  = ",trim(name_t)
-            write(6,*) "time3 = ",time3
+            if     (irec.eq.ir) then
+*             write(6,*) "irec  = ",ir
+              write(6,*) "time  = ",time3(3)
+            endif
           endif
 c
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out2nc-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_inq_variable(ndims)',
+          call nchek('rd_out2nc-nf90_inq_variable(ndims)',
      &                nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out2nc-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(:ncNID)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out2nc-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out2nc-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out2nc-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", nx(:)))
 *         write(6,*) 'nx    = ',nx
 c
-          call nchek('nf90_inquire_dimension-2',
+          call nchek('rd_out2nc-nf90_inquire_dimension-2',
      &                nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out2nc-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out2nc-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
@@ -205,11 +235,11 @@ c
           mp = ny(4)-ny(3)+1
 *         write(6,*) 'np,mp = ',np,mp
           allocate( p(np,mp) )
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out2nc-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_get_var-'//trim(name_t),
+          call nchek('rd_out2nc-nf90_get_var-'//trim(name_t),
      &                nf90_get_var(  ncFID,              ncVID, p(:,:),
-     &                                                 (/ 1,1,irec /) ))
+     &                                                 (/ 1,1,ir /) ))
           t(nx(3):nx(4),ny(3):ny(4)) = p(:,:)
           deallocate( p )
           call nchek("nf90_close",
@@ -238,7 +268,7 @@ c       n,m     = horizontal grid dimensions.
 c       irec    = time record to input (0-> input record "time")
 c                  unchanged on output if >0, set to read record otherwise
 c       flnm_t  = filename of the netCDF input.
-c       name_t  =     name of the netCDF field.
+c       name_t  =     name of the netCDF field or "ZERO" to skip.
 c
 c       t       = field (real*8)
 c       time3   = days since 1901-01-01 00:00:00
@@ -257,24 +287,34 @@ c
       real, allocatable             :: p(:,:)
       double precision, allocatable :: t_rec(:)
       double precision              :: tbnds(2)
+*
+*     write(6,*) "rd_out2nc8-file  = ",trim(flnm_t)
+*     write(6,*) "rd_out2nc8-name  = ",trim(name_t)
+*     write(6,*)
+c
+      if     (name_t.eq.'ZERO') then
+        write(6,*) "name  = ",trim(name_t)
+        t(:,:) = 0.0
+        return
+      endif
 c
       write(6,*) "irec  = ",irec
 c
       i = len_trim(flnm_t)
       if     (flnm_t(i-2:i).eq.'.nc') then
 c ---   single netCDF file
-        call nchek('nf90_open-T',
+        call nchek('rd_out2nc8-nf90_open-T',
      &              nf90_open(trim(flnm_t), nf90_nowrite, ncFID))
-        call nchek('nf90_inq_varid-Time',
+        call nchek('rd_out2nc8-nf90_inq_varid-Time',
      &              nf90_inq_varid(ncFID,'Time',  ncVID))
         if     (irec.eq.0) then
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out2nc8-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(1:1)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out2nc8-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), len=tto))
           allocate( t_rec(tto) )
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out2nc8-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                (/ 1 /) ))
           do k= 1,tto
@@ -294,14 +334,14 @@ c ---   single netCDF file
           endif !irec==0
           deallocate( t_rec )
         else
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out2nc8-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, time3(3),
      &                                                (/ irec /) ))
         endif
         ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
         if     (ncSTATUS.eq.NF90_NOERR) then
 c ---     time-mean fields
-          call nchek('nf90_get_var-Time_bnds',
+          call nchek('rd_out2nc8-nf90_get_var-Time_bnds',
      &                nf90_get_var(  ncFID, ncVID, tbnds(1:2),
      &                                           (/ 1,irec /) ))
           time3(1) = tbnds(1)
@@ -312,10 +352,10 @@ c ---     instantaneous fields
           time3(2) = time3(3)
         endif
         write(6,*) "name  = ",trim(name_t)
-        write(6,*) "time3 = ",time3
-        call nchek('nf90_inq_varid-'//trim(name_t),
+        write(6,*) "time  = ",time3(3)
+        call nchek('rd_out2nc8-nf90_inq_varid-'//trim(name_t),
      &              nf90_inq_varid(ncFID,trim(name_t), ncVID))
-        call nchek('nf90_get_var-'//trim(name_t),
+        call nchek('rd_out2nc8-nf90_get_var-'//trim(name_t),
      &              nf90_get_var(  ncFID,              ncVID, t(:,:),
      &                                               (/ 1,1,irec /) ))
         call nchek("nf90_close",
@@ -336,17 +376,17 @@ c ---   multiple netCDF files
             write (6,'(2a)') '  skip MOM6  file: ',trim(flnm_p)
             cycle
           endif
-          call nchek('nf90_inq_varid-Time',
+          call nchek('rd_out2nc8-nf90_inq_varid-Time',
      &                nf90_inq_varid(ncFID,'Time',  ncVID))
           if     (irec.eq.0) then
-            call nchek('nf90_inq_variable(dimids)',
+            call nchek('rd_out2nc8-nf90_inq_variable(dimids)',
      &                  nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(1:1)))
-            call nchek('nf90_inquire_dimension-1',
+            call nchek('rd_out2nc8-nf90_inquire_dimension-1',
      &                  nf90_inquire_dimension(ncFID, ncDIDs(1),
      &                                                len=tto))
             allocate( t_rec(tto) )
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out2nc8-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                  (/ 1 /) ))
             do k= 1,tto
@@ -366,14 +406,14 @@ c ---   multiple netCDF files
             endif !irec==0
             deallocate( t_rec )
           else
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out2nc8-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, time3(3),
      &                                                  (/ irec /) ))
           endif
           ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
           if     (ncSTATUS.eq.NF90_NOERR) then
 c ---       time-mean fields
-            call nchek('nf90_get_var-Time_bnds',
+            call nchek('rd_out2nc8-nf90_get_var-Time_bnds',
      &                  nf90_get_var(  ncFID, ncVID, tbnds(1:2),
      &                                             (/ 1,irec /) ))
             time3(1) = tbnds(1)
@@ -385,30 +425,30 @@ c ---       instantaneous fields
           endif
           if     (nc.eq.nc1st) then
             write(6,*) "name  = ",trim(name_t)
-            write(6,*) "time3 = ",time3
+            write(6,*) "time  = ",time3(3)
           endif
 c
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out2nc8-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_inq_variable(ndims)',
+          call nchek('rd_out2nc8-nf90_inq_variable(ndims)',
      &                nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out2nc8-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(:ncNID)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out2nc8-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out2nc8-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out2nc8-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", nx(:)))
 *         write(6,*) 'nx    = ',nx
 c
-          call nchek('nf90_inquire_dimension-2',
+          call nchek('rd_out2nc8-nf90_inquire_dimension-2',
      &                nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out2nc8-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out2nc8-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
@@ -422,9 +462,9 @@ c
           mp = ny(4)-ny(3)+1
 *         write(6,*) 'np,mp = ',np,mp
           allocate( p(np,mp) )
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out2nc8-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_get_var-'//trim(name_t),
+          call nchek('rd_out2nc8-nf90_get_var-'//trim(name_t),
      &                nf90_get_var(  ncFID,              ncVID, p(:,:),
      &                                                 (/ 1,1,irec /) ))
           t(nx(3):nx(4),ny(3):ny(4)) = p(:,:)
@@ -456,7 +496,7 @@ c       l       = vertical   grid dimension.
 c       irec    = time record to input (0-> input record "time")
 c                  unchanged on output if >0, set to read record otherwise
 c       flnm_t  = filename of the netCDF input.
-c       name_t  =     name of the netCDF field.
+c       name_t  =     name of the netCDF field or "ZERO" to skip.
 c
 c       t       = field
 c       time3   = days since 1901-01-01 00:00:00
@@ -475,24 +515,34 @@ c
       real, allocatable             :: p(:,:,:)
       double precision, allocatable :: t_rec(:)
       double precision              :: tbnds(2)
+*
+*     write(6,*) "rd_out3nc-file  = ",trim(flnm_t)
+*     write(6,*) "rd_out3nc-name  = ",trim(name_t)
+*     write(6,*)
+c
+      if     (name_t.eq.'ZERO') then
+        write(6,*) "name  = ",trim(name_t)
+        t(:,:,:) = 0.0
+        return
+      endif
 c
       write(6,*) "irec  = ",irec
 c
       i = len_trim(flnm_t)
       if     (flnm_t(i-2:i).eq.'.nc') then
 c ---   single netCDF file
-        call nchek('nf90_open-T',
+        call nchek('rd_out3nc-nf90_open-T',
      &              nf90_open(trim(flnm_t), nf90_nowrite, ncFID))
-        call nchek('nf90_inq_varid-Time',
+        call nchek('rd_out3nc-nf90_inq_varid-Time',
      &              nf90_inq_varid(ncFID,'Time',  ncVID))
        if     (irec.eq.0) then
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out3nc-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(1:1)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out3nc-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), len=tto))
           allocate( t_rec(tto) )
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out3nc-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                (/ 1 /) ))
           do k= 1,tto
@@ -512,14 +562,14 @@ c ---   single netCDF file
           endif !irec==0
           deallocate( t_rec )
         else
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out3nc-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, time3(3),
      &                                                (/ irec /) ))
         endif
         ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
         if     (ncSTATUS.eq.NF90_NOERR) then
 c ---     time-mean fields
-          call nchek('nf90_get_var-Time_bnds',
+          call nchek('rd_out3nc-nf90_get_var-Time_bnds',
      &                nf90_get_var(  ncFID, ncVID, tbnds(1:2),
      &                                           (/ 1,irec /) ))
           time3(1) = tbnds(1)
@@ -531,9 +581,9 @@ c ---     instantaneous fields
         endif
         write(6,*) "name  = ",trim(name_t)
         write(6,*) "time  = ",time3(3)
-        call nchek('nf90_inq_varid-'//trim(name_t),
+        call nchek('rd_out3nc-nf90_inq_varid-'//trim(name_t),
      &              nf90_inq_varid(ncFID,trim(name_t), ncVID))
-        call nchek('nf90_get_var-'//trim(name_t),
+        call nchek('rd_out3nc-nf90_get_var-'//trim(name_t),
      &              nf90_get_var(  ncFID,              ncVID, t(:,:,:),
      &                                               (/ 1,1,1,irec /) ))
         call nchek("nf90_close",
@@ -554,17 +604,17 @@ c ---   multiple netCDF files
             write (6,'(2a)') '  skip MOM6  file: ',trim(flnm_p)
             cycle
           endif
-          call nchek('nf90_inq_varid-Time',
+          call nchek('rd_out3nc-nf90_inq_varid-Time',
      &                nf90_inq_varid(ncFID,'Time',  ncVID))
           if     (irec.eq.0) then
-            call nchek('nf90_inq_variable(dimids)',
+            call nchek('rd_out3nc-nf90_inq_variable(dimids)',
      &                  nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(1:1)))
-            call nchek('nf90_inquire_dimension-1',
+            call nchek('rd_out3nc-nf90_inquire_dimension-1',
      &                  nf90_inquire_dimension(ncFID, ncDIDs(1),
      &                                                len=tto))
             allocate( t_rec(tto) )
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out3nc-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                  (/ 1 /) ))
             do k= 1,tto
@@ -584,14 +634,14 @@ c ---   multiple netCDF files
             endif !irec==0
             deallocate( t_rec )
           else
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out3nc-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, time3(3),
      &                                                  (/ irec /) ))
           endif
           ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
           if     (ncSTATUS.eq.NF90_NOERR) then
 c ---       time-mean fields
-            call nchek('nf90_get_var-Time_bnds',
+            call nchek('rd_out3nc-nf90_get_var-Time_bnds',
      &                  nf90_get_var(  ncFID, ncVID, tbnds(1:2),
      &                                             (/ 1,irec /) ))
             time3(1) = tbnds(1)
@@ -603,30 +653,30 @@ c ---       instantaneous fields
           endif
           if     (nc.eq.nc1st) then
             write(6,*) "name  = ",trim(name_t)
-            write(6,*) "time3 = ",time3
+            write(6,*) "time  = ",time3(3)
           endif
 c
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out3nc-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_inq_variable(ndims)',
+          call nchek('rd_out3nc-nf90_inq_variable(ndims)',
      &                nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out3nc-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(:ncNID)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out3nc-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out3nc-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out3nc-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", nx(:)))
 *         write(6,*) 'nx    = ',nx
 c
-          call nchek('nf90_inquire_dimension-2',
+          call nchek('rd_out3nc-nf90_inquire_dimension-2',
      &                nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out3nc-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out3nc-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
@@ -640,9 +690,9 @@ c
           mp = ny(4)-ny(3)+1
 *         write(6,*) 'np,mp = ',np,mp
           allocate( p(np,mp,l) )
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out3nc-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_get_var-'//trim(name_t),
+          call nchek('rd_out3nc-nf90_get_var-'//trim(name_t),
      &                nf90_get_var(  ncFID,              ncVID,
      &                                                  p(:,:,:),
      &                                              (/ 1,1,1,irec /) ))
@@ -675,7 +725,7 @@ c       l       = vertical   grid dimension.
 c       irec    = time record to input (0-> input record "time")
 c                  unchanged on output if >0, set to read record otherwise
 c       flnm_t  = filename of the netCDF input.
-c       name_t  =     name of the netCDF field.
+c       name_t  =     name of the netCDF field or "ZERO" to skip.
 c
 c       t       = field (real*8)
 c       time3   = days since 1901-01-01 00:00:00
@@ -694,24 +744,34 @@ c
       real, allocatable             :: p(:,:,:)
       double precision, allocatable :: t_rec(:)
       double precision              :: tbnds(2)
+*
+*     write(6,*) "rd_out3nc8-file  = ",trim(flnm_t)
+*     write(6,*) "rd_out3nc8-name  = ",trim(name_t)
+*     write(6,*)
+c
+      if     (name_t.eq.'ZERO') then
+        write(6,*) "name  = ",trim(name_t)
+        t(:,:,:) = 0.0
+        return
+      endif
 c
       write(6,*) "irec  = ",irec
 c
       i = len_trim(flnm_t)
       if     (flnm_t(i-2:i).eq.'.nc') then
 c ---   single netCDF file
-        call nchek('nf90_open-T',
+        call nchek('rd_out3nc8-nf90_open-T',
      &              nf90_open(trim(flnm_t), nf90_nowrite, ncFID))
-        call nchek('nf90_inq_varid-Time',
+        call nchek('rd_out3nc8-nf90_inq_varid-Time',
      &              nf90_inq_varid(ncFID,'Time',  ncVID))
        if     (irec.eq.0) then
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out3nc8-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(1:1)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out3nc8-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), len=tto))
           allocate( t_rec(tto) )
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out3nc8-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                (/ 1 /) ))
           do k= 1,tto
@@ -731,14 +791,14 @@ c ---   single netCDF file
           endif !irec==0
           deallocate( t_rec )
         else
-          call nchek('nf90_get_var-Time',
+          call nchek('rd_out3nc8-nf90_get_var-Time',
      &                nf90_get_var(  ncFID,         ncVID, time3(3),
      &                                                (/ irec /) ))
         endif
         ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
         if     (ncSTATUS.eq.NF90_NOERR) then
 c ---     time-mean fields
-          call nchek('nf90_get_var-Time_bnds',
+          call nchek('rd_out3nc8-nf90_get_var-Time_bnds',
      &                nf90_get_var(  ncFID, ncVID, tbnds(1:2),
      &                                           (/ 1,irec /) ))
           time3(1) = tbnds(1)
@@ -750,9 +810,9 @@ c ---     instantaneous fields
         endif
         write(6,*) "name  = ",trim(name_t)
         write(6,*) "time  = ",time3(3)
-        call nchek('nf90_inq_varid-'//trim(name_t),
+        call nchek('rd_out3nc8-nf90_inq_varid-'//trim(name_t),
      &              nf90_inq_varid(ncFID,trim(name_t), ncVID))
-        call nchek('nf90_get_var-'//trim(name_t),
+        call nchek('rd_out3nc8-nf90_get_var-'//trim(name_t),
      &              nf90_get_var(  ncFID,              ncVID, t(:,:,:),
      &                                               (/ 1,1,1,irec /) ))
         call nchek("nf90_close",
@@ -773,17 +833,17 @@ c ---   multiple netCDF files
             write (6,'(2a)') '  skip MOM6  file: ',trim(flnm_p)
             cycle
           endif
-          call nchek('nf90_inq_varid-Time',
+          call nchek('rd_out3nc8-nf90_inq_varid-Time',
      &                nf90_inq_varid(ncFID,'Time',  ncVID))
           if     (irec.eq.0) then
-            call nchek('nf90_inq_variable(dimids)',
+            call nchek('rd_out3nc8-nf90_inq_variable(dimids)',
      &                  nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(1:1)))
-            call nchek('nf90_inquire_dimension-1',
+            call nchek('rd_out3nc8-nf90_inquire_dimension-1',
      &                  nf90_inquire_dimension(ncFID, ncDIDs(1),
      &                                                len=tto))
             allocate( t_rec(tto) )
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out3nc8-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, t_rec(:),
      &                                                  (/ 1 /) ))
             do k= 1,tto
@@ -803,14 +863,14 @@ c ---   multiple netCDF files
             endif !irec==0
             deallocate( t_rec )
           else
-            call nchek('nf90_get_var-Time',
+            call nchek('rd_out3nc8-nf90_get_var-Time',
      &                  nf90_get_var(  ncFID,         ncVID, time3(3),
      &                                                  (/ irec /) ))
           endif
           ncSTATUS = nf90_inq_varid(ncFID,'Time_bnds',  ncVID)
           if     (ncSTATUS.eq.NF90_NOERR) then
 c ---       time-mean fields
-            call nchek('nf90_get_var-Time_bnds',
+            call nchek('rd_out3nc8-nf90_get_var-Time_bnds',
      &                  nf90_get_var(  ncFID, ncVID, tbnds(1:2),
      &                                             (/ 1,irec /) ))
             time3(1) = tbnds(1)
@@ -822,30 +882,30 @@ c ---       instantaneous fields
           endif
           if     (nc.eq.nc1st) then
             write(6,*) "name  = ",trim(name_t)
-            write(6,*) "time3 = ",time3
+            write(6,*) "time  = ",time3(3)
           endif
 c
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out3nc8-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_inq_variable(ndims)',
+          call nchek('rd_out3nc8-nf90_inq_variable(ndims)',
      &                nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_out3nc8-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(:ncNID)))
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_out3nc8-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out3nc8-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out3nc8-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", nx(:)))
 *         write(6,*) 'nx    = ',nx
 c
-          call nchek('nf90_inquire_dimension-2',
+          call nchek('rd_out3nc8-nf90_inquire_dimension-2',
      &                nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_out3nc8-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_out3nc8-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
 *         write(6,*) 'ny    = ',ny
@@ -859,9 +919,9 @@ c
           mp = ny(4)-ny(3)+1
 *         write(6,*) 'np,mp = ',np,mp
           allocate( p(np,mp,l) )
-          call nchek('nf90_inq_varid-'//trim(name_t),
+          call nchek('rd_out3nc8-nf90_inq_varid-'//trim(name_t),
      &                nf90_inq_varid(ncFID,trim(name_t), ncVID))
-          call nchek('nf90_get_var-'//trim(name_t),
+          call nchek('rd_out3nc8-nf90_get_var-'//trim(name_t),
      &                nf90_get_var(  ncFID,              ncVID,
      &                                                  p(:,:,:),
      &                                              (/ 1,1,1,irec /) ))
@@ -893,16 +953,20 @@ c
       integer  i,ncFID,ncDID,ncVID,ncNID,ncDIDs(nf90_max_var_dims)
       integer  nc,nc1st,nclst
       integer  nx(4),ny(4)
+*
+*     write(6,*) "rd_dimen-file  = ",trim(cfile)
+*     write(6,*) "rd_dimen-name  = ",trim(cname)
+*     write(6,*)
 c
       i = len_trim(cfile)
       if     (cfile(i-2:i).eq.'.nc') then
-        call nchek('nf90_open-rd_dimen',
+        call nchek('rd_dimen-nf90_open-rd_dimen',
      &              nf90_open(trim(cfile), nf90_nowrite, ncFID))
 c
-        call nchek('nf90_inq_varid',
+        call nchek('rd_dimen-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-        call nchek('nf90_inq_variable(ndims)',
+        call nchek('rd_dimen-nf90_inq_variable(ndims)',
      &              nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
 c
         if     (ncNID.ne.4) then
@@ -911,20 +975,20 @@ c
           stop
         endif
 c
-        call nchek('nf90_inq_variable(dimids)',
+        call nchek('rd_dimen-nf90_inq_variable(dimids)',
      &              nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(:ncNID)))
 c
-        call nchek('nf90_inquire_dimension-1',
+        call nchek('rd_dimen-nf90_inquire_dimension-1',
      &              nf90_inquire_dimension(ncFID, ncDIDs(1), len=xto))
 c
-        call nchek('nf90_inquire_dimension-2',
+        call nchek('rd_dimen-nf90_inquire_dimension-2',
      &              nf90_inquire_dimension(ncFID, ncDIDs(2), len=yto))
 c
-        call nchek('nf90_inquire_dimension-3',
+        call nchek('rd_dimen-nf90_inquire_dimension-3',
      &              nf90_inquire_dimension(ncFID, ncDIDs(3), len=zto))
 c
-        call nchek('nf90_inquire_dimension-4',
+        call nchek('rd_dimen-nf90_inquire_dimension-4',
      &              nf90_inquire_dimension(ncFID, ncDIDs(4), len=tto))
 c
         call nchek("nf90_close",
@@ -934,7 +998,7 @@ c ---   multiple netCDF files
         read(cfile(i-8:i-5),*) nc1st
         read(cfile(i-3:i)  ,*) nclst
         do nc= nc1st, nclst
-          write (6,*) 'nc    = ',nc
+*         write (6,*) 'nc    = ',nc
           flnm_p = cfile(1:i-9)
           write(flnm_p(i-8:i-5),'(i4.4)') nc
           lexist =    nf90_open(trim(flnm_p), nf90_nowrite, ncFID)
@@ -948,13 +1012,13 @@ c ---   multiple netCDF files
             cycle  !nc loop
           endif
           write(6,'(3a)') "nf90_open(",trim(flnm_p),","
-          call nchek('nf90_open-rd_dimen-XXXX',
+          call nchek('rd_dimen-nf90_open-rd_dimen-XXXX',
      &                nf90_open(trim(flnm_p), nf90_nowrite, ncFID))
 c
-          call nchek('nf90_inq_varid',
+          call nchek('rd_dimen-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-          call nchek('nf90_inq_variable(ndims)',
+          call nchek('rd_dimen-nf90_inq_variable(ndims)',
      &                nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
 c
           if     (ncNID.ne.4) then
@@ -963,34 +1027,34 @@ c
             stop
           endif
 c
-          call nchek('nf90_inq_variable(dimids)',
+          call nchek('rd_dimen-nf90_inq_variable(dimids)',
      &                nf90_inquire_variable(ncFID,  ncVID,
      &                                           dimids=ncDIDs(:ncNID)))
 c
-          call nchek('nf90_inquire_dimension-1',
+          call nchek('rd_dimen-nf90_inquire_dimension-1',
      &                nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_dimen-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_dimen-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", nx(:)))
-          write(6,*) 'nx    = ',nx
+*         write(6,*) 'nx    = ',nx
           xto = nx(2)
 c
-          call nchek('nf90_inquire_dimension-2',
+          call nchek('rd_dimen-nf90_inquire_dimension-2',
      &                nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-          call nchek('nf90_inq_varid',
+          call nchek('rd_dimen-nf90_inq_varid',
      &                nf90_inq_varid(ncFID, trim(cD), ncVID))
-          call nchek('nf90_get_att',
+          call nchek('rd_dimen-nf90_get_att',
      &                nf90_get_att(ncFID, ncVID,
      &                             "domain_decomposition", ny(:)))
-          write(6,*) 'ny    = ',ny
+*         write(6,*) 'ny    = ',ny
           yto = ny(2)
 c
-          call nchek('nf90_inquire_dimension-3',
+          call nchek('rd_dimen-nf90_inquire_dimension-3',
      &                nf90_inquire_dimension(ncFID, ncDIDs(3), len=zto))
 c
-          call nchek('nf90_inquire_dimension-4',
+          call nchek('rd_dimen-nf90_inquire_dimension-4',
      &                nf90_inquire_dimension(ncFID, ncDIDs(4), len=tto))
 c
           call nchek("nf90_close",
@@ -1016,16 +1080,20 @@ c
       character*(NF90_MAX_NAME) :: cD
       integer  i,ncFID,ncDID,ncVID,ncNID,ncDIDs(nf90_max_var_dims)
       integer  nx(4),ny(4)
+*
+*     write(6,*) "rd_dimen2-file  = ",trim(cfile)
+*     write(6,*) "rd_dimen2-name  = ",trim(cname)
+*     write(6,*)
 c
       i = len_trim(cfile)
       if     (cfile(i-2:i).eq.'.nc') then
-        call nchek('nf90_open-rd_dimen2',
+        call nchek('rd_dimen2-nf90_open-rd_dimen2',
      &              nf90_open(trim(cfile), nf90_nowrite, ncFID))
 c
-        call nchek('nf90_inq_varid',
+        call nchek('rd_dimen2-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-        call nchek('nf90_inq_variable(ndims)',
+        call nchek('rd_dimen2-nf90_inq_variable(ndims)',
      &              nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
 c
         if     (ncNID.ne.3) then
@@ -1034,17 +1102,17 @@ c
           stop
         endif
 c
-        call nchek('nf90_inq_variable(dimids)',
+        call nchek('rd_dimen2-nf90_inq_variable(dimids)',
      &              nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(:ncNID)))
 c
-        call nchek('nf90_inquire_dimension-1',
+        call nchek('rd_dimen2-nf90_inquire_dimension-1',
      &              nf90_inquire_dimension(ncFID, ncDIDs(1), len=xto))
 c
-        call nchek('nf90_inquire_dimension-2',
+        call nchek('rd_dimen2-nf90_inquire_dimension-2',
      &              nf90_inquire_dimension(ncFID, ncDIDs(2), len=yto))
 c
-        call nchek('nf90_inquire_dimension-3',
+        call nchek('rd_dimen2-nf90_inquire_dimension-3',
      &              nf90_inquire_dimension(ncFID, ncDIDs(3), len=tto))
 c
         call nchek("nf90_close",
@@ -1052,13 +1120,13 @@ c
       else
         i = len_trim(cfile)
 *       write(6,'(3a)') "nf90_open(",cfile(1:i-5),","
-        call nchek('nf90_open-rd_dimen2-0000',
+        call nchek('rd_dimen2-nf90_open-rd_dimen2-0000',
      &              nf90_open(cfile(1:i-5), nf90_nowrite, ncFID))
 c
-        call nchek('nf90_inq_varid',
+        call nchek('rd_dimen2-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-        call nchek('nf90_inq_variable(ndims)',
+        call nchek('rd_dimen2-nf90_inq_variable(ndims)',
      &              nf90_inquire_variable(ncFID, ncVID, ndims=ncNID))
 c
         if     (ncNID.ne.3) then
@@ -1067,31 +1135,31 @@ c
           stop
         endif
 c
-        call nchek('nf90_inq_variable(dimids)',
+        call nchek('rd_dimen2-nf90_inq_variable(dimids)',
      &              nf90_inquire_variable(ncFID,  ncVID,
      &                                         dimids=ncDIDs(:ncNID)))
 c
-        call nchek('nf90_inquire_dimension-1',
+        call nchek('rd_dimen2-nf90_inquire_dimension-1',
      &              nf90_inquire_dimension(ncFID, ncDIDs(1), name=cD))
-        call nchek('nf90_inq_varid',
+        call nchek('rd_dimen2-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cD), ncVID))
-        call nchek('nf90_get_att',
+        call nchek('rd_dimen2-nf90_get_att',
      &              nf90_get_att(ncFID, ncVID,
      &                           "domain_decomposition", nx(:)))
 *       write(6,*) 'nx    = ',nx
         xto = nx(2)
 c
-        call nchek('nf90_inquire_dimension-2',
+        call nchek('rd_dimen2-nf90_inquire_dimension-2',
      &              nf90_inquire_dimension(ncFID, ncDIDs(2), name=cD))
-        call nchek('nf90_inq_varid',
+        call nchek('rd_dimen2-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cD), ncVID))
-        call nchek('nf90_get_att',
+        call nchek('rd_dimen2-nf90_get_att',
      &              nf90_get_att(ncFID, ncVID,
      &                           "domain_decomposition", ny(:)))
 *       write(6,*) 'ny    = ',ny
         yto = ny(2)
 c
-        call nchek('nf90_inquire_dimension-3',
+        call nchek('rd_dimen2-nf90_inquire_dimension-3',
      &              nf90_inquire_dimension(ncFID, ncDIDs(3), len=tto))
 c
         call nchek("nf90_close",
@@ -1116,13 +1184,13 @@ c
 c
       i = len_trim(cfile)
       if     (cfile(i-2:i).eq.'.nc') then
-        call nchek('nf90_open-rd_missing',
+        call nchek('rd_missing-nf90_open-rd_missing',
      &              nf90_open(trim(cfile), nf90_nowrite, ncFID))
 c
-        call nchek('nf90_inq_varid',
+        call nchek('rd_missing-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-        call nchek('nf90_get_att(misval)',
+        call nchek('rd_missing-nf90_get_att(misval)',
      &              nf90_get_att(ncFID, ncVID, "missing_value", misval))
 c
         call nchek("nf90_close",
@@ -1130,13 +1198,13 @@ c
       else
         i = len_trim(cfile)
         write(6,'(3a)') "nf90_open(",cfile(1:i-5),","
-        call nchek('nf90_open-rd_missing-0000',
+        call nchek('rd_missing-nf90_open-rd_missing-0000',
      &              nf90_open(cfile(1:i-5), nf90_nowrite, ncFID))
 c
-        call nchek('nf90_inq_varid',
+        call nchek('rd_missing-nf90_inq_varid',
      &              nf90_inq_varid(ncFID, trim(cname), ncVID))
 c
-        call nchek('nf90_get_att(misval)',
+        call nchek('rd_missing-nf90_get_att(misval)',
      &              nf90_get_att(ncFID, ncVID, "missing_value", misval))
 c
         call nchek("nf90_close",
@@ -1405,11 +1473,11 @@ c       l    = number of layers.
 c
       integer ncFID,ncVID
 c
-      call nchek('nf90_open-rd_vgrid',
+      call nchek('rd_vgrid-nf90_open-rd_vgrid',
      &            nf90_open(trim(cfile), nf90_nowrite, ncFID))
-      call nchek('nf90_inq_varid-zt_edges_ocean',
+      call nchek('rd_vgrid-nf90_inq_varid-zt_edges_ocean',
      &            nf90_inq_varid(ncFID,'zt_edges_ocean', ncVID))
-      call nchek('nf90_get_var-zt_edges_ocean',
+      call nchek('rd_vgrid-nf90_get_var-zt_edges_ocean',
      &            nf90_get_var(  ncFID,                  ncVID,
      &                                                   zi(:)))
       call nchek("nf90_close",

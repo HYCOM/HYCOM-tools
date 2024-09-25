@@ -9,17 +9,22 @@ c --- but not all of them are supported by MOM6
 C
 C --- There are MOM6-specific blkdat variables at the end of the input
 c
-      character*256    cline
-      logical          vsigma
-      integer          k,kk,nhybrd,nsigma,thflag
+      character*256    cline,cline2
+      logical          vsigma,gold
+      integer          vtype,k,kk,km1,kp1,nhybrd,nsigma,thflag
       integer          ncfileID, status, varID
       integer          iDimID,lDimID
       double precision dp00,dp00x,dp00f,ds00,ds00x,ds00f,
-     &                 dp0k(99),dp0kf,dpm,dpms,
-     &                 ds0k(99),ds0kf,dsm,dsms
-      double precision sigma(99),frcomp,salref,depthi(99+1)
-      double precision dz(99),Layer(99),sigma2(99+1),temp,depth
+     &                 dp0k(999),dp0kf,dpm,dpms,
+     &                 ds0k(999),ds0kf,dsm,dsms
+      double precision sigma(999),frcomp(2),dr_dp,salref,depthi(999+1)
+      double precision dz(999),Layer(999),sigma2(999+1),temp,depth
+      double precision depth1,depth2
+      double precision offset(999),sumoff(999)
       real*8           tofsig_6,sigloc_6
+c
+      dp0k(:) = 0.0
+      ds0k(:) = 0.0
 c
 C --- start of blkdat input
 c
@@ -54,12 +59,6 @@ c ---              k=1,nsigma
 c
       call blkini(nhybrd,'nhybrd')
       call blkini(nsigma,'nsigma')
-      if     (nsigma.gt.0) then
-        write(lp,'(/ a /)')
-     &    'error - nsigma>0 not yet supported by MOM6'
-        call flush(lp)
-        stop
-      endif
       call blkind2(dp00,k, 'dp00  ','("blkind: ",a6," =",f11.4," m")',
      &                     'dp0k  ','("blkind: ",a6," =",f11.4," m")' )
       if     (k.eq.1) then !dp00
@@ -181,48 +180,72 @@ c
 c
 C --- MOM6-specific blkdat variable
 C
-c --- 'frcomp' = fraction of compressibility to apply   (0.0 to 1.0)
+c --- 'vtype ' = vertical coordinate type (0=GOLD, -1,1=HYCOM1, 2=HYBGEN)
 c
       write(lp,*)
-      call blkind(frcomp,
-     &           'frcomp','("blkind: ",a6," =",f11.4," 0-1")')
+      call blkini(vtype, 'vtype ')
+      frcomp(:) = 0.0  !GOLD or HYBGEN
 c
-      if     (frcomp.eq.0.0d0) then
-        salref = 34.7d0  !any value will do
-        do k=1,kk+1
-          depthi(k) = 2000.0d0
-        enddo !k
-      else
+      if     (vtype.eq.-1) then !REGRID_DENSITY_OFFSETS
+        do k=1,kk
+c ---     'offset' = layer density offset (kg m-3)
+          call blkind(offset(k),
+     &           'offset','("blkind: ",a6," =",f11.4," kg m-3")')
+        enddo
+      elseif (vtype.eq.1) then !HYCOM1 potentially with COMPRESSIBILITY
 c
-c ---   'salref' = reference salinity for compressibility (psu)
+c ---   'frcmpu' = fraction of compressibility to apply up (0.0 to 1.0)
+c ---   'frcomp' = fraction of compressibility to apply    (0.0 to 1.0)
 c
-        call blkind(salref, 
-     &             'salref','("blkind: ",a6," =",f11.4," psu")')
-c
-c ---   target layer depths for compressibility (m)
-c
-        write(lp,*)
-        do k=1,kk+1
-          call blkind(depthi(k),
-     &               'depthi ','("blkind: ",a6," =",f11.4," m")')
-c
-          if     (k.eq.1) then
-            if      (depthi(k).ne.0.0d0) then
-              write(lp,'(/ a /)')
-     &          'error - depthi(1) mult be 0m'
-              call flush(lp)
-              stop
-            endif
-          else !k.gt.1
-            if      (depthi(k).lt.depthi(k-1)) then
-              write(lp,'(/ a /)')
-     &          'error - depthi must be non-decreasing'
-              call flush(lp)
-              stop
-            endif
+        call blkind2(frcomp(1),k, 
+     &                'frcmpu','("blkind: ",a6," =",f11.4," 0-1")',
+     &                'frcomp','("blkind: ",a6," =",f11.4," 0-1")')
+        if     (k.eq.1) then !frcmpu
+          call blkind(frcomp(2),
+     &                'frcomp','("blkind: ",a6," =",f11.4," 0-1")')
+        else !frcomp
+          frcomp(2) = frcomp(1)
+        endif
+        if     (max(frcomp(1),frcomp(2)).gt.0.0d0) then
+c ---     'dr_dp ' = partial derivative of density with pressure (optional)
+C ---                  units are s2 m-2 or equivalently kg m-3 Pa-1
+c ---     'salref' = reference salinity for compressibility (psu)
+          call blkind2(dr_dp,k, 
+     &                 'dr_dp ','("blkind: ",a6," =",f11.8," s2 m-2")',
+     &                 'salref','("blkind: ",a6," =",f11.4," psu")')
+          if     (k.eq.1) then !dr_dp
+            call blkind(salref, 
+     &                 'salref','("blkind: ",a6," =",f11.4," psu")')
+          else !salref
+            salref = dr_dp
+            dr_dp  = 0.0
           endif
-        enddo !k
-      endif !frcomp
+c
+c ---     target layer depths for compressibility (m)
+c
+          write(lp,*)
+          do k=1,kk+1
+            call blkind(depthi(k),
+     &                 'depthi ','("blkind: ",a6," =",f11.4," m")')
+c
+            if     (k.eq.1) then
+              if      (depthi(k).ne.0.0d0) then
+                write(lp,'(/ a /)')
+     &            'error - depthi(1) mult be 0m'
+                call flush(lp)
+                stop
+              endif
+            else !k.gt.1
+              if      (depthi(k).lt.depthi(k-1)) then
+                write(lp,'(/ a /)')
+     &            'error - depthi must be non-decreasing'
+                call flush(lp)
+                stop
+              endif
+            endif
+          enddo !k
+        endif !compressible
+      endif !HYCOM1
 C
 C --- end of blkdat input
       write(lp,*)
@@ -309,33 +332,82 @@ c --- make first and last 2x as large as the minimum choice
       sigma2(   1) = Layer( 1) + (Layer( 1) - Layer(   2))
       sigma2(kk+1) = Layer(kk) + (Layer(kk) - Layer(kk-1))
 c
-c --- interface target density is the controlling variable
-c --- so make Layer the average between the interfaces
+      if     (abs(vtype).eq.1) then !HYCOM1
 c
-      do k= 2,kk-1
-        Layer(k) = 0.5d0*(sigma2(k) + sigma2(k+1))
-      enddo !k
+c ---   allow for compressibility
 c
-c --- allow for compressibility
+        if     (max(frcomp(1),frcomp(2)).gt.0.0d0) then
+          do k= 1,kk+1
+            temp      = tofsig_6(sigma2(k)-1000.0d0,salref)
+            if     (depthi(k).lt.2000.0d0) then
+              depth   = 2000.0d0 + frcomp(1)*(depthi(k) - 2000.0d0)
+            else
+              depth   = 2000.0d0 + frcomp(2)*(depthi(k) - 2000.0d0)
+            endif
+            if     (dr_dp.gt.0.d0) then !REGRID_COMPRESSIBILITY_CONSTANT
+              sigma2(k) = sigloc_6(temp,salref,2000.0d0*1.0d4) +
+     &                    1000.d0 + dr_dp * (depth - 2000.0d0)*1.0d4
+            else
+              sigma2(k) = sigloc_6(temp,salref,depth*1.0d4) + 1000.d0
+            endif
+          enddo !k
+        endif !frcomp
 c
-      if     (frcomp.ne.0.0d0) then
-        do k= 1,kk+1
-          temp      = tofsig_6(sigma2(k)-1000.0d0,salref)
-          depth     = 2000.0d0 + frcomp*(depthi(k) - 2000.0d0)
-          sigma2(k) = sigloc_6(temp,salref,depth*1.0d4) + 1000.d0
+c ---   allow for offset
+c
+        if     (vtype.eq.-1) then !REGRID_DENSITY_OFFSETS
+          sumoff(1) = offset(1)
+          do k= 2,kk
+            sumoff(k) = sumoff(k-1) + offset(k)
+          enddo !k
+          do k= 2,kk
+            sigma2(k) = sigma2(k) + 0.5d0*(sumoff(k-1) + sumoff(k))
+          enddo !k
+c ---     make first and last 2x as large as the minimum choice
+          sigma2(   1) = sigma2(   1) +
+     &                   sumoff(   1) + (sumoff( 1) - sumoff(   2))
+          sigma2(kk+1) = sigma2(kk+1) +
+     &                   sumoff(kk)   + (sumoff(kk) - sumoff(kk-1))
+        endif
+c
+        if     (dr_dp.gt.0.d0) then !REGRID_COMPRESSIBILITY_CONSTANT
+c
+c ---     calculate the equivant offset
+c
+          do k= 1,kk
+            km1 = max( k-1, 1)
+            if     (depthi(km1).lt.2000.0d0) then
+              depth1  = 2000.0d0 + frcomp(1)*(depthi(km1) - 2000.0d0)
+            else
+              depth1  = 2000.0d0 + frcomp(2)*(depthi(km1) - 2000.0d0)
+            endif
+            kp1 = min( k+1, kk)
+            if     (depthi(kp1).lt.2000.0d0) then
+              depth2  = 2000.0d0 + frcomp(1)*(depthi(kp1) - 2000.0d0)
+            else
+              depth2  = 2000.0d0 + frcomp(2)*(depthi(kp1) - 2000.0d0)
+            endif
+            offset(k) = dr_dp * 0.5*(depth2 - depth1) * 1.0d4
+          enddo
+        endif
+c
+        do k= 1,kk
+          write(lp,"(a,i3,f10.4)") 'sigma2:',k,sigma2(k)
+          write(lp,"(a,i3,f10.4)") ' Layer:',k, Layer(k)
+          write(lp,"(a,i3,f10.4)") ' HYCOM:',k, sigma(k) + 1000.d0
+          call flush(lp)
         enddo !k
-      endif !frcomp
-c
-      do k= 1,kk
-        write(lp,"(a,i3,f10.4)") 'sigma2:',k,sigma2(k)
-        write(lp,"(a,i3,f10.4)") ' Layer:',k, Layer(k)
-        write(lp,"(a,i3,f10.4)") ' HYCOM:',k, sigma(k) + 1000.d0
-        call flush(lp)
-      enddo !k
-      k=kk+1
-        write(lp,"(a,i3,f10.4)") 'sigma2:',k,sigma2(k)
-        write(lp,*)
-        call flush(lp)
+        k=kk+1
+          write(lp,"(a,i3,f10.4)") 'sigma2:',k,sigma2(k)
+          write(lp,*)
+          call flush(lp)
+      else  !GOLD or HYGBEN
+        do k= 1,kk
+          write(lp,"(a,i3,f10.4)") ' Layer:',k, Layer(k)
+          write(lp,"(a,i3,f10.4)") ' HYCOM:',k, sigma(k) + 1000.d0
+          call flush(lp)
+        enddo !k
+      endif
 c
 c --- write the mom6_vgrid.nc file
 c
@@ -347,44 +419,96 @@ c
       call nchek("nf90_def_dim-Layer",
      &            nf90_def_dim(ncfileID,
      &                         "Layer",      kk,   lDimID))
+      if     (abs(vtype).eq.1) then !HYCOM1
       call nchek("nf90_def_dim-interfaces",
      &            nf90_def_dim(ncfileID,
      &                         "interfaces", kk+1, iDimID))
+      endif !HYCOM1
 c
       call nchek("nf90_put_att-history",
      &            nf90_put_att(ncfileID,nf90_global,
      &                         "history",
      &                         "hycom2vgrid"))
 c
-      call nchek("nf90_def_var-dz",
-     &            nf90_def_var(ncfileID,"dz",nf90_double,
-     &                         (/lDimID/),
-     &                         varID))
-      call nchek("nf90_put_att-units",
-     &            nf90_put_att(ncfileID,varID,"units","m"))
-      call nchek("nf90_put_att-long_name",
-     &            nf90_put_att(ncfileID,varID,
-     &                         "long_name",
-     &                         "z* coordinate level thickness"))
+      if     (abs(vtype).eq.1) then !HYCOM1
+        call nchek("nf90_def_var-dz",
+     &              nf90_def_var(ncfileID,"dz",nf90_double,
+     &                           (/lDimID/),
+     &                           varID))
+        call nchek("nf90_put_att-units",
+     &              nf90_put_att(ncfileID,varID,"units","m"))
+        call nchek("nf90_put_att-long_name",
+     &              nf90_put_att(ncfileID,varID,
+     &                           "long_name",
+     &                           "z* coordinate level thickness"))
 c
-      call nchek("nf90_def_var-sigma2",
-     &            nf90_def_var(ncfileID,"sigma2",nf90_double,
-     &                         (/iDimID/),
-     &                         varID))
-      call nchek("nf90_put_att-units",
-     &            nf90_put_att(ncfileID,varID,"units","kg/m3"))
-      if     (frcomp.eq.0.0d0) then
-        cline = 
-     &  "Interface target potential density referenced to 2000 dbars"
-      else
-        write(cline,'(2a,f8.3,a)')
-     &  "Interface target potential density referenced to 2000 dbars",
-     &  " with",frcomp*100.0d0,"% compressibility"
-      endif
-      call nchek("nf90_put_att-long_name",
-     &            nf90_put_att(ncfileID,varID,
-     &                         "long_name",
-     &                         trim(cline)))
+        call nchek("nf90_def_var-sigma2",
+     &              nf90_def_var(ncfileID,"sigma2",nf90_double,
+     &                           (/iDimID/),
+     &                           varID))
+        call nchek("nf90_put_att-units",
+     &              nf90_put_att(ncfileID,varID,"units","kg/m3"))
+        if     (max(frcomp(1),frcomp(2)).eq.0.0d0) then
+          cline = 
+     &    "Interface target potential density referenced to 2000 dbars"
+        elseif (frcomp(1).eq.frcomp(2)) then
+          write(cline,'(2a,f8.3,a)')
+     &    "Interface target potential density referenced to 2000 dbars",
+     &    " with",frcomp(1)*100.0d0,"% compressibility"
+        else
+          write(cline,'(2a,f8.3,a,f8.3,a)')
+     &    "Interface target potential density referenced to 2000 dbars",
+     &    " with",frcomp(1)*100.0d0,"% (",frcomp(2)*100.0d0,
+     &    "%) compressibility above (below) 2000 dbars"
+        endif
+        if     (vtype.eq.-1) then !REGRID_DENSITY_OFFSETS
+          cline2 = " with specified layer offsets"
+        elseif (dr_dp.gt.0.d0) then !REGRID_COMPRESSIBILITY_CONSTANT
+          write(cline2,'(a,1pe10.3,a)') " and dr_dp =",dr_dp," s2 m-2"
+        else
+          cline2 = " "
+        endif
+        call nchek("nf90_put_att-long_name",
+     &              nf90_put_att(ncfileID,varID,
+     &                           "long_name",
+     &                           trim(cline)//trim(cline2)))
+c
+        if     (vtype.eq.-1 .or.    !REGRID_DENSITY_OFFSETS
+     &          dr_dp.gt.0.d0) then !REGRID_COMPRESSIBILITY_CONSTANT
+          call nchek("nf90_def_var-offset",
+     &                nf90_def_var(ncfileID,"offset",nf90_double,
+     &                             (/lDimID/),
+     &                             varID))
+          call nchek("nf90_put_att-units",
+     &                nf90_put_att(ncfileID,varID,"units","kg/m3"))
+          call nchek("nf90_put_att-long_name",
+     &                nf90_put_att(ncfileID,varID,
+     &                             "long_name",
+     &      "Layer target potential density offsets"))
+        endif
+c
+      elseif (vtype.eq.2) then !HYBGEN
+        call nchek("nf90_def_var-dz",
+     &              nf90_def_var(ncfileID,"dp0",nf90_double,
+     &                           (/lDimID/),
+     &                           varID))
+        call nchek("nf90_put_att-units",
+     &              nf90_put_att(ncfileID,varID,"units","m"))
+        call nchek("nf90_put_att-long_name",
+     &              nf90_put_att(ncfileID,varID,
+     &                           "long_name",
+     &                           "deep z-level minimum thickness"))
+        call nchek("nf90_def_var-dz",
+     &              nf90_def_var(ncfileID,"ds0",nf90_double,
+     &                           (/lDimID/),
+     &                           varID))
+        call nchek("nf90_put_att-units",
+     &              nf90_put_att(ncfileID,varID,"units","m"))
+        call nchek("nf90_put_att-long_name",
+     &              nf90_put_att(ncfileID,varID,
+     &                           "long_name",
+     &                           "shallow z-level minimum thickness"))
+      endif !HYCOM1:HYBGEN
 c
       call nchek("nf90_def_var-Layer",
      &            nf90_def_var(ncfileID,"Layer",nf90_double,
@@ -402,21 +526,49 @@ c
      &            nf90_enddef(ncfileID))
 c
       ! put to all variables
-      call nchek("nf90_inq_varid-dz",
-     &            nf90_inq_varid(ncfileID,"dz",
-     &                                  varID))
-      call nchek("nf90_put_var-dz",
-     &            nf90_put_var(ncfileID,varID,dz(1:kk)))
-      write(6, 6100) 'dz     ',
-     &               minval(dz(1:kk)),maxval(dz(1:kk))
 c
-      call nchek("nf90_inq_varid-sigma2",
-     &            nf90_inq_varid(ncfileID,"sigma2",
-     &                                  varID))
-      call nchek("nf90_put_var-sigma2",
-     &            nf90_put_var(ncfileID,varID,sigma2(1:kk+1)))
-      write(6, 6100) 'sigma2 ',
-     &               minval(sigma2(1:kk+1)),maxval(sigma2(1:kk+1))
+      if     (abs(vtype).eq.1) then !HYCOM1
+        call nchek("nf90_inq_varid-dz",
+     &              nf90_inq_varid(ncfileID,"dz",
+     &                                    varID))
+        call nchek("nf90_put_var-dz",
+     &              nf90_put_var(ncfileID,varID,dz(1:kk)))
+        write(6, 6100) 'dz     ',
+     &                 minval(dz(1:kk)),maxval(dz(1:kk))
+c
+        call nchek("nf90_inq_varid-sigma2",
+     &              nf90_inq_varid(ncfileID,"sigma2",
+     &                                    varID))
+        call nchek("nf90_put_var-sigma2",
+     &              nf90_put_var(ncfileID,varID,sigma2(1:kk+1)))
+        write(6, 6100) 'sigma2 ',
+     &                 minval(sigma2(1:kk+1)),maxval(sigma2(1:kk+1))
+        if     (vtype.eq.-1 .or.    !REGRID_DENSITY_OFFSETS
+     &          dr_dp.gt.0.d0) then !REGRID_COMPRESSIBILITY_CONSTANT
+          call nchek("nf90_inq_varid-offset",
+     &                nf90_inq_varid(ncfileID,"offset",
+     &                                      varID))
+          call nchek("nf90_put_var-offset",
+     &                nf90_put_var(ncfileID,varID,offset(1:kk)))
+          write(6, 6100) 'offset ',
+     &                   minval(offset(1:kk)),maxval(offset(1:kk))
+        endif
+      elseif (vtype.eq.2) then !HYBGEN
+        call nchek("nf90_inq_varid-dp0",
+     &              nf90_inq_varid(ncfileID,"dp0",
+     &                                    varID))
+        call nchek("nf90_put_var-dp0",
+     &              nf90_put_var(ncfileID,varID,dp0k(1:kk)))
+        write(6, 6100) 'dp0    ',
+     &                 minval(dp0k(1:kk)),maxval(dp0k(1:kk))
+        call nchek("nf90_inq_varid-ds0",
+     &              nf90_inq_varid(ncfileID,"ds0",
+     &                                    varID))
+        call nchek("nf90_put_var-ds0",
+     &              nf90_put_var(ncfileID,varID,ds0k(1:kk)))
+        write(6, 6100) 'ds0    ',
+     &                 minval(ds0k(1:kk)),maxval(ds0k(1:kk))
+      endif !HYCOM1
 c
       call nchek("nf90_inq_varid-Layer",
      &            nf90_inq_varid(ncfileID,"Layer",

@@ -20,14 +20,16 @@ c
 c
       if (yrflag.eq.3) then
         if     (mod(iyear,4).eq.0) then
-          k = 3
+          k = 3  !366-day
         else
-          k = 2
+          k = 2  !365-day
         endif
+      elseif (yrflag.eq.4) then
+        k = 2  !365-day
       elseif (yrflag.eq.0) then
-        k = 1
+        k = 1  !360-day
       else
-        k = 3
+        k = 3  !366-day
       endif
       do m= 1,12
         if     (jday.ge.month0(m,  k) .and.
@@ -71,6 +73,12 @@ c ---   366 days per model year, starting Jan 01
         iday  =  mod( dtime+ 0.001d0 ,366.d0) + 1
         ihour = (mod( dtime+ 0.001d0 ,366.d0) + 1.d0 - iday)*24.d0
 c
+      elseif (yrflag.eq.4) then
+c ---   365 days per model year, starting Jan 01
+        iyear =  int((dtime+ 0.001d0)/365.d0) + 1
+        iday  =  mod( dtime+ 0.001d0 ,365.d0) + 1
+        ihour = (mod( dtime+ 0.001d0 ,365.d0) + 1.d0 - iday)*24.d0
+c
       elseif (yrflag.eq.3) then
 c ---   model day is calendar days since 01/01/1901
         iyr   = (dtime-1.d0)/365.25d0
@@ -89,7 +97,14 @@ c ---   model day is calendar days since 01/01/1901
 c
         iyear =  1901 + iyr
         iday  =  dtime - dtim1 + 1
-        ihour = (dtime - dtim1 + 1.d0 - iday)*24.d0
+        ihour = (dtime - dtim1 + 1.001d0 - iday)*24.d0
+*
+*       write(lp,*)
+*       write(lp,*) 'dtime,dtim1 = ',dtime,dtim1
+*       write(lp,*) 'iday        = ',dtime - dtim1 + 1.d0,iday
+*       write(lp,*) 'ihour       = ',
+*    &              (dtime - dtim1 + 1.d0 - iday)*24.d0,ihour
+*       write(lp,*)
 c
       else
         write(lp,*)
@@ -100,7 +115,6 @@ c
       endif
       return
       end
-
       SUBROUTINE DATE2WNDAY(WDAY, IDATEC,ITIMEC)
       IMPLICIT NONE
       INTEGER          IDATEC,ITIMEC
