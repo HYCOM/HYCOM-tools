@@ -12,6 +12,7 @@
 .f90:
 	@echo "Must have an explicit rule for" $*
 	@exit 1
+
 .F:
 	@echo "Must have an explicit rule for" $*
 	@exit 1
@@ -34,7 +35,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm -f *.o *.a *.mod *.inc M*log *2archv *2d *2data *2b *2t *3z *sf *sfl *sfz *sig2a *restart *hv *ncombc *_inc *_inc2 *gen *ncdf *oam *oam_m *_nc
+	/bin/rm -f *.o *.a *.mod *.inc M*log *2archv *2d *2data *2b *2t *3z *sf *sfl *sfz *sig2a *restart *hv *ncombc *_inc *_inc2 *gen *ncdf *oam *oam_m *_nc *_temp *_bottom *_mixlay
 
 MODS     =	mod_plot.o mod_xc.o mod_za.o               wtime.o
 MODM     =      mod_plot.o mod_xc.o mod_za.o               wtime.o mom_eos_wright.o
@@ -74,7 +75,7 @@ ARCHG_OBJ = 	bigrid.o blkin.o  \
 		indxi.o  indxj.o             psmoo.o  \
 		zebra.o   zh.o    dum_gks.o 
 
-NCDFG_OBJ = 	$(ARCHG_OBJ) horout_nc.o
+NCDFG_OBJ = 	$(ARCHG_OBJ) horout_nc.o layer2z.o mixlay.o
 
 #
 # --- executables.
@@ -113,9 +114,6 @@ field2ncdf:         $(MODB) field2data.o    $(NCDFH_OBJ)
 field2ncdf3z:       $(MODB) field2data3z.o  $(NCDFH_OBJ)
 	$(LD) $(LDFLAGS) -o field2ncdf3z  field2data3z.o  $(MODB) $(NCDFH_OBJ) $(EXTRANCDF)
 
-archv2mom6res:      $(MODN) archv2mom6res.o $(ARCHV_OBJ)
-	$(LD) $(LDFLAGS) -o archv2mom6res archv2mom6res.o $(MODN) $(ARCHV_OBJ) $(EXTRANCDF)
-
 archv2ncdf2d:       $(MODB) archv2data2d.o  $(NCDFH_OBJ)
 	$(LD) $(LDFLAGS) -o archv2ncdf2d  archv2data2d.o  $(MODB) $(NCDFH_OBJ) $(EXTRANCDF)
 
@@ -134,11 +132,14 @@ archv2ncdfsf:       $(MODB) archv2datasf.o  $(NCDFZ_OBJ)
 archv2ncdfsfl:      $(MODB) archv2datasfl.o $(NCDFZ_OBJ)
 	$(LD) $(LDFLAGS) -o archv2ncdfsfl archv2datasfl.o $(MODB) $(NCDFZ_OBJ) $(EXTRANCDF)
 
-archv2ncdfsfz:     $(MODB) archv2datasfz.o $(NCDFZ_OBJ)
+archv2ncdfsfz:      $(MODB) archv2datasfz.o $(NCDFZ_OBJ)
 	$(LD) $(LDFLAGS) -o archv2ncdfsfz archv2datasfz.o $(MODB) $(NCDFZ_OBJ) $(EXTRANCDF)
 
-archv2strmf_nc:    $(MODZ) archv2strmf_nc.o $(NCDFZ_OBJ)
+archv2strmf_nc:     $(MODZ) archv2strmf_nc.o $(NCDFZ_OBJ)
 	$(LD) $(LDFLAGS) -o archv2strmf_nc archv2strmf_nc.o $(MODB) $(NCDFZ_OBJ) $(EXTRANCDF)
+
+archv2mom6res:      $(MODN) archv2mom6res.o $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o archv2mom6res archv2mom6res.o $(MODN) $(ARCHV_OBJ) $(EXTRANCDF)
 
 archv2ncombc:       $(MODB) archv2ncombc.o  $(DATAH_OBJ)
 	$(LD) $(LDFLAGS) -o archv2ncombc  archv2ncombc.o  $(MODB) $(DATAH_OBJ)
@@ -149,11 +150,14 @@ archv2oam:          $(MODB) archv2oam.o     $(DATAH_OBJ)
 archv2oam_m:        $(MODB) archv2oam_m.o   $(DATAH_OBJ)
 	$(LD) $(LDFLAGS) -o archv2oam_m   archv2oam_m.o   $(MODB) $(DATAH_OBJ)
 
+archv2potden:       $(MODS) archv2potden.o $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o archv2potden archv2potden.o $(MODS) $(ARCHV_OBJ)
+
 archv2restart:      $(MODR) archv2restart.o $(DATAX_OBJ)
 	$(LD) $(LDFLAGS) -o archv2restart archv2restart.o $(MODR) $(DATAX_OBJ)
 
-addbot_archv:       $(MODS) addbot_archv.o $(ARCHV_OBJ)
-	$(LD) $(LDFLAGS) -o addbot_archv  addbot_archv.o  $(MODS) $(ARCHV_OBJ)
+addbot_archv:       $(MODS) addbot_archv.o  $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o addbot_archv addbot_archv.o $(MODS) $(ARCHV_OBJ)
 
 cooperhaines_archv: $(MODS) cooperhaines_archv.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o cooperhaines_archv cooperhaines_archv.o $(MODS) $(ARCHV_OBJ)
@@ -179,17 +183,20 @@ hybgen_archv_old:   $(MODS) hybgen_archv_old.o $(ARCHV_OBJ)
 mrgl_archv:         $(MODS) mrgl_archv.o   $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o mrgl_archv  mrgl_archv.o $(MODS) $(ARCHV_OBJ)
 
-trim_archv:         $(MODS) trim_archv.o   $(ARCHV_OBJ)
-	$(LD) $(LDFLAGS) -o trim_archv  trim_archv.o $(MODS) $(ARCHV_OBJ)
-
 ncoda_archv:        $(MODS) ncoda_archv.o      $(ARCHV_OBJ)
-	$(LD) $(LDFLAGS) -o ncoda_archv     ncoda_archv.o     $(MODS) $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o ncoda_archv      ncoda_archv.o      $(MODS) $(ARCHV_OBJ)
 
 ncoda_archv_inc:    $(MODS) ncoda_archv_inc.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o ncoda_archv_inc  ncoda_archv_inc.o  $(MODS) $(ARCHV_OBJ)
 
 ncoda_archv_inc2:   $(MODS) ncoda_archv_inc2.o $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o ncoda_archv_inc2 ncoda_archv_inc2.o $(MODS) $(ARCHV_OBJ)
+
+trim_archv:         $(MODS) trim_archv.o   $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o trim_archv  trim_archv.o $(MODS) $(ARCHV_OBJ)
+
+tsis_archv:         $(MODS) tsis_archv.o   $(ARCHV_OBJ)
+	$(LD) $(LDFLAGS) -o tsis_archv   tsis_archv.o   $(MODS) $(ARCHV_OBJ)
 
 remap_archv:        $(MODS) remap_archv.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o remap_archv  remap_archv.o  $(MODS) $(ARCHV_OBJ)
@@ -228,7 +235,13 @@ stats_archv:        $(MODS) stats_archv.o  $(ARCHV_OBJ)
 	$(LD) $(LDFLAGS) -o stats_archv  stats_archv.o  $(MODS) $(ARCHV_OBJ)
 
 gofs_ptemp:         $(MODS) gofs_ptemp.o   $(NCDFG_OBJ)
-	$(LD) $(LDFLAGS) -o gofs_ptemp  gofs_ptemp.o $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
+	$(LD) $(LDFLAGS) -o gofs_ptemp  gofs_ptemp.o  $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
+
+espc_bottom:        $(MODS) espc_bottom.o  $(NCDFG_OBJ)
+	$(LD) $(LDFLAGS) -o espc_bottom espc_bottom.o $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
+
+espc_mixlay:        $(MODS) espc_mixlay.o  $(NCDFG_OBJ)
+	$(LD) $(LDFLAGS) -o espc_mixlay espc_mixlay.o $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
 
 #
 # --- explicit dependencies for each .[fF] file.
@@ -246,6 +259,8 @@ archv2mom6res.o: archv2mom6res.f mod_plot.o mod_za.o mod_ncio.o
 hycomarchv.o:    hycomarchv.f    mod_plot.o mod_za.o
 botlay_archv.o:  botlay_archv.f  mod_plot.o mod_za.o
 gofs_ptemp.o:    gofs_ptemp.f    mod_plot.o mod_za.o
+espc_bottom.o:   espc_bottom.f   mod_plot.o mod_za.o
+espc_mixlay.o:   espc_mixlay.f   mod_plot.o mod_za.o
 mrgl_archv.o:    mrgl_archv.f    mod_plot.o mod_za.o
 trim_archv.o:    trim_archv.f    mod_plot.o mod_za.o
 remap_archv.o:   remap_archv.f   mod_plot.o mod_za.o
