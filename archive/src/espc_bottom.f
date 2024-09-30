@@ -20,7 +20,7 @@ c ---  variable CDF_TAU.
 c
 c --- Alan J. Wallcraft, COAPS/FSU, September 2024.
 c
-      character*240    flnm_d,flnm_t,flnm_s,flnm_u,flnm_v
+      character*240    flnm,flnm_d,flnm_t,flnm_s,flnm_u,flnm_v
       character        label*81,text*18,frmt*80,cline*240
 c
       integer          artype,iexpt,iversn,yrflag,ioin
@@ -72,7 +72,24 @@ c
 c
 c --- array allocation
 c
-      call getdat_gofs_dim(flnm_t,ii,jj,kz)
+      flnm = 'NONE'
+      if     ( flnm_t.ne.'NONE') then
+        flnm = flnm_t
+      elseif ( flnm_s.ne.'NONE') then
+        flnm = flnm_s
+      elseif ( flnm_u.ne.'NONE') then
+        flnm = flnm_u
+      elseif ( flnm_v.ne.'NONE') then
+        flnm = flnm_v
+      else 
+        write(lp,*)
+        write(lp,*) 'error in getdat_espc_bot - no input files'
+        write(lp,*)
+        call flush(lp)
+        call clsgks
+        stop
+      endif
+      call getdat_gofs_dim(flnm,ii,jj,kz)
       write (lp,'(a,2i6,i3)') 'ii,jj,kz = ',ii,jj,kz
       kk    = kz
       kkout = kz
