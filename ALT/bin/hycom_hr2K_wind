@@ -1,0 +1,7 @@
+#! /bin/csh -f
+#
+#     input:  hours since 2000-01-01 00:00:00
+#     output: the HYCOM model day, since 1900-12-31 00:00:00
+#
+set   hr = $<
+echo $hr | awk '{printf("%11.4f\n", 36160.0 + $1/24.0)}'

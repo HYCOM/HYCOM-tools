@@ -1,0 +1,9 @@
+#! /bin/csh -f
+#
+#     input:  yyyy ddd hh (calendar/model year, ordinal day, and hour), or
+#             yyyy_ddd_hh (calendar/model year, ordinal day, and hour)
+#     output: hours since 2000-01-01 00:00:00 
+#
+set ydh = "$<"
+set day = `echo $ydh | hycom_date_wind`
+echo $day | awk '{printf("%12.4f\n", ($1-36160.0)*24.0)}' | sed -e 's/ *3$//g'

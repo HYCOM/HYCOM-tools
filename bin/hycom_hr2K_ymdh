@@ -1,0 +1,8 @@
+#! /bin/csh -f
+#
+#     input:  hours since 2000-01-01 00:00:00
+#     output: yyyy_mm_dd_hh (calendar/model year, month, day, and hour)
+#
+set   hr = $<
+set day=`echo $hr | awk '{printf("%11.4f\n", 36160.0 + $1/24.0)}'`
+echo $day 3 | hycom_wind_ymdh
