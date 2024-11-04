@@ -6,6 +6,7 @@ c
 c --- Input water_temp, salinity, water_u, water_v from z-level
 c --- GOFS/ESPC-D netcdf files.
 c --- Output a netcdf file with bottom fields, ubaro and vbaro.
+c --- Optionally add mixed layer depth.
 c
 c --- The output NetCDF filename is taken from environment
 c ---  variable CDF001.
@@ -25,6 +26,8 @@ c
 c
       integer          artype,iexpt,iversn,yrflag,ioin
       integer          i,j,k,l,kz,kkin,kkout
+      logical          ldensity
+      real             tmljmq
       real             hmina,hmaxa
       double precision time3(3)
 c
@@ -47,6 +50,7 @@ c --- 'flnm_s' = name of netCDF file containing salinity   or NONE
 c --- 'flnm_u' = name of netCDF file containing water_u    or NONE
 c --- 'flnm_v' = name of netCDF file containing water_v    or NONE
 c --- 'iexpt ' = experiment number x10
+c --- 'tmljmq' = equiv. temp. jump across mixed-layer (degC, 0 no I/O)
 c
       read (*,'(a)') flnm_d
       write (lp,'(2a)') 'depth      file: ',trim(flnm_d)
@@ -64,6 +68,29 @@ c
       write (lp,'(2a)') 'water_v    file: ',trim(flnm_v)
       call flush(lp)
       call blkini(iexpt, 'iexpt ')
+      call blkinr(tmljmq,'tmljmq','("blkinr: ",a6," =",f11.4," degC")')
+c
+      ldensity = tmljmq.gt.0.0
+      if     (ldensity) then
+        if     (flnm_s.eq.'NONE') then
+          write(lp,*)
+          write(lp,*) 'error in espc_bottom - ',
+     &                'salinity required for mixed layer'
+          write(lp,*)
+          call flush(lp)
+          call clsgks
+          stop
+        endif !flnm_s
+        if     (flnm_t.eq.'NONE') then
+          write(lp,*)
+          write(lp,*) 'error in espc_bottom - ',
+     &                'water_temp required for mixed layer'
+          write(lp,*)
+          call flush(lp)
+          call clsgks
+          stop
+        endif !flnm_t
+      endif !tmljmq>0
 c
       yrflag = 3
 c
@@ -83,7 +110,7 @@ c
         flnm = flnm_v
       else 
         write(lp,*)
-        write(lp,*) 'error in getdat_espc_bot - no input files'
+        write(lp,*) 'error in espc_bottom - no input files'
         write(lp,*)
         call flush(lp)
         call clsgks
@@ -106,7 +133,8 @@ c --- read the netCDF files,
 c --- calculate ubaro,vbaro and bottom fields
 c
       call getdat_espc_bot(flnm_d,flnm_t,flnm_s,flnm_u,flnm_v,
-     &                     bot_h,bot_t,bot_s,bot_u,bot_v, time3)
+     &                     bot_h,bot_t,bot_s,bot_u,bot_v,
+     &                     time3, ldensity)
 c
 c --- ---------------
 c --- ubaro and vbaro
@@ -125,14 +153,14 @@ c
      &  'barotropic_northward_sea_water_velocity',! ncdf standard_name
      &              'm/s',                        ! units
      &              0,.false., frmt,ioin)
-        endif !u and v
+      endif !u and v
 c
 c --- -----
 c --- bot_h
 c --- -----
 c
       call horout(bot_h, artype,yrflag,time3,iexpt,.true.,
-     &            'Height Above Sea Floor',   ! plot name
+     &            'Height to Bottom',         ! plot name
      &            'height_bottom',            ! ncdf name
      &            'height_above_sea_floor',   ! ncdf standard_name
      &            'm',                        ! units
@@ -144,12 +172,12 @@ c --- -----
 c
       if     (flnm_u.ne.'NONE') then
         call horout(bot_u, artype,yrflag,time3,iexpt,.true.,
-     &              'Near Bottom Eastward Water Velocity',    ! plot name
+     &              'Near Bot Eward Vel',                     ! plot name
      &              'water_u_bottom',                         ! ncdf name
      &              'eastward_sea_water_velocity_at_bottom',  ! ncdf standard_name
      &              'm/s',                                    ! units
      &              0,.false., frmt,ioin)
-       endif !u
+      endif !u
 c
 c --- -----
 c --- bot_v
@@ -157,7 +185,7 @@ c --- -----
 c
       if     (flnm_v.ne.'NONE') then
         call horout(bot_v, artype,yrflag,time3,iexpt,.true.,
-     &              'Near Bottom Northward Water Velocity',    ! plot name
+     &              'Near Bot Nward Vel',                     ! plot name
      &              'water_v_bottom',                          ! ncdf name
      &              'northward_sea_water_velocity_at_bottom',  ! ncdf standard_name
      &              'm/s',                                     ! units
@@ -170,12 +198,12 @@ c --- -----
 c
       if     (flnm_t.ne.'NONE') then
         call horout(bot_t, artype,yrflag,time3,iexpt,.true.,
-     &              'Near Bottom Water Temperature',    ! plot name
+     &              'Near Bot Temp',                    ! plot name
      &              'water_temp_bottom',                ! ncdf name
      &              'sea_water_temperature_at_bottom',  ! ncdf standard_name
      &              'degC',                             ! units
      &              0,.false., frmt,ioin)
-       endif !t
+      endif !t
 c
 c --- -----
 c --- bot_s
@@ -183,12 +211,28 @@ c --- -----
 c
       if     (flnm_s.ne.'NONE') then
         call horout(bot_s, artype,yrflag,time3,iexpt,.true.,
-     &              'Near Bottom Salinity',          ! plot name
+     &              'Near Bot Salinity',             ! plot name
      &              'salinity_bottom',               ! ncdf name
      &              'sea_water_salinity_at_bottom',  ! ncdf standard_name
      &              'psu',                           ! units
      &              0,.false., frmt,ioin)
-       endif !t
+      endif !s
+c
+c --- ------
+c --- dpmixl
+c --- ------
+c
+      if     (tmljmq.gt.0.0) then
+        call mixlay_locppm(dpmixl,temp,saln,p,flag,ii,jj,kk, tmljmq)
+        write(cline,'(a,f4.2,a)') 
+     &    'pMLT (',tmljmq,' degCeq)'
+        call horout(dpmixl, artype,yrflag,time3,iexpt,.true.,
+     &              trim(cline),                   ! plot name
+     &              'mixed_layer_thickness',       ! ncdf name
+     &              'ocean_mixed_layer_thickness', ! ncdf standard_name
+     &              'm',                           ! units
+     &              0,.false., frmt,ioin)
+      endif !tmljmq>0
 c
       stop '(normal)' 
       end

@@ -35,7 +35,7 @@ c*
 c**********
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer i,j,k
       integer itest,jtest
@@ -114,7 +114,7 @@ c*
 c**********
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer i,j,k
       integer itest,jtest
@@ -247,7 +247,7 @@ c --- t: potential temperature; s: psu; prs: pressure
 c-----------------------------------------------------------------------------
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer i,j,k
       integer itest,jtest
@@ -495,7 +495,7 @@ c --- t: potential temperature; s: psu; prs: pressure
 c-----------------------------------------------------------------------------
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer i,j,k
       integer itest,jtest
@@ -747,7 +747,7 @@ c --- t: potential temperature; s: psu; prs: pressure
 c-----------------------------------------------------------------------------
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer i,j,k
       integer itest,jtest
@@ -884,7 +884,7 @@ c*
 c**********
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer mldfound
       integer i,j,k,kz
@@ -978,7 +978,7 @@ c*
 c**********
 c
       logical    ldebug_dpmixl
-      parameter (ldebug_dpmixl=.true. )
+      parameter (ldebug_dpmixl=.false.)  !usually .false.
 c
       integer mldfound
       integer i,j,k,kz
