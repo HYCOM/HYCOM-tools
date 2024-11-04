@@ -1,0 +1,118 @@
+#! /bin/csh -f
+#
+# espcd_mean9:   form the 2xM2 mean of 3hrly espc-d netcdf files
+# espcd_mean25:  form the 2xM2 mean of  hrly espc-d netcdf files
+#
+# Usage:   espcd_mean9  espd-d.nc espd-d_mean.nc
+# or       espcd_mean25 espd-d.nc espd-d_mean.nc
+# or       env MAX_TAU=HHH espcd_mean9  espd-d.nc espd-d_mean.nc
+# or       env MAX_TAU=HHH espcd_mean25 espd-d.nc espd-d_mean.nc
+#
+# --- espd-d.nc is of the form *_YYYMMDDHH_t0TAU_*.nc and is
+# --- the center time of the mean, it can either contain the full
+# --- glby008 domain or a consistent subset.
+#
+# --- if environment variable MAX_TAU exists it specifies the
+# --- maximum available TAU which is typically either 23 or 196 hours.
+#
+# --- 2xM2 is 24.84 hours which changes the weights slightly from
+# --- 24 or 25 hour means but filters M2 tides more effectively.
+#
+# --- Assumes HYCOM-tools/bin and the NCO utilities are in the current path.
+#
+# --- Alan J. Wallcraft, COAPS/FSU, November 2024.
+#
+#set echo
+
+if ($#argv != 2) then
+    echo2 "Usage:  espcd_mean9[25] espd-d.nc espd-d_mean.nc"
+    exit 1
+endif
+
+set f0=$1
+set fm=$2
+
+if (-f ${fm}) then
+    echo2 "${0}: ${fm}' already exists"
+    exit 2
+endif
+
+set lc=`echo $0 | rev | cut -c -1`
+
+if (! $?MAX_TAU ) then
+  setenv MAX_TAU 999
+endif
+
+if ($lc == "9") then
+# --- 3hrly mean
+  setenv FM4 `echo $f0 ${MAX_TAU} -12 | espcd_offset `
+  setenv FM3 `echo $f0 ${MAX_TAU} -9  | espcd_offset`
+  setenv FM2 `echo $f0 ${MAX_TAU} -6  | espcd_offset`
+  setenv FM1 `echo $f0 ${MAX_TAU} -3  | espcd_offset`
+  setenv FP0 $f0
+  setenv FP1 `echo $f0 ${MAX_TAU}  3  | espcd_offset`
+  setenv FP2 `echo $f0 ${MAX_TAU}  6  | espcd_offset`
+  setenv FP3 `echo $f0 ${MAX_TAU}  9  | espcd_offset`
+  setenv FP4 `echo $f0 ${MAX_TAU}  12 | espcd_offset`
+
+  foreach f ( ${FP0} ${FM4} ${FM3} ${FM2} ${FM1} ${FP1} ${FP2} ${FP3} ${FP4} )
+    if (! -f ${f}) then
+      echo2 "${0}: ${f}' does not exist"
+      exit 2
+    endif
+  end
+
+  foreach f ( ${FM4} ${FM3} ${FM2} ${FM1} ${FP0} ${FP1} ${FP2} ${FP3} ${FP4} )
+    /bin/rm -f          ${f}F
+    ncpdq --unpack ${f} ${f}F
+  end
+
+  ncra -w 1.4494,3.9706,2.0,4.0,2.0,4.0,2.0,3.9706,1.4494 ${FM4}F ${FM3}F ${FM2}F ${FM1}F ${FP0}F ${FP1}F ${FP2}F ${FP3}F ${FP4}F ${fm}
+
+  /bin/rm -f ${FM4}F ${FM3}F ${FM2}F ${FM1}F ${FP0}F ${FP1}F ${FP2}F ${FP3}F ${FP4}F
+
+else
+# --- hrly mean
+  setenv FMC `echo $f0 ${MAX_TAU} -12 | espcd_offset `
+  setenv FMB `echo $f0 ${MAX_TAU} -11 | espcd_offset `
+  setenv FMA `echo $f0 ${MAX_TAU} -10 | espcd_offset `
+  setenv FM9 `echo $f0 ${MAX_TAU} -9  | espcd_offset `
+  setenv FM8 `echo $f0 ${MAX_TAU} -8  | espcd_offset `
+  setenv FM7 `echo $f0 ${MAX_TAU} -7  | espcd_offset `
+  setenv FM6 `echo $f0 ${MAX_TAU} -6  | espcd_offset `
+  setenv FM5 `echo $f0 ${MAX_TAU} -5  | espcd_offset `
+  setenv FM4 `echo $f0 ${MAX_TAU} -4  | espcd_offset `
+  setenv FM3 `echo $f0 ${MAX_TAU} -3  | espcd_offset`
+  setenv FM2 `echo $f0 ${MAX_TAU} -2  | espcd_offset`
+  setenv FM1 `echo $f0 ${MAX_TAU} -1  | espcd_offset`
+  setenv FP0 $f0
+  setenv FP1 `echo $f0 ${MAX_TAU}  1  | espcd_offset`
+  setenv FP2 `echo $f0 ${MAX_TAU}  2  | espcd_offset`
+  setenv FP3 `echo $f0 ${MAX_TAU}  3  | espcd_offset`
+  setenv FP4 `echo $f0 ${MAX_TAU}  4  | espcd_offset`
+  setenv FP5 `echo $f0 ${MAX_TAU}  5  | espcd_offset`
+  setenv FP6 `echo $f0 ${MAX_TAU}  6  | espcd_offset`
+  setenv FP7 `echo $f0 ${MAX_TAU}  7  | espcd_offset`
+  setenv FP8 `echo $f0 ${MAX_TAU}  8  | espcd_offset`
+  setenv FP9 `echo $f0 ${MAX_TAU}  9  | espcd_offset`
+  setenv FPA `echo $f0 ${MAX_TAU}  10 | espcd_offset`
+  setenv FPB `echo $f0 ${MAX_TAU}  11 | espcd_offset`
+  setenv FPC `echo $f0 ${MAX_TAU}  12 | espcd_offset`
+
+  foreach f ( ${FP0} ${FMC} ${FMB} ${FMA} ${FM9} ${FM8} ${FM7} ${FM6} ${FM5} ${FM4} ${FM3} ${FM2} ${FM1} ${FP1} ${FP2} ${FP3} ${FP4} ${FP5} ${FP6} ${FP7} ${FP8} ${FP9} ${FPA} ${FPB} ${FPC} )
+    if (! -f ${f}) then
+      echo2 "${0}: ${f}' does not exist"
+      exit 2
+    endif
+  end
+
+  foreach f ( ${FMC} ${FMB} ${FMA} ${FM9} ${FM8} ${FM7} ${FM6} ${FM5} ${FM4} ${FM3} ${FM2} ${FM1} ${FP0} ${FP1} ${FP2} ${FP3} ${FP4} ${FP5} ${FP6} ${FP7} ${FP8} ${FP9} ${FPA} ${FPB} ${FPC} )
+    /bin/rm -f          ${f}F
+    ncpdq --unpack ${f} ${f}F
+  end
+
+  ncra -w 0.92,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92 ${FMC}F ${FMB}F ${FMA}F ${FM9}F ${FM8}F ${FM7}F ${FM6}F ${FM5}F ${FM4}F ${FM3}F ${FM2}F ${FM1}F ${FP0}F ${FP1}F ${FP2}F ${FP3}F ${FP4}F ${FP5}F ${FP6}F ${FP7}F ${FP8}F ${FP9}F ${FPA}F ${FPB}F ${FPC}F ${fm}
+
+  /bin/rm -f ${FMC}F ${FMB}F ${FMA}F ${FM9}F ${FM8}F ${FM7}F ${FM6}F ${FM5}F ${FM4}F ${FM3}F ${FM2}F ${FM1}F ${FP0}F ${FP1}F ${FP2}F ${FP3}F ${FP4}F ${FP5}F ${FP6}F ${FP7}F ${FP8}F ${FP9}F ${FPA}F ${FPB}F ${FPC}F
+
+endif
