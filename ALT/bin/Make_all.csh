@@ -146,7 +146,7 @@ foreach f ( clim_stat wind_stat wind_stat_check \
   /bin/ln -s  ${f}_${OS} ${f}.exe
 end
 foreach f ( cice_restart cice_restart_mask cice_restart_range cice_restart_superset \
-            cice_stat cice_wind_ymdh cice_x1 hycom_palette lonlat_dist \
+            cice_stat cice_wind_ymdh cice_x1 espcd_offset hycom_palette lonlat_dist \
             hycom_alat hycom_archm_dates hycom_archv_dates hycom_depth hycom_depth_40 \
             hycom_nest_dates hycom_profile+sig hycom_profile+thstar hycom_profile2pcm \
             hycom_profile2z hycom_profile2zi \
@@ -221,7 +221,8 @@ foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_tidal_ap2ri hycom_tidal_best2 hycom_tidal_foreman \
             hycom_tidal_ri2ap hycom_tidal_ri2port \
             hycom_tidal_rms hycom_tideReIm8 hycom_tidebody hycom_tideport \
-            hycom_vmean hycom_xward )
+            hycom_vmean hycom_xward \
+            hycom_archive_sea_ok hycom_subsample )
   if ( ! -e ${f}_${OS} ) then
     $FC $FFLAGS ${f}.F $FLIBS hycom_endian_io.o parse.o -o ${f}_${OS}
   else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then
