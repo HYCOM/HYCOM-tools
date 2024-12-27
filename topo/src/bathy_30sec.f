@@ -24,7 +24,7 @@ C     BATHTMETRY ARRAYS.
 C
       INTEGER,   ALLOCATABLE :: IP(:,:)
       REAL*4,    ALLOCATABLE :: PLON(:,:),PLAT(:,:),XAF(:,:),YAF(:,:)
-      REAL*4,    ALLOCATABLE :: DH(:,:)
+      REAL*4,    ALLOCATABLE :: DH(:,:),Z2(:,:)
 C
       INTEGER*2, ALLOCATABLE :: IZ(:),IZ2(:,:)
 C
@@ -87,6 +87,7 @@ C
 C 4)  INPUT:
 C        ON UNIT  5:  NAMELIST /TOPOG/
 C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO OR CDF_ETOPO).
+C        RAW BINARY:  GLOBAL BATHYMETRY (RAW_SRTMP).
 C     OUTPUT:
 C        ON UNIT 61:  HYCOM BATHYMETRY FOR THE SPECIFIED REGION.
 C        ON UNIT 61A: HYCOM BATHYMETRY FOR THE SPECIFIED REGION.
@@ -99,6 +100,7 @@ C
       PARAMETER (ZERO=0.0, RADIAN=57.2957795)
 C
       CHARACTER*80 CLINE
+      INTEGER      BTYPE  !0=GEBCO, 1=ETOPO, 2=SRTMP
       INTEGER I,I0,II,IJ,IWIX,J,JJ,J0,L,LENGTH,MRECL,NFILL,NZERO
       REAL*4  XFD,YFD,DXD,DYD,BLAND
       REAL*8  XLIN,XFDX,XOV,YOU
@@ -274,11 +276,32 @@ C
         STOP
       ENDIF
 C
-C     READ THE INPUT (netCDF).
+C     READ THE INPUT BATHYMETRY.
 C
+      BTYPE = -1 !unknown bathy type
       CFILE = ' '
       CALL GETENV('CDF_GEBCO',CFILE)
       IF     (CFILE.NE.' ') THEN
+        BTYPE = 0
+      ELSE
+        CALL GETENV('CDF_ETOPO',CFILE)
+        IF     (CFILE.NE.' ') THEN
+          BTYPE = 1
+        ELSE
+          CALL GETENV('RAW_SRTMP',CFILE)
+          IF     (CFILE.NE.' ') THEN
+            BTYPE = 2
+          ENDIF !SRTMP
+        ENDIF !ETOPO:else
+      ENDIF !GEBCO:else
+      IF     (BTYPE.EQ.-1) THEN
+        WRITE(6,'(/a/)')
+     &  'error - CDF_GEBCO and CDF_ETOPO and RAW_SRTMP are not defined'
+        CALL ZHFLSH(6)
+        STOP
+      ENDIF
+!
+      IF     (BTYPE.EQ.0) THEN
         WRITE(6,*)
         WRITE(6,*) 'CDF_GEBCO = ',trim(CFILE)
         CALL ZHFLSH(6)
@@ -341,15 +364,40 @@ C
 C
           DEALLOCATE( IZ2 )
         ENDIF !1D or 2D
-      ELSE
-        CFILE = ' '
-        CALL GETENV('RAW_SRTMP',CFILE)
-        IF     (CFILE.EQ.' ') THEN
-          WRITE(6,'(/a/)')
-     &    'error - CDF_GEBCO and RAW_SRTMP are not defined'
-          CALL ZHFLSH(6)
-          STOP
-        ENDIF
+      ELSEIF (BTYPE.EQ.1) THEN
+        WRITE(6,*)
+        WRITE(6,*) 'CDF_ETOPO = ',trim(CFILE)
+        CALL ZHFLSH(6)
+        ! open NetCDF file
+        call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
+        ! inquire variable ID
+        call ncheck(nf90_inq_varid(ncFID,
+     &                             'z',
+     &                             ncVID))
+        ALLOCATE( Z2(IWI,JWI90) )
+        call ncheck(nf90_get_var(ncFID,ncVID,Z2))
+        write(6,*) 'Z2.1,1 = ',Z2(  1,1)
+        write(6,*) 'Z2.N,M = ',Z2(IWI,JWI90)
+C
+C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+C
+        I0    =   2
+        J0    = 242
+        DHMIN =  1.e30
+        DHMAX = -1.e30
+        DO J= 1,JWI90
+          DO I= 1,IWI
+            BTHYI(I0+I,J+J0) = -Z2(I,J)
+            DHMIN = MIN( DHMIN, BTHYI(I0+I,J+J0) )
+            DHMAX = MAX( DHMAX, BTHYI(I0+I,J+J0) )
+          ENDDO !i
+        ENDDO !j
+        write (6,'(/a,2f8.1/)') 'min,max depth = ',dhmin,dhmax
+        write (6,*) 'min,max depth = ',dhmin,dhmax
+        write (6,*)
+C
+        DEALLOCATE( Z2 )
+      ELSEIF (BTYPE.EQ.2) THEN
         WRITE(6,*)
         WRITE(6,*) 'RAW_SRTMP = ',trim(CFILE)
         CALL ZHFLSH(6)
@@ -532,7 +580,7 @@ c
             if (j.eq.  1.or. dh(i,j-1).le.coast) nzero=nzero+1
             if (j.ne.jdm.and.dh(i,j+1).le.coast) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i4,a,i4,a,i1,a)') 
+              write (6,'(a,i5,a,i5,a,i1,a)') 
      +          ' dh(',i,',',j,') set to zero (',
      +          nzero,' land nieghbours)'
               dh(i,j)=bland

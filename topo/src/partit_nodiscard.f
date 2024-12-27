@@ -4,7 +4,7 @@
 c
 c --- maximum number of tiles along one dimension
       integer    maxpe1
-      parameter (maxpe1=64)
+      parameter (maxpe1=512)
 c
 c --- halo size
       integer    mbdy

@@ -502,7 +502,7 @@ c
             if (j.eq.  1.or. dh(i,j-1).le.coast) nzero=nzero+1
             if (j.ne.jdm.and.dh(i,j+1).le.coast) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i4,a,i4,a,i1,a)')
+              write (6,'(a,i5,a,i5,a,i1,a)')
      +          ' dh(',i,',',j,') set to zero (',
      +          nzero,' land nieghbours)'
               dh(i,j)=bland

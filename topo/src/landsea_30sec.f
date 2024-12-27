@@ -26,7 +26,7 @@ C     BATHTMETRY ARRAYS.
 C
       INTEGER,   ALLOCATABLE :: IP(:,:)
       REAL*4,    ALLOCATABLE :: PLON(:,:),PLAT(:,:),XAF(:,:),YAF(:,:)
-      REAL*4,    ALLOCATABLE :: DH(:,:)
+      REAL*4,    ALLOCATABLE :: DH(:,:),Z2(:,:)
 C
       INTEGER*2, ALLOCATABLE :: IZ(:),IZ2(:,:)
       INTEGER*1, ALLOCATABLE :: LS(:,:)
@@ -84,7 +84,7 @@ C
 C 4)  INPUT:
 C        ON UNIT  5:  NAMELIST /TOPOG/
 C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO OR CDF_NAVO OR
-C                                        CDF_GLC).
+C                                        CDF_ETOPO OR CDF_GLC).
 C        Binary:      GLOBAL BATHYMETRY (RAW_SRTMP)
 C     OUTPUT:
 C        ON UNIT 61A: HYCOM LAND/SEA FOR THE SPECIFIED REGION.
@@ -97,6 +97,7 @@ C
       PARAMETER (ZERO=0.0, RADIAN=57.2957795)
 C
       CHARACTER*80 CLINE
+      INTEGER BTYPE  !0=GEBCO, 1=ETOPO, 2=SRTMP, 3=NAVO, 4=GLC
       INTEGER I,I0,II,IJ,IWIX,J,JJ,J0,L,LENGTH,MRECL,NFILL,NZERO
       REAL*4  XFD,YFD,DXD,DYD,FLAND,MAXLND,MAXSEA
       REAL*8  XLIN,XFDX,XOV,YOU
@@ -253,9 +254,41 @@ C
 C
 C     READ THE INPUT (netCDF).
 C
+      BTYPE = -1 !unknown bathy type
       CFILE = ' '
       CALL GETENV('CDF_GEBCO',CFILE)
       IF     (CFILE.NE.' ') THEN
+        BTYPE = 0
+      ELSE
+        CALL GETENV('CDF_ETOPO',CFILE)
+        IF     (CFILE.NE.' ') THEN
+          BTYPE = 1
+        ELSE
+          CALL GETENV('CDF_NAVO',CFILE)
+          IF     (CFILE.NE.' ') THEN
+            BTYPE = 3
+          ELSE
+            CALL GETENV('CDF_GLC',CFILE)
+            IF     (CFILE.NE.' ') THEN
+              BTYPE = 4
+            ELSE
+              CALL GETENV('RAW_SRTMP',CFILE)
+              IF     (CFILE.NE.' ') THEN
+                BTYPE = 2
+              ENDIF !SRTMP
+            ENDIF !GLC:else
+          ENDIF !NAVO:else
+        ENDIF !ETOPO:else
+      ENDIF !GEBCO:else
+      IF     (BTYPE.EQ.-1) THEN
+        WRITE(6,'(/a,a/)')
+     &  'error - CDF_GEBCO, CDF_ETOPO, CDF_NAVO, CDF_GLC and RAW_SRTMP', 
+     &  ' are not defined'
+        CALL ZHFLSH(6)
+        STOP
+      ENDIF
+
+      IF     (BTYPE.EQ.0) THEN
         WRITE(6,*)
         WRITE(6,*) 'CDF_GEBCO = ',trim(CFILE)
         CALL ZHFLSH(6)
@@ -303,9 +336,7 @@ C
           MAXSEA =  10.0
           MAXLND = -10.0
           DO J= 1,JWI90
-            JJ = JWI90+1-J  !1st point at 90N
             DO I= 1,IWI
-              IJ = I+(JJ-1)*IWI
               BTHYI(I0+I,J+J0) = -IZ2(I,J)
               BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
               BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
@@ -314,129 +345,142 @@ C
 C
           DEALLOCATE( IZ2 )
         ENDIF !1D or 2D
-      ELSE
-        CFILE = ' '
-        CALL GETENV('CDF_NAVO',CFILE)
-        IF     (CFILE.NE.' ') THEN
-          WRITE(6,*)
-          WRITE(6,*) 'CDF_NAVO  = ',trim(CFILE)
-          CALL ZHFLSH(6)
-          ! open NetCDF file
-          call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
-          ! inquire variable ID
-          call ncheck(nf90_inq_varid(ncFID,
-     &                               'dst',
-     &                               ncVID))
+      ELSEIF (BTYPE.EQ.1) THEN
+        WRITE(6,*)
+        WRITE(6,*) 'CDF_ETOPO = ',trim(CFILE)
+        CALL ZHFLSH(6)
+        ! open NetCDF file
+        call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
+        ! inquire variable ID
+        call ncheck(nf90_inq_varid(ncFID,
+     &                             'z',
+     &                             ncVID))
+        ALLOCATE( Z2(IWI,JWI90) )
+        call ncheck(nf90_get_var(ncFID,ncVID,Z2))
+        write(6,*) 'Z2.1,1 = ',Z2(  1,1)
+        write(6,*) 'Z2.N,M = ',Z2(IWI,JWI90)
 C
-          ALLOCATE( LS(IWI,JWI80) )
-          call ncheck(nf90_get_var(ncFID,ncVID,LS))
-          write(6,*) 'LS.1,1 = ',LS(1,1)
-          write(6,*) 'LS.N,M = ',LS(IWI,JWI80)
+C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
 C
-C         COPY INTO THE (LARGER) INTERPOLATION ARRAY.
-C         LAND POLEWARD OF 80.3125.
+        I0    =   2
+        J0    = 242
+        MAXSEA =  10.0
+        MAXLND = -10.0
+        DO J= 1,JWI90
+          DO I= 1,IWI
+            BTHYI(I0+I,J+J0) = -Z2(I,J)
+            BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
+            BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
+          ENDDO !i
+        ENDDO !j
 C
-          I0    =    2
-          J0    = 1405
-          MAXSEA =  10.0
-          MAXLND = -10.0
-          BTHYI(:,:) = MAXLND
-          DO J= 1,JWI80
-            JJ = JWI80+1-J
-            DO I= 1,IWI
-              IF     (LS(I,JJ).NE.0) THEN
-                BTHYI(I0+I,J+J0) = MAXSEA
-              ELSE
-                BTHYI(I0+I,J+J0) = MAXLND
-              ENDIF
-            ENDDO !i
-          ENDDO !j
+        DEALLOCATE( Z2 )
+      ELSEIF (BTYPE.EQ.3) THEN
+        WRITE(6,*)
+        WRITE(6,*) 'CDF_NAVO  = ',trim(CFILE)
+        CALL ZHFLSH(6)
+        ! open NetCDF file
+        call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
+        ! inquire variable ID
+        call ncheck(nf90_inq_varid(ncFID,
+     &                             'dst',
+     &                             ncVID))
 C
-          DEALLOCATE( LS )
-        ELSE
-          CFILE = ' '
-          CALL GETENV('CDF_GLC',CFILE)
-          IF     (CFILE.NE.' ') THEN
-            WRITE(6,*)
-            WRITE(6,*) 'CDF_GLC   = ',trim(CFILE)
-            CALL ZHFLSH(6)
-            ! open NetCDF file
-            call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
-            ! inquire variable ID
-            call ncheck(nf90_inq_varid(ncFID,
-     &                                 'z',
-     &                                 ncVID))
+        ALLOCATE( LS(IWI,JWI80) )
+        call ncheck(nf90_get_var(ncFID,ncVID,LS))
+        write(6,*) 'LS.1,1 = ',LS(1,1)
+        write(6,*) 'LS.N,M = ',LS(IWI,JWI80)
 C
-            ALLOCATE( LS(IWI,JWI90) )
-            call ncheck(nf90_get_var(ncFID,ncVID,LS))
-            write(6,*) 'LS.1,1 = ',LS(1,1)
-            write(6,*) 'LS.N,M = ',LS(IWI,JWI90)
+C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+C       LAND POLEWARD OF 80.3125.
 C
-C           COPY INTO THE (LARGER) INTERPOLATION ARRAY.
-C
-            I0    =   2
-            J0    = 242
-            MAXSEA =  10.0
-            MAXLND = -10.0
-            BTHYI(:,:) = MAXLND
-            DO J= 1,JWI90
-              JJ = J  !1st point at 90S
-              DO I= 1,IWI
-                IF     (LS(I,JJ).GE.50.0) THEN
-                  BTHYI(I0+I,J+J0) = MAXSEA
-                ELSE
-                  BTHYI(I0+I,J+J0) = MAXLND
-                ENDIF
-              ENDDO !i
-            ENDDO !j
-C
-            DEALLOCATE( LS )
-          ELSE
-            CFILE = ' '
-            CALL GETENV('RAW_SRTMP',CFILE)
-            IF     (CFILE.EQ.' ') THEN
-              WRITE(6,'(/a,a/)')
-     &        'error - CDF_GEBCO, CDF_NAVO, CDF_GLC',
-     &        ' and RAW_SRTMP are not defined'
-              CALL ZHFLSH(6)
-              STOP
+        I0    =    2
+        J0    = 1405
+        MAXSEA =  10.0
+        MAXLND = -10.0
+        BTHYI(:,:) = MAXLND
+        DO J= 1,JWI80
+          JJ = JWI80+1-J
+          DO I= 1,IWI
+            IF     (LS(I,JJ).NE.0) THEN
+              BTHYI(I0+I,J+J0) = MAXSEA
+            ELSE
+              BTHYI(I0+I,J+J0) = MAXLND
             ENDIF
-            WRITE(6,*)
-            WRITE(6,*) 'RAW_SRTMP = ',trim(CFILE)
-            CALL ZHFLSH(6)
+          ENDDO !i
+        ENDDO !j
 C
-            ALLOCATE( IZ(IWI*JWI90) )
+        DEALLOCATE( LS )
+      ELSEIF (BTYPE.EQ.4) THEN
+        WRITE(6,*)
+        WRITE(6,*) 'CDF_GLC   = ',trim(CFILE)
+        CALL ZHFLSH(6)
+        ! open NetCDF file
+        call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
+        ! inquire variable ID
+        call ncheck(nf90_inq_varid(ncFID,
+     &                             'z',
+     &                             ncVID))
 C
-            INQUIRE(IOLENGTH=MRECL) IZ
+        ALLOCATE( LS(IWI,JWI90) )
+        call ncheck(nf90_get_var(ncFID,ncVID,LS))
+        write(6,*) 'LS.1,1 = ',LS(1,1)
+        write(6,*) 'LS.N,M = ',LS(IWI,JWI90)
+C
+C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+C
+        I0    =   2
+        J0    = 242
+        MAXSEA =  10.0
+        MAXLND = -10.0
+        BTHYI(:,:) = MAXLND
+        DO J= 1,JWI90
+          JJ = J  !1st point at 90S
+          DO I= 1,IWI
+            IF     (LS(I,JJ).GE.50.0) THEN
+              BTHYI(I0+I,J+J0) = MAXSEA
+            ELSE
+              BTHYI(I0+I,J+J0) = MAXLND
+            ENDIF
+          ENDDO !i
+        ENDDO !j
+C
+        DEALLOCATE( LS )
+      ELSEIF (BTYPE.EQ.2) THEN
+         WRITE(6,*)
+         WRITE(6,*) 'RAW_SRTMP = ',trim(CFILE)
+         CALL ZHFLSH(6)
+C
+         ALLOCATE( IZ(IWI*JWI90) )
+C
+         INQUIRE(IOLENGTH=MRECL) IZ
 
-            OPEN(UNIT=1001, FILE=CFILE, FORM='UNFORMATTED',
-     +           STATUS='OLD', ACCESS='DIRECT', RECL=MRECL)
-            READ( 1001,REC=1) IZ
-            CLOSE(1001)
-            write(6,*) 'IZ.1,1 = ',IZ(1)
-            write(6,*) 'IZ.N,M = ',IZ(IWI*JWI90)
+         OPEN(UNIT=1001, FILE=CFILE, FORM='UNFORMATTED',
+     +        STATUS='OLD', ACCESS='DIRECT', RECL=MRECL)
+         READ( 1001,REC=1) IZ
+         CLOSE(1001)
+         write(6,*) 'IZ.1,1 = ',IZ(1)
+         write(6,*) 'IZ.N,M = ',IZ(IWI*JWI90)
 C
-C           COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+C        COPY INTO THE (LARGER) INTERPOLATION ARRAY.
 C
-            I0    =   2
-            J0    = 242
-            MAXSEA =  10.0
-            MAXLND = -10.0
-            DO J= 1,JWI90
-              JJ = JWI90+1-J  !1st point at 90N
-              DO I= 1,IWI
-                II = MOD( I + IWI/2 -1, IWI ) + 1  !1st point at 0E
-                IJ = II+(JJ-1)*IWI
-                BTHYI(I0+I,J+J0) = -IZ(IJ)
-                BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
-                BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
-              ENDDO !i
-            ENDDO !j
+         I0    =   2
+         J0    = 242
+         MAXSEA =  10.0
+         MAXLND = -10.0
+         DO J= 1,JWI90
+           JJ = JWI90+1-J  !1st point at 90N
+           DO I= 1,IWI
+             II = MOD( I + IWI/2 -1, IWI ) + 1  !1st point at 0E
+             IJ = II+(JJ-1)*IWI
+             BTHYI(I0+I,J+J0) = -IZ(IJ)
+             BTHYI(I0+I,J+J0) = MIN( MAXSEA, BTHYI(I0+I,J+J0) )
+             BTHYI(I0+I,J+J0) = MAX( MAXLND, BTHYI(I0+I,J+J0) )
+           ENDDO !i
+         ENDDO !j
 C
-            DEALLOCATE( IZ )
-          ENDIF !CDF_GLC:else
-        ENDIF !CDF_NAVO:else
-      ENDIF !CDF_GEBCO:else
+         DEALLOCATE( IZ )
+       ENDIF !BTYPE
 C
 C       2-degree wrap across pole.
 C

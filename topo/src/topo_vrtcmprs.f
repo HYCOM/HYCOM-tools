@@ -91,7 +91,7 @@ c
             if (j.eq.  1.or.dh(i,j-1).le.0.0) nzero=nzero+1
             if (j.eq.jdm.or.dh(i,j+1).le.0.0) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i4,a,i4,a,i1,a)') 
+              write (6,'(a,i5,a,i5,a,i1,a)') 
      +          ' dh(',i,',',j,') set to zero (',
      +          nzero,' land neighbours)'
               ip(i,j)=0
