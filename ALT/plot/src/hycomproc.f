@@ -4,7 +4,11 @@
 c
 c --- hycom plot post-processor (MKS real-basin version)
 c
-c --- use environment variable CROSS_LABEL to provide the
+c --- Use environment variable ARCHVS to identify an archs.input
+c --- file and to signal the input is a surface archive file.
+c --- If ARCHVS is defined, kdm must be 1.
+c
+c --- Use environment variable CROSS_LABEL to provide the
 c --- name of a file containing a 4-character label for each
 c --- layer on cross-section plots.  Set CROSS_LABEL="CONTOUR_NL"
 c --- (with kpalet<0) to disable labels on cross-section field contours.
@@ -51,6 +55,7 @@ c
       character crflnm*240,crlabl(99)*4,flnmtr*240,flnmmx*240
       character ctrc_title(99)*8,ctrc_units(99)*8,ctrc_format(99)*8,
      &          ctrc_name(99)*56
+      real      trc_scale(99)
       logical plotuv,plotw,plotnv,plotth,plotem,plosal,plotke
      &       ,plotbl,plotml
      &       ,smooth,mthin,mdens,initl,icegln,lsecanom
@@ -152,7 +157,15 @@ c ---   'region' = name of model region (e.g. ATLa2.00)
 c ---   'iexpt ' = experiment number x10  (000=from archive file)
 c ---   'yrflag' = days in year flag (-1=none,0=360,1=366J16,2=366J01,3=actual)
 c ---   'ntracr' = number of tracers (to plot, optional with default 0)
-c ---   one line per tracer: 8-letter title, 8-letter format, long name
+c ---     One line per tracer: 8-letter title, format, and units and longname
+c ---     or separated by "|" (i.e. title|format|units|longname).
+c ---     If format starts with Npf (N a number) the tracer is scaled by 10^N.
+c ---     3-D tracers can be active or diagnostic or vertical visc/diff.
+c ---     2-D tracers are supported in surface archive (archs) files.
+c ---     The order of the tracers is their order in the archive file, so
+c ---     to plot only the Nth tracer ntracr=N and the first N-1 'trcqq'
+c ---     values would be set negative to turn off plotting of the field.
+c ---     In such cases, the first N-1 titles could be 'SKIP    ', say.
 c ---   'idm   ' = longitudinal array size
 c ---   'jdm   ' = latitudinal  array size
 c ---   'kdm   ' = number of layers
@@ -166,14 +179,39 @@ c
         if (j.eq.1) then
           ntracr = i
           do ktr= 1,ntracr
-            read(*,'(a8,a8,a8,a)')
-     &        ctrc_title(ktr),ctrc_format(ktr),ctrc_units(ktr),
-     &        ctrc_name(ktr)
+           read(*,'(a)') cline
+            i = index(cline,'|')
+            if     (i.eq.0) then  !8-letter title, format, and units
+              read(cline,'(a8,a8,a8,a)')
+     &          ctrc_title(ktr),
+     &          ctrc_format(ktr),
+     &          ctrc_units(ktr),
+     &          ctrc_name(ktr)
+            else  !separated by "|"
+              ctrc_title(ktr) = cline(1:i-1)
+              cline = cline(i+1:)
+              i = index(cline,'|')
+              ctrc_format(ktr) = cline(1:i-1)
+              cline = cline(i+1:)
+              i = index(cline,'|')
+              ctrc_units(ktr) = cline(1:i-1)
+              ctrc_name(ktr)  = cline(i+1:)
+            endif
+            i = index(ctrc_format(ktr),'pf')
+            if     (i.ne.0) then  !a scaled tracer
+              read(ctrc_format(ktr)(1:i-1),*) ipower
+               trc_scale( ktr) = 10.0**ipower
+              ctrc_format(ktr) = ctrc_format(ktr)(i+1:)
+            else
+               trc_scale( ktr) = 1.0
+            endif
             write (lp,'(2x,i2,3a)') 
      &        ktr,' title  = "',trim(ctrc_title( ktr)),'"',
      &        ktr,' format = "',trim(ctrc_format(ktr)),'"',
      &        ktr,' units  = "',trim(ctrc_units( ktr)),' "',
      &        ktr,' l.name = "',trim(ctrc_name(  ktr)),'"'
+            write (lp,'(2x,i2,1a,1pe10.1)') 
+     &        ktr,' scale  = ',trc_scale(ktr)
             call flush(lp)
           enddo
           call blkini(ii,  'idm   ')
@@ -430,6 +468,14 @@ c
       call getdat(flnm,time3,artype,initl,icegln,
      &            iexpt,yrflag,kkin)              ! hycom input
       time = time3(3)
+c
+      if     (kk.ne.kkin) then
+        write(lp,*)
+        write(lp,*) 'error - wrong kdm (should be:',kkin,')'
+        write(lp,*)
+        call flush(lp)
+        stop
+      endif
 *
 *     if     (artype.eq.3) then
 *       smooth = .false.
@@ -466,17 +512,17 @@ c
           if     (ip(i,j).eq.1) then
             if     (srfht(i,j).gt.2.0**99) then
               ibads = ibads + 1   ! topo sea, srfht land
-*             if     (mod(ibads,100).eq.1) then
-*               write(lp,*) 'topo sea, srfht land at i,j = ',i,j
-*             endif
+              if     (mod(ibads,100).eq.1) then
+                write(lp,*) 'topo sea, srfht land at i,j = ',i,j
+              endif
             endif
           else
             if     (srfht(i,j).lt.2.0**99) then
               ibadl = ibadl + 1   ! topo land, srfht sea
-*             if     (mod(ibadl,100).eq.1) then
-*               write(lp,*) 'topo land, srfht sea at i,j = ',i,j
-*    &                      ,srfht(i,j)
-*             endif
+              if     (mod(ibadl,100).eq.1) then
+                write(lp,*) 'topo land, srfht sea at i,j = ',i,j
+     &                      ,srfht(i,j)
+              endif
             endif
           endif
         enddo
@@ -595,6 +641,9 @@ c --- convert layer thickness to meters
         do ktr= 1,ntracr
           trcr(i,j,2*k,ktr)=flag
         enddo
+      endif
+      if     (i.eq.ii/2 .and. j.eq.jj/2) then
+        write(6,*) 'k,p =',i,j,k,p(i,j,k+1)
       endif
  3    continue
 c
@@ -783,6 +832,9 @@ c ---     ke = 0.5*( std(u)**2 + std(v)**2 )
         else
           p(i,j,kk+1)=flag
         endif
+      endif
+      if     (i.eq.ii/2 .and. j.eq.jj/2) then
+        write(6,*) 'k,p =',i,j,kk,p(i,j,kk+1)
       endif
  7    continue
       qq=contur(srfht,ii,ii1,jj1)
@@ -1040,7 +1092,7 @@ c
         if     (yrflag.eq.3) then
           write(label(51:72),114)
      &      ' diff: ',(time3(1)+dt0)/year+1901.0,
-     &                (time3(2))+dt0/year+1901.0
+     &                (time3(2)+dt0)/year+1901.0
         elseif (time3(2)/year.gt.100.0) then
           write(label(51:72),114)
      &      ' diff: ',(time3(1)+dt0)/year,
@@ -1052,7 +1104,6 @@ c
         endif
       else  ! mean or sdev archive
 *       write(lp,*) 'time3 = ',time3
-        dt = 0.5*(time3(2)-time3(1))/(nstep-1)
         if     (yrflag.eq.0) then
           dt0 = 15.0
         elseif (yrflag.eq.1) then
@@ -1062,34 +1113,34 @@ c
         else
           dt0 = 0.0
         endif
-*       write(lp,*) 'yrflag,dt,dt0 = ',yrflag,dt,dt0
+*       write(lp,*) 'yrflag,dt0 = ',yrflag,dt0
         if     (artype.eq.2) then
           if     (yrflag.eq.3) then
             write(label(51:72),114)
-     &        ' mean: ',(time3(1)-dt+dt0)/year+1901.0,
-     &                  (time3(2)+dt+dt0)/year+1901.0
+     &        ' mean: ',(time3(1)+dt0)/year+1901.0,
+     &                  (time3(2)+dt0)/year+1901.0
           elseif (time3(2)/year.gt.100.0) then
             write(label(51:72),114)
-     &        ' mean: ',(time3(1)-dt+dt0)/year,
-     &                  (time3(2)+dt+dt0)/year
+     &        ' mean: ',(time3(1)+dt0)/year,
+     &                  (time3(2)+dt0)/year
           else !time < 100 yrs
             write(label(51:72),124)
-     &        ' mean: ',(time3(1)-dt+dt0)/year,
-     &                  (time3(2)+dt+dt0)/year
+     &        ' mean: ',(time3(1)+dt0)/year,
+     &                  (time3(2)+dt0)/year
           endif
         else
           if     (yrflag.eq.3) then
             write(label(51:72),114) 
-     &        ' sdev: ',(time3(1)-dt+dt0)/year+1901.0,
-     &                  (time3(2)+dt+dt0)/year+1901.0
+     &        ' sdev: ',(time3(1)+dt0)/year+1901.0,
+     &                  (time3(2)+dt0)/year+1901.0
           elseif (time3(2)/year.gt.100.0) then
             write(label(51:72),114) 
-     &        ' sdev: ',(time3(1)-dt+dt0)/year,
-     &                  (time3(2)+dt+dt0)/year
+     &        ' sdev: ',(time3(1)+dt0)/year,
+     &                  (time3(2)+dt0)/year
           else !time < 100 yrs
             write(label(51:72),124) 
-     &        ' sdev: ',(time3(1)-dt+dt0)/year,
-     &                  (time3(2)+dt+dt0)/year
+     &        ' sdev: ',(time3(1)+dt0)/year,
+     &                  (time3(2)+dt0)/year
           endif
         endif
       endif
@@ -3377,7 +3428,11 @@ c --- 'trcqq ' = layer k tracer contour int (<0 no plot; 0 from field)
 c
       do j=1,jj1
         do i=1,ii1
-          util1(i,j)=trcr(i,j,2*k,ktr)
+          if (ip(i,j).ne.0) then
+            util1(i,j)=trc_scale(ktr)*trcr(i,j,2*k,ktr)
+          else
+            util1(i,j)=flag
+          endif
           if     (mdens) then
             if (p(i,j,k)+onecm.gt.p(i,j,k+1) .or.
      &          abs(th3d(i,j,2*k)-theta(k)).gt.0.002) then
@@ -4078,6 +4133,9 @@ c ---           flux form for better results from mean archives
      &                       max(2.0*dp(i,j,k),dpv0+dpv1)
                 u(i,j,2*k-1)=uvp*vscale
                 v(i,j,2*k-1)=vvp*vscale
+              elseif (k.eq.1) then !very thin top layer, do nothing
+                u(i,j,2*k-1)=u(i,j,2*k)
+                v(i,j,2*k-1)=v(i,j,2*k)
               else !very thin layer, use velocities from above
                 u(i,j,2*k-1)=u(i,j,2*k-3)
                 v(i,j,2*k-1)=v(i,j,2*k-3)
@@ -4351,10 +4409,12 @@ c
               samsec(7) = samsec(7)+1.d0
             endif
             do ktr= 1,ntracr
-              tr2d(j2d,k,ktr)=trtr(i,j,kout+1-k,ktr)
-              if     (tr2d(j2d,k,ktr).ne.flag) then
+              if     (trtr(i,j,kout+1-k,ktr).ne.flag) then
+                tr2d(j2d,k,ktr)=trc_scale(ktr)*trtr(i,j,kout+1-k,ktr)
                 sumsec(7+ktr) = sumsec(7+ktr)+tr2d(j2d,k,ktr)
                 samsec(7+ktr) = samsec(7+ktr)+1.d0
+              else
+                tr2d(j2d,k,ktr)=flag
               endif
 *             if     (j.eq.11) then
 *               write(lp,*) 'k,tr2d = ',k,tr2d(j2d,k,ktr)
@@ -4545,10 +4605,16 @@ c ---   add array index labels
         enddo !i
       endif !lalolb
       if     (region.ne.'        ') then
-        x=ja+0.08*(jb-ja)
-        y=ya+5.0*chrsiz
+        if     (loclab.eq.0) then
+          x=jlabel
+        elseif (loclab.eq.2 .or. loclab.eq.3) then
+          x=ja+0.08*(jb-ja)  ! left
+        else
+          x=jb-0.08*(jb-ja)  ! right
+        endif
+        y=ya+5.0*chrsiz !lower
         call pcloqu(x,y,trim(region), csb,0.,0.)
-*       write(lp,'(a,a,f9.3)') region,',x = ',x
+        if (ni.eq.1) write(lp,'(a,a,f9.3)') region,',x = ',x
       endif
       if (nquad.eq.0) call fram(ncount)       !2 plots per page
       enddo !kp
@@ -4726,10 +4792,12 @@ c
               samsec(7) = samsec(7)+1.d0
             endif
             do ktr= 1,ntracr
-              tr2d(i2d,k,ktr)=trtr(i,j,kout+1-k,ktr)
-              if     (tr2d(i2d,k,ktr).ne.flag) then
+              if     (trtr(i,j,kout+1-k,ktr).ne.flag) then
+                tr2d(i2d,k,ktr)=trc_scale(ktr)*trtr(i,j,kout+1-k,ktr)
                 sumsec(7+ktr) = sumsec(7+ktr)+tr2d(i2d,k,ktr)
                 samsec(7+ktr) = samsec(7+ktr)+1.d0
+              else
+                tr2d(i2d,k,ktr)=flag
               endif
 *             if     (i.eq.6) then
 *               write(lp,*) 'k,tr2d = ',k,tr2d(i2d,k,ktr)
@@ -4944,12 +5012,14 @@ c ---   add array index labels
         enddo !i
       endif !lalolb
       if     (region.ne.'        ') then
-        if     (loclab.eq.3 .or. loclab.eq.4) then
-          x=ia+0.08*(ib-ia)  ! lower-left
+        if     (loclab.eq.0) then
+          x=ilabel
+        elseif (loclab.eq.3 .or. loclab.eq.4) then
+          x=ia+0.08*(ib-ia)  ! left
         else
-          x=ib-0.08*(ib-ia)  ! lower-right
+          x=ib-0.08*(ib-ia)  ! right
         endif
-        y=ya+5.0*chrsiz
+        y=ya+5.0*chrsiz  !lower
         call pcloqu(x,y,trim(region), csb,0.,0.)
         if (nj.eq.1) write(lp,'(a,a,f9.3)') region,',x = ',x
       endif

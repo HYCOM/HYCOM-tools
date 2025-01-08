@@ -1123,7 +1123,7 @@ c
       endif !l_arch
 c
       kkin=1
-      do 14 k=1,kkin
+      k=1
       if     (.not.l_arch(13)) then
       u(:,:,2*k) = 0.0
       else
@@ -1207,23 +1207,33 @@ c
         th3d(:,:,k) = 0.0
       endif
 c
-      if     (k.eq.1) then
-         tmix(:,:) = temp(:,:,2)
-         smix(:,:) = saln(:,:,2)
-        thmix(:,:) = th3d(:,:,2)
-         umix(:,:) =    u(:,:,2)
-         vmix(:,:) =    v(:,:,2)
-        write(lp,'("copy   ",a," into ",a)') 'temp.1  ','tmix    '
-        write(lp,'("copy   ",a," into ",a)') 'saln.1  ','smix    '
-        write(lp,'("copy   ",a," into ",a)') 'th3d.1  ','thmix   '
-        write(lp,'("copy   ",a," into ",a)') '   u.1  ','umix    '
-        write(lp,'("copy   ",a," into ",a)') '   v.1  ','vmix    '
-      endif !k==1
+c --- tracers
+      do ktr= 1,ntracr
+        read (ni,'(a)',end=6) cline
+        write(lp,'(a)')       cline(1:len_trim(cline))
+        i = index(cline,'=')
+        read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
+        call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
+        call extrct_p(work,idm,jdm,iorign,jorign, 
+     &                trcr(1,1,2*k,ktr),ii,jj)
+        write(lp,'("input  ",a," into ",a,i3)')
+     &    cline(1:8),'trcr    ',ktr
+      enddo !ktr
+c
+       tmix(:,:) = temp(:,:,2)
+       smix(:,:) = saln(:,:,2)
+      thmix(:,:) = th3d(:,:,2)
+       umix(:,:) =    u(:,:,2)
+       vmix(:,:) =    v(:,:,2)
+      write(lp,'("copy   ",a," into ",a)') 'temp.1  ','tmix    '
+      write(lp,'("copy   ",a," into ",a)') 'saln.1  ','smix    '
+      write(lp,'("copy   ",a," into ",a)') 'th3d.1  ','thmix   '
+      write(lp,'("copy   ",a," into ",a)') '   u.1  ','umix    '
+      write(lp,'("copy   ",a," into ",a)') '   v.1  ','vmix    '
 c
       write(lp,'(a,f9.5)') 'finished reading data for layer',thet
       call flush(lp)
       theta(k)=thet
- 14   continue
 c
       close( unit=ni)
       call zaiocl(ni)
@@ -1272,8 +1282,9 @@ c
       call zaiord(work,mask,.false., hmina,hmaxa, iunit)
 c
       if     (lrange) then
-        if     (abs(hmina-hminb).gt.abs(hminb)*1.e-4 .or.
-     &          abs(hmaxa-hmaxb).gt.abs(hmaxb)*1.e-4     ) then
+      if       (max(hmina,hminb,hmaxa,hmaxb).lt.2.0**99 .and.
+     &          (abs(hmina-hminb).gt.abs(hminb)*1.e-4 .or.
+     &           abs(hmaxa-hmaxb).gt.abs(hmaxb)*1.e-4     )  ) then
           write(lp,'(/ a / a,1p3e14.6 / a,1p3e14.6 /)')
      &      'error - .a and .b files not consistent:',
      &      '.a,.b min = ',hmina,hminb,hmina-hminb,

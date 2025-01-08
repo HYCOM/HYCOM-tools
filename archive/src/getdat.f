@@ -1461,18 +1461,30 @@ c
         th3d(:,:,k) = 0.0
       endif
 c
-      if     (k.eq.1) then
-         tmix(:,:) = temp(:,:,1)
-         smix(:,:) = saln(:,:,1)
-        thmix(:,:) = th3d(:,:,1)
-         umix(:,:) =    u(:,:,1)
-         vmix(:,:) =    v(:,:,1)
-        write(lp,'("copy   ",a," into ",a)') 'temp.1  ','tmix    '
-        write(lp,'("copy   ",a," into ",a)') 'saln.1  ','smix    '
-        write(lp,'("copy   ",a," into ",a)') 'th3d.1  ','thmix   '
-        write(lp,'("copy   ",a," into ",a)') '   u.1  ','umix    '
-        write(lp,'("copy   ",a," into ",a)') '   v.1  ','vmix    '
-      endif !k==1
+c --- tracers             
+      do ktr= 1,ntracr
+        read (ni,'(a)',end=6) cline
+        write(lp,'(a)')       cline(1:len_trim(cline))
+        i = index(cline,'=')
+        read (cline(i+1:),*)  nstep,timedum,layer,thet,hminb,hmaxb
+        call getfld(  work, ni, hminb,hmaxb, .false.,lrange)
+        call extrct_p(work,idm,jdm,iorign,jorign,
+     &                trcr(1,1,k,ktr),ii,jj)
+        write(lp,'("input  ",a," into ",a,i3)')
+     &    cline(1:8),'trcr    ',ktr 
+      enddo !ktr
+c 
+c --- treat layer 1 asd mixed layer
+       tmix(:,:) = temp(:,:,2)
+       smix(:,:) = saln(:,:,2)
+      thmix(:,:) = th3d(:,:,2)
+       umix(:,:) =    u(:,:,2)
+       vmix(:,:) =    v(:,:,2)
+      write(lp,'("copy   ",a," into ",a)') 'temp.1  ','tmix    '
+      write(lp,'("copy   ",a," into ",a)') 'saln.1  ','smix    '
+      write(lp,'("copy   ",a," into ",a)') 'th3d.1  ','thmix   '
+      write(lp,'("copy   ",a," into ",a)') '   u.1  ','umix    '
+      write(lp,'("copy   ",a," into ",a)') '   v.1  ','vmix    '
 c
       write(lp,'(a,f9.5)') 'finished reading data for layer',thet
       call flush(lp)

@@ -2851,19 +2851,25 @@ c
 c ---   'trcio ' = layer k tracer I/O unit (0 no I/O)
         call blkini(ioin,'trcio ')
         if (ioin.gt.0) then
+c
+c ---     'qscale' = scale factor for tracer
+          call blkinr(qscale,'qscale','("blkinr: ",a6," =",1pe12.3)')
+c
           do k= kf,kl
           do j=1,jj
             do i=1,ii
-              utilk(i,j,k)=trcr(i,j,k,ktr)
-              if (mthin) then
-                if (p(i,j,k)+onecm.gt.p(i,j,k+1)) then
-                  utilk(i,j,k)=flag
+              if     (ip(i,j).eq.1) then
+                utilk(i,j,k)=trcr(i,j,k,ktr)*qscale
+                if (mthin) then
+                  if (p(i,j,k)+onecm.gt.p(i,j,k+1)) then
+                    utilk(i,j,k)=flag
+                  endif
+                elseif (k.gt.1) then
+                  if (p(i,j,k)+onecm.gt.p(i,j,kk+1)) then
+                    utilk(i,j,k)=flag
+                  endif
                 endif
-              else
-                if (p(i,j,k)+onecm.gt.p(i,j,kk+1)) then
-                  utilk(i,j,k)=flag
-                endif
-              endif
+              endif !ip
             enddo
           enddo
           enddo

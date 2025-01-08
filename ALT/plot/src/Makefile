@@ -43,7 +43,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm -f *ps? *_x11 *meta *proc *test *cell *ctst *.a *.o *.mod *.inc *.log M*.log
+	/bin/rm -f *ps? *_x11 *meta *proc *test *cell *ctst *.a *.o *.mod *.inc M*.log
 
 
 MODS     =	mod_plot.o mod_xc.o mod_za.o wtime.o
