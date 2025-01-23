@@ -69,9 +69,11 @@ C
       INTEGER       ITYPE,NPAD,NX
       INTEGER       IF,IL,II,JF,JL,JI,N,NM
       INTEGER       ARTYPE,SIGVER,NSTEP,NDIFO
-      REAL          THBASE,TIME
+      REAL          THBASE,TIME,AMAXTR
       REAL*8        TIME3(3)
-      CHARACTER*240 CFILEA,CFILEB,CFILEL,CFILEP,CFILER,CFORMAT
+      CHARACTER*240 CFILEA,CFILEB,CFILEL,CFILEP,CFILER
+      CHARACTER*740 CFORMAT
+      CHARACTER*500 CFTR
 C
       CHARACTER*18 CASN
       INTEGER      I,IU,J,K,KREC,KREC0,L,IOS,NRECL
@@ -1016,12 +1018,40 @@ C
      &          '(i4,2f8.2,3f8.4,f9.3,f10.3,',NDIFO,'f8.2)'
               ENDIF !ndifo
             ELSE
+              CFTR = ' '
+              DO KTR= 1,NTRCP
+                AMAXTR = MINVAL(PROF(NLAY+KTR,1:KDM,I))
+                IF      (AMAXTR.LT.0.0) then
+                  AMAXTR = MAX( -AMAXTR*10.0,
+     &             ABS(MAXVAL(PROF(NLAY+KTR,1:KDM,I))))
+                ELSE
+                  AMAXTR = MAX( AMAXTR,
+     &               ABS(MAXVAL(PROF(NLAY+KTR,1:KDM,I))))
+                ENDIF
+                IF     (AMAXTR.GT.1.E6) THEN
+                  CFTR(5*(KTR-1)+1:5*(KTR-1)+5) = 'f8,  '
+                ELSEIF (AMAXTR.GT.1.E5) THEN
+                  CFTR(5*(KTR-1)+1:5*(KTR-1)+5) = 'f8.0,'
+                ELSEIF (AMAXTR.GT.1.E4) THEN
+                  CFTR(5*(KTR-1)+1:5*(KTR-1)+5) = 'f8.1,'
+                ELSEIF (AMAXTR.GT.1.E3) THEN
+                  CFTR(5*(KTR-1)+1:5*(KTR-1)+5) = 'f8.2,'
+                ELSEIF (AMAXTR.GT.1.E2) THEN
+                  CFTR(5*(KTR-1)+1:5*(KTR-1)+5) = 'f8.3,'
+                ELSE
+                  CFTR(5*(KTR-1)+1:5*(KTR-1)+5) = 'f8.4,'
+                ENDIF
+                write(IU,*) '# AMAXTR =',AMAXTR,
+     &                      ' CFTR = ',CFTR(1:5*(NTRCP-1)+4)
+              ENDDO
               IF     (NDIFO.EQ.0) THEN
-                WRITE(CFORMAT,'(a,i2,a)')
-     &        '(i4,2f8.2,3f8.4,f9.3,f10.3,',NTRCP,'f8.4,a)'  !last a not used
+                WRITE(CFORMAT,'(a,a,a)')
+     &            '(i4,2f8.2,3f8.4,f9.3,f10.3,',
+     &            CFTR(1:5*(NTRCP-1)+4),',a)'  !last a not used
               ELSE
-                WRITE(CFORMAT,'(a,i1,a,i2,a)')
-     &        '(i4,2f8.2,3f8.4,f9.3,f10.3,',NDIFO,'f8.2,',NTRCP,'f8.4)'
+                WRITE(CFORMAT,'(a,i1,a,i2,a,a)')
+     &            '(i4,2f8.2,3f8.4,f9.3,f10.3,',
+     &            NDIFO,'f8.2,',CFTR(1:5*(NTRCP-1)+4),')'
               ENDIF !ndifo
             ENDIF !ntrc
 C

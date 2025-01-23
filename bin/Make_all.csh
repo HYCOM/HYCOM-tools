@@ -222,7 +222,7 @@ foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_tidal_ri2ap hycom_tidal_ri2port \
             hycom_tidal_rms hycom_tideReIm8 hycom_tidebody hycom_tideport \
             hycom_vmean hycom_xward \
-            hycom_archive_sea_ok hycom_subsample )
+            hycom_archive_sea_ok hycom_subsample hycom_thinthick hycom_p2ugrid )
   if ( ! -e ${f}_${OS} ) then
     $FC $FFLAGS ${f}.F $FLIBS hycom_endian_io.o parse.o -o ${f}_${OS}
   else if ( -f `find ${f}.F -prune -newer ${f}_${OS}` ) then

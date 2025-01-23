@@ -250,7 +250,8 @@ C
                 RS = 0.0
                 DO JQ= -1,1
                   DO IQ= -1,1
-                    IF     (B(I+IQ,J+JQ).NE. SPVAL) THEN
+                    IF     (   B(I+IQ,J+JQ).NE. SPVAL .AND.
+     +                      AMSK(I+IQ,J+JQ).NE. SPVAL      ) THEN
                       RS = RS + C(IQ,JQ)*B(I+IQ,J+JQ)
                     ELSE
                       RS = RS + C(IQ,JQ)*B(I,   J)
@@ -264,8 +265,6 @@ C
             ENDDO
           ENDDO
         ENDDO
-  212     CONTINUE
-  210   CONTINUE
 #ifdef ENDIAN_IO
         CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
