@@ -12,7 +12,7 @@ c
 c --- write model fields.
 c --- HYCOM 2.0 array I/O archive file.
 c
-      character*8 ctype
+      character*8 ctype,cfield
 c
       real      coord,xmin,xmax
       integer   i,j,k,ktr,itr,jversn,l,nop
@@ -35,37 +35,41 @@ c ---   output is in "*.[ab]"
 c
 c --- header.
 c
+      if     (artype.ge.0) then
+        cfield = 'field   '
+      else
+        cfield = 'field_p '  !velocity on the p-grid
+      endif
       jversn = max(iversn,20)
-      if     (artype.eq.1) then
-        write(nop,116) ctitle,jversn,iexpt,yrflag,idm,jdm
+      if     (abs(artype).eq.1) then
+        write(nop,116) ctitle,jversn,iexpt,yrflag,idm,jdm,cfield
         write( lp,  *)
-        write( lp,116) ctitle,jversn,iexpt,yrflag,idm,jdm
+        write( lp,116) ctitle,jversn,iexpt,yrflag,idm,jdm,cfield
  116    format (a80/a80/a80/a80/
      &   i5,4x,'''iversn'' = hycom version number x10'/
      &   i5,4x,'''iexpt '' = experiment number x10'/
      &   i5,4x,'''yrflag'' = days in year flag'/
      &   i5,4x,'''idm   '' = longitudinal array size'/
      &   i5,4x,'''jdm   '' = latitudinal  array size'/
-     &   'field       time step  model day',
+     &   a8,'    time step  model day',
      &   '  k  dens        min              max')
-      elseif (artype.eq.2) then
-        write(nop,118) ctitle,jversn,iexpt,yrflag,idm,jdm
+      elseif (abs(artype).eq.2) then
+        write(nop,118) ctitle,jversn,iexpt,yrflag,idm,jdm,cfield
         write( lp,  *)
-        write( lp,118) ctitle,jversn,iexpt,yrflag,idm,jdm
+        write( lp,118) ctitle,jversn,iexpt,yrflag,idm,jdm,cfield
  118    format (a80/a80/a80/a80/
      &   i5,4x,'''iversn'' = hycom version number x10'/
      &   i5,4x,'''iexpt '' = experiment number x10'/
      &   i5,4x,'''yrflag'' = days in year flag'/
      &   i5,4x,'''idm   '' = longitudinal array size'/
      &   i5,4x,'''jdm   '' = latitudinal  array size'/
-     &   'field         no. recs  mean day',
+     &   a8,'      no. recs  mean day',
      &   '  k  dens        min              max')
       else
         write( lp,"(/ a /)") 
-     &    'error in putdat - only artpe==1 and artype==2 allowed'
+     &    'error in putdat - only artpe==-1,1 and artype==-2,2 allowed'
         stop
       endif
-
 c
 c --- surface fields.
 c
@@ -164,7 +168,7 @@ c
         write ( lp,117) 'vmix    ',nstep,time(3),0,coord,xmin,xmax
         call flush( lp)
       endif !sigver==0
-      if(artype.gt.1) then
+      if(abs(artype).gt.1) then
         call zaiowr(kemix, ip,.true., xmin,xmax, nop, .false.)
         write (nop,117) 'kemix   ',nstep,time(3),0,coord,xmin,xmax
         call flush(nop)
@@ -203,7 +207,7 @@ c
       call flush(nop)
       write ( lp,117) 'v_btrop ',nstep,time(3),0,coord,xmin,xmax
       call flush( lp)
-      if(artype.gt.1) then
+      if(abs(artype).gt.1) then
         call zaiowr(kebaro,ip,.true., xmin,xmax, nop, .false.)
         write (nop,117) 'kebtrop ',nstep,time(3),0,coord,xmin,xmax
         call flush(nop)
@@ -215,19 +219,37 @@ c --- layer loop.
 c
       do 75 k=1,kkout
       coord=theta(k)
-      call zaiowr(u(1,1,k),iu,.true.,
-     &            xmin,xmax, nop, .false.)
-      write (nop,117) 'u-vel.  ',nstep,time(3),k,coord,xmin,xmax
-      call flush(nop)
-      write ( lp,117) 'u-vel.  ',nstep,time(3),k,coord,xmin,xmax
-      call flush( lp)
-      call zaiowr(v(1,1,k),iv,.true.,
-     &            xmin,xmax, nop, .false.)
-      write (nop,117) 'v-vel.  ',nstep,time(3),k,coord,xmin,xmax
-      call flush(nop)
-      write ( lp,117) 'v-vel.  ',nstep,time(3),k,coord,xmin,xmax
-      call flush( lp)
-      if(artype.gt.1) then
+      if     (artype.ge.0) then
+        call zaiowr(u(1,1,k),iu,.true.,
+     &              xmin,xmax, nop, .false.)
+        write (nop,117) 'u-vel.  ',nstep,time(3),k,coord,xmin,xmax
+        call flush(nop)
+        write ( lp,117) 'u-vel.  ',nstep,time(3),k,coord,xmin,xmax
+        call flush( lp)
+      else
+        call zaiowr(u(1,1,k),ip,.true.,
+     &              xmin,xmax, nop, .false.)
+        write (nop,117) 'up-vel. ',nstep,time(3),k,coord,xmin,xmax
+        call flush(nop)
+        write ( lp,117) 'up-vel. ',nstep,time(3),k,coord,xmin,xmax
+        call flush( lp)
+      endif
+      if     (artype.ge.0) then
+        call zaiowr(v(1,1,k),iv,.true.,
+     &              xmin,xmax, nop, .false.)
+        write (nop,117) 'v-vel.  ',nstep,time(3),k,coord,xmin,xmax
+        call flush(nop)
+        write ( lp,117) 'v-vel.  ',nstep,time(3),k,coord,xmin,xmax
+        call flush( lp)
+      else
+        call zaiowr(v(1,1,k),ip,.true.,
+     &              xmin,xmax, nop, .false.)
+        write (nop,117) 'vp-vel. ',nstep,time(3),k,coord,xmin,xmax
+        call flush(nop)
+        write ( lp,117) 'vp-vel. ',nstep,time(3),k,coord,xmin,xmax
+        call flush( lp)
+      endif
+      if(abs(artype).gt.1) then
         call zaiowr(ke(1,1,k),ip,.true., xmin,xmax, nop, .false.)
         write (nop,117) 'k.e.    ',nstep,time(3),k,coord,xmin,xmax
         call flush(nop)

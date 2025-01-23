@@ -26,6 +26,7 @@ c
 c
       integer          artype,iexpt,iversn,yrflag,ioin
       integer          i,j,k,l,kz,kkin,kkout
+      integer          itest,jtest
       logical          ldensity
       real             tmljmq
       real             hmina,hmaxa
@@ -49,6 +50,8 @@ c --- 'flnm_t' = name of netCDF file containing water_temp or NONE
 c --- 'flnm_s' = name of netCDF file containing salinity   or NONE
 c --- 'flnm_u' = name of netCDF file containing water_u    or NONE
 c --- 'flnm_v' = name of netCDF file containing water_v    or NONE
+c --- 'itest ' = longitudinal test point (optional, default 0)
+c --- 'jtest ' = latitudinal  test point (optional, default 0)
 c --- 'iexpt ' = experiment number x10
 c --- 'tmljmq' = equiv. temp. jump across mixed-layer (degC, 0 no I/O)
 c
@@ -67,7 +70,16 @@ c
       read (*,'(a)') flnm_v
       write (lp,'(2a)') 'water_v    file: ',trim(flnm_v)
       call flush(lp)
-      call blkini(iexpt, 'iexpt ')
+      call blkini2(i,j,  'itest ','iexpt ')  !read itest or iexpt
+      if (j.eq.1) then
+        itest  = i
+        call blkini(jtest, 'jtest ') 
+        call blkini(iexpt, 'iexpt ')
+      else 
+        itest  = 0
+        jtest  = 0
+        iexpt  = i
+      endif
       call blkinr(tmljmq,'tmljmq','("blkinr: ",a6," =",f11.4," degC")')
 c
       ldensity = tmljmq.gt.0.0
@@ -223,7 +235,35 @@ c --- dpmixl
 c --- ------
 c
       if     (tmljmq.gt.0.0) then
+        do j=1,jj 
+          do i=1,ii
+            if     (depths(i,j).gt.0.0) then
+              do k= 2,kk
+                if      (temp(i,j,k).eq.flag) then
+                  temp(i,j,k) = temp(i,j,k-1)
+                endif    
+                if      (saln(i,j,k).eq.flag) then
+                  saln(i,j,k) = saln(i,j,k-1)
+                endif
+              enddo !k
+            endif
+          enddo !i
+        enddo !j
+        if     (itest.gt.0) then
+          i = itest
+          j = jtest
+          do k= 1,kk
+            write(6,'(a,i3,3f12.4)') 
+     &        'k,T,S,p =',k,temp(i,j,k),saln(i,j,k),p(i,j,k+1)
+          enddo
+        endif !itest
         call mixlay_locppm(dpmixl,temp,saln,p,flag,ii,jj,kk, tmljmq)
+        if     (itest.gt.0) then
+          i = itest
+          j = jtest
+          write(6,'(a,f12.4)') 
+     &        'pMLT    =',dpmixl(i,j) 
+        endif !itest
         write(cline,'(a,f4.2,a)') 
      &    'pMLT (',tmljmq,' degCeq)'
         call horout(dpmixl, artype,yrflag,time3,iexpt,.true.,

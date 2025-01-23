@@ -8,6 +8,8 @@ c
 c --- version that remaps layer interfaces to isopycnals half
 c --- way between target densities.
 c
+c --- supports archives with velocity on the p-grid, i.e. negative artypes
+c
 c --- this approach is most appropriate when the input and
 c --- output target densities are very different.  If they
 c --- are similar the "interfaces are isopycnals" approach
@@ -23,8 +25,8 @@ c
      &                 dp0ij(999),dp0cum(999),
      &                 dp0k(999),dp0kf,dpm,dpms,dpns,
      &                 ds0k(999),ds0kf,dsm,dsms,dsns,q,qdep
-      real             u1(999),v1(999),t1(999),s1(999),r1(999),
-     &                 uz(999),vz(999),tz(999),sz(999),rz(999),
+      real             u1(999),v1(999),e1(999),t1(999),s1(999),r1(999),
+     &                 uz(999),vz(999),ez(999),tz(999),sz(999),rz(999),
      &                 p1(0:999),pz(0:999)
       real             denjmp,ploc,zloc
       real             sigma(999),thbase,depthu,depthv,onem,qonem
@@ -560,8 +562,12 @@ c
               t1(k) = temp(i,j,k)
               s1(k) = saln(i,j,k)
               r1(k) = th3d(i,j,k)
-              if     (artype.eq.2) then
-                v1(k) = ke(i,j,k)  
+              if     (abs(artype).eq.2) then
+                e1(k) = ke(i,j,k)  
+              endif
+              if     (artype.lt.0) then
+                u1(k) = u(i,j,k)  
+                v1(k) = v(i,j,k)  
               endif
             enddo !k
             do k= 1,kkout
@@ -576,7 +582,13 @@ c
      &                               tz,sz,rz,pz,kkout)
               stop
             endif
-            if     (artype.eq.2) then
+            if     (abs(artype).eq.2) then
+              call remap_plm_1(e1,p1,kkin,
+     &                         ez,pz,kkout)
+            endif
+            if     (artype.lt.0) then
+              call remap_plm_1(u1,p1,kkin,
+     &                         uz,pz,kkout)
               call remap_plm_1(v1,p1,kkin,
      &                         vz,pz,kkout)
             endif
@@ -585,12 +597,16 @@ c
               temp(i,j,k) = tz(k)
               saln(i,j,k) = sz(k)
               th3d(i,j,k) = rz(k)
-              if     (artype.eq.2) then
-                ke(i,j,k) = vz(k)
+              if     (abs(artype).eq.2) then
+                ke(i,j,k) = ez(k)
+              endif
+              if     (artype.lt.0) then
+                u(i,j,k) = uz(k)
+                v(i,j,k) = vz(k)
               endif
             enddo
           endif
-          if     (iu(i,j).eq.1) then
+          if     (artype.ge.0 .and. iu(i,j).eq.1) then
             depthu = min(depths(i,j),depths(ia,j))
             do k= 1,kkin
               p1(k) = min(depthu,0.5*(p(i,j,k+1)+p(ia,j,k+1)))
@@ -605,7 +621,7 @@ c
               u(i,j,k) = uz(k)
             enddo
           endif
-          if     (iv(i,j).eq.1) then
+          if     (artype.ge.0 .and. iv(i,j).eq.1) then
             depthv = min(depths(i,j),depths(i,ja))
             do k= 1,kkin
               p1(k) = min(depthv,0.5*(p(i,j,k+1)+p(i,ja,k+1)))

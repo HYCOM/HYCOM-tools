@@ -58,7 +58,7 @@ c
       real      trc_scale(99)
       logical plotuv,plotw,plotnv,plotth,plotem,plosal,plotke
      &       ,plotbl,plotml
-     &       ,smooth,mthin,mdens,initl,icegln,lsecanom
+     &       ,smooth,mthin,mdens,initl,icegln,lsecanom,lpvel
      &       ,baclin,ltrack,ltrack_xy,lsnsec,lwesec
       integer lrfi(6),lrfo(6),gray
 c
@@ -468,6 +468,10 @@ c
       call getdat(flnm,time3,artype,initl,icegln,
      &            iexpt,yrflag,kkin)              ! hycom input
       time = time3(3)
+      lpvel = artype.lt.0
+      if     (lpvel) then
+        artype = -artype
+      endif
 c
       if     (kk.ne.kkin) then
         write(lp,*)
@@ -586,40 +590,66 @@ c
 c
 c --- convert baroclinic to total velocities by adding barotropic component
 c --- note that mean archives contain total velocity
-      if (k.eq.1) then
-        if     (iu(i,j).eq.1) then
-          if     (artype.eq.1) then
-            umix(i,j)=umix(i,j)+ubaro(i,j)  !ignore baclin, always total
+      if     (lpvel) then
+        if (k.eq.1) then
+          if     (ip(i,j).eq.1) then
+            if     (artype.eq.1) then
+              umix(i,j)=umix(i,j)+ubaro(i,j)  !ignore baclin, always total
+              vmix(i,j)=vmix(i,j)+vbaro(i,j)  !ignore baclin, always total
+            end if
+          else !ip(i,j).ne.1
+            umix(i,j)=0.
+            vmix(i,j)=0.
+          end if
+        endif !k==1
+        if     (ip(i,j).eq.1) then
+          if     (artype.eq.1 .and. .not.baclin) then
+            u(i,j,2*k)=u(i,j,2*k)+ubaro(i,j)  !total velocity
+            v(i,j,2*k)=v(i,j,2*k)+vbaro(i,j)  !total velocity
+          elseif (artype.eq.2 .and.      baclin) then
+            u(i,j,2*k)=u(i,j,2*k)-ubaro(i,j)  !baroclinic velocity
+            v(i,j,2*k)=v(i,j,2*k)-vbaro(i,j)  !baroclinic velocity
           end if
         else !iu(i,j).ne.1
-          umix(i,j)=0.
+          u(i,j,2*k)=0.
+          v(i,j,2*k)=0.
+        end if
+      else !usual velocities
+        if (k.eq.1) then
+          if     (iu(i,j).eq.1) then
+            if     (artype.eq.1) then
+              umix(i,j)=umix(i,j)+ubaro(i,j)  !ignore baclin, always total
+            end if
+          else !iu(i,j).ne.1
+            umix(i,j)=0.
+          end if
+          if     (iv(i,j).eq.1) then
+            if     (artype.eq.1) then
+              vmix(i,j)=vmix(i,j)+vbaro(i,j)  !ignore baclin, always total
+            end if
+          else !iv(i,j).ne.1
+            vmix(i,j)=0.
+          end if
+        endif !k==1
+        if     (iu(i,j).eq.1) then
+          if     (artype.eq.1 .and. .not.baclin) then
+            u(i,j,2*k)=u(i,j,2*k)+ubaro(i,j)  !total velocity
+          elseif (artype.eq.2 .and.      baclin) then
+            u(i,j,2*k)=u(i,j,2*k)-ubaro(i,j)  !baroclinic velocity
+          end if
+        else !iu(i,j).ne.1
+          u(i,j,2*k)=0.
         end if
         if     (iv(i,j).eq.1) then
-          if     (artype.eq.1) then
-            vmix(i,j)=vmix(i,j)+vbaro(i,j)  !ignore baclin, always total
+          if     (artype.eq.1 .and. .not.baclin) then
+            v(i,j,2*k)=v(i,j,2*k)+vbaro(i,j)  !total velocity
+          elseif (artype.eq.2 .and.      baclin) then
+            v(i,j,2*k)=v(i,j,2*k)-vbaro(i,j)  !baroclinic velocity
           end if
         else !iv(i,j).ne.1
-          vmix(i,j)=0.
+          v(i,j,2*k)=0.
         end if
-      endif
-      if     (iu(i,j).eq.1) then
-        if     (artype.eq.1 .and. .not.baclin) then
-          u(i,j,2*k)=u(i,j,2*k)+ubaro(i,j)  !total velocity
-        elseif (artype.eq.2 .and.      baclin) then
-          u(i,j,2*k)=u(i,j,2*k)-ubaro(i,j)  !baroclinic velocity
-        end if
-      else !iu(i,j).ne.1
-        u(i,j,2*k)=0.
-      end if
-      if     (iv(i,j).eq.1) then
-        if     (artype.eq.1 .and. .not.baclin) then
-          v(i,j,2*k)=v(i,j,2*k)+vbaro(i,j)  !total velocity
-        elseif (artype.eq.2 .and.      baclin) then
-          v(i,j,2*k)=v(i,j,2*k)-vbaro(i,j)  !baroclinic velocity
-        end if
-      else !iv(i,j).ne.1
-        v(i,j,2*k)=0.
-      end if
+      endif !lpvel:else
 c
 c --- convert layer thickness to meters
       if (depths(i,j).gt.0.) then
@@ -1947,12 +1977,21 @@ c
 c ---   speed.
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*sqrt( ubaro(i,j)**2 +
+     &                               vbaro(i,j)**2  )
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii .and. j.lt.jj) then
               util1(i,j)=50.0*sqrt( (ubaro(i,j)+ubaro(i+1,j))**2 +
      &                              (vbaro(i,j)+vbaro(i,j+1))**2  )
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         if (kpalet.ge.2 .and. qqin.eq.0.0) then
@@ -1993,11 +2032,19 @@ c
 c ---   u-velocity
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*ubaro(i,j)
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii) then
               util1(i,j)=50.0*(ubaro(i,j)+ubaro(i+1,j))
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2026,11 +2073,19 @@ c
 c ---   v-velocity
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*vbaro(i,j)
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. j.lt.jj) then
               util1(i,j)=50.0*(vbaro(i,j)+vbaro(i,j+1))
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2060,12 +2115,21 @@ c ---   speed.
         qqin=0.5*qqin  ! because speed is positive
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*sqrt( ubaro(i,j)**2 +
+     &                               vbaro(i,j)**2  )
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii .and. j.lt.jj) then
               util1(i,j)=50.0*sqrt( (ubaro(i,j)+ubaro(i+1,j))**2 +
      &                              (vbaro(i,j)+vbaro(i,j+1))**2  )
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2280,11 +2344,19 @@ c
 c ---   mixed layer u-velocity
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*umix(i,j)
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii) then
               util1(i,j)=50.0*(umix(i,j)+umix(i+1,j))
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2313,11 +2385,19 @@ c
 c ---   mixed layer v-velocity
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*vmix(i,j)
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. j.lt.jj) then
               util1(i,j)=50.0*(vmix(i,j)+vmix(i,j+1))
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2347,12 +2427,21 @@ c ---   mixed layer speed.
         qqin=0.5*qqin  ! because speed is positive
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*sqrt( umix(i,j)**2 +
+     &                               vmix(i,j)**2  )
+            else
+              util1(i,j)=flag
+            endif
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii .and. j.lt.jj) then
               util1(i,j)=50.0*sqrt( (umix(i,j)+umix(i+1,j))**2 +
      &                              (vmix(i,j)+vmix(i,j+1))**2  )
             else
               util1(i,j)=flag
             endif
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2714,6 +2803,20 @@ c
 c ---   speed.
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*sqrt( u(i,j,2*k)**2 +
+     &                               v(i,j,2*k)**2  )
+              if (mthin .and. p(i,j,k)+onecm.gt.p(i,j,k+1)) then
+                util1(i,j)=flag
+              elseif (mdens .and.
+     &                abs(th3d(i,j,2*k)-theta(k)).gt.0.002) then
+                util1(i,j)=flag
+              endif
+            else
+              util1(i,j)=flag
+            endif !ip
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii .and. j.lt.jj) then
               util1(i,j)=50.0*sqrt( (u(i,j,2*k)+u(i+1,j,2*k))**2 +
      &                              (v(i,j,2*k)+v(i,j+1,2*k))**2  )
@@ -2725,7 +2828,8 @@ c ---   speed.
               endif
             else
               util1(i,j)=flag
-            endif
+            endif !ip
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2771,6 +2875,19 @@ c
 c ---   u-velocity
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*u(i,j,2*k)
+              if (mthin .and. p(i,j,k)+onecm.gt.p(i,j,k+1)) then
+                util1(i,j)=flag
+              elseif (mdens .and.
+     &                abs(th3d(i,j,2*k)-theta(k)).gt.0.002) then
+                util1(i,j)=flag
+              endif
+            else
+              util1(i,j)=flag
+            endif !ip
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii) then
               util1(i,j)=50.0*(u(i,j,2*k)+u(i+1,j,2*k))
               if (mthin .and. p(i,j,k)+onecm.gt.p(i,j,k+1)) then
@@ -2781,7 +2898,8 @@ c ---   u-velocity
               endif
             else
               util1(i,j)=flag
-            endif
+            endif !ip
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2823,6 +2941,19 @@ c
 c ---   v-velocity
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*v(i,j,2*k)
+              if (mthin .and. p(i,j,k)+onecm.gt.p(i,j,k+1)) then
+                util1(i,j)=flag
+              elseif (mdens .and.
+     &                abs(th3d(i,j,2*k)-theta(k)).gt.0.002) then
+                util1(i,j)=flag
+              endif
+            else
+              util1(i,j)=flag
+            endif !ip
+            else
             if (ip(i,j).ne.0 .and. j.lt.jj) then
               util1(i,j)=50.0*(v(i,j,2*k)+v(i,j+1,2*k))
               if (mthin .and. p(i,j,k)+onecm.gt.p(i,j,k+1)) then
@@ -2833,7 +2964,8 @@ c ---   v-velocity
               endif
             else
               util1(i,j)=flag
-            endif
+            endif !ip
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))
@@ -2876,6 +3008,20 @@ c ---   speed.
         qqin=0.5*qqin  ! because speed is positive
         do j=1,jj
           do i=1,ii
+            if     (lpvel) then
+            if (ip(i,j).ne.0) then
+              util1(i,j)=100.0*sqrt( u(i,j,2*k)**2 +
+     &                               v(i,j,2*k)**2  )
+              if (mthin .and. p(i,j,k)+onecm.gt.p(i,j,k+1)) then
+                util1(i,j)=flag
+              elseif (mdens .and.
+     &                abs(th3d(i,j,2*k)-theta(k)).gt.0.002) then
+                util1(i,j)=flag
+              endif
+            else
+              util1(i,j)=flag
+            endif !ip
+            else
             if (ip(i,j).ne.0 .and. i.lt.ii .and. j.lt.jj) then
               util1(i,j)=50.0*sqrt( (u(i,j,2*k)+u(i+1,j,2*k))**2 +
      &                              (v(i,j,2*k)+v(i,j+1,2*k))**2  )
@@ -2887,7 +3033,8 @@ c ---   speed.
               endif
             else
               util1(i,j)=flag
-            endif
+            endif !ip
+            endif !lpvel:else
           enddo
         enddo
         qq=min(100.0,max(0.01,contur(util1,ii,ii1,jj1)))

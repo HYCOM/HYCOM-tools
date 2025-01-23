@@ -237,6 +237,9 @@ stats_archv:        $(MODS) stats_archv.o  $(ARCHV_OBJ)
 gofs_ptemp:         $(MODS) gofs_ptemp.o   $(NCDFG_OBJ)
 	$(LD) $(LDFLAGS) -o gofs_ptemp  gofs_ptemp.o  $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
 
+espc2archv:         $(MODS) espc2archv.o   $(NCDFG_OBJ)
+	$(LD) $(LDFLAGS) -o espc2archv espc2archv.o   $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
+
 espc_bottom:        $(MODS) espc_bottom.o  $(NCDFG_OBJ)
 	$(LD) $(LDFLAGS) -o espc_bottom espc_bottom.o $(MODG) $(NCDFG_OBJ) $(EXTRANCDF)
 

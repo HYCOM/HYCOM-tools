@@ -25,6 +25,7 @@ c
       logical          ltheta
       integer          artype,iexpt,iversn,yrflag,ioin
       integer          i,j,k,l,kz,kkin,kkout
+      integer          itest,jtest
       real             tmljmp,tmljmq,tempml,densml,
      &                 tmlorb,dmlorb,tmlnav,dmlnav
       real             offset,qqin,ztop(1)
@@ -47,6 +48,8 @@ c
 c --- 'flnm_d' = name of netCDF file containing depth
 c --- 'flnm_t' = name of netCDF file containing water_temp
 c --- 'flnm_s' = name of netCDF file containing salinity
+c --- 'itest ' = longitudinal test point (optional, default 0)
+c --- 'jtest ' = latitudinal  test point (optional, default 0)
 c --- 'iexpt ' = experiment number x10
 c --- 'minmld' = minimum mixed layer depth and start of jump zone (m)
 c --- 'tmljmq' = equiv. temp. jump across mixed-layer (degC,  0 no I/O)
@@ -69,7 +72,16 @@ c
       read (*,'(a)') flnm_s
       write (lp,'(2a)') 'salinity   file: ',trim(flnm_s)
       call flush(lp)
-      call blkini(iexpt, 'iexpt ')
+      call blkini2(i,j,  'itest ','iexpt ')  !read itest or iexpt
+      if (j.eq.1) then
+        itest  = i
+        call blkini(jtest, 'jtest ')
+        call blkini(iexpt, 'iexpt ')
+      else 
+        itest  = 0
+        jtest  = 0
+        iexpt  = i
+      endif
       call blkinr(qqin,  'minmld','("blkinr: ",a6," =",f11.4," m")')
       ztop(1) = qqin
       call blkinr(tmljmq,'tmljmq','("blkinr: ",a6," =",f11.4," degC")')
@@ -103,6 +115,33 @@ c --- read the netCDF T&S files,
 c --- convert in-situ to potential temperature and calculate th3d and p.
 c
       call getdat_espc_tsrp(flnm_d,flnm_t,flnm_s, time3)
+      do j=1,jj
+        do i=1,ii
+          if     (depths(i,j).gt.0.0) then
+            do k= 2,kk
+              if      (temp(i,j,k).eq.flag) then
+                temp(i,j,k) = temp(i,j,k-1)
+              endif
+              if      (saln(i,j,k).eq.flag) then
+                saln(i,j,k) = saln(i,j,k-1)
+              endif
+              if      (th3d(i,j,k).eq.flag) then
+                th3d(i,j,k) = th3d(i,j,k-1)
+              endif
+            enddo !k
+          endif
+        enddo !i
+      enddo !j
+c
+      if     (itest.gt.0) then
+        i = itest
+        j = jtest
+        do k= 1,kk
+          write(lp,'(a,i3,4f12.4)')
+     &      'k,T,S,R,p =',k,
+     &      temp(i,j,k),saln(i,j,k),th3d(i,j,k),p(i,j,k+1)
+        enddo
+      endif !itest
 c
 c ---   ---------------------------------------
 c ---   equivalent temperature mixed layer, PQM
@@ -110,11 +149,14 @@ c ---   ---------------------------------------
 c
         if     (tmljmq.gt.0.0) then
           call mixlay_locppm(util1,temp,saln,p,flag,ii,jj,kk, tmljmq)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'pMLT    =',util1(i,j)
+          endif !itest
               call ncrange_2d(util1,ii,jj, flag, hmina,hmaxa)
-              write (lp,'(a,2i6,i3)') 'ii,jj,kz = ',ii,jj,1
               write (lp,'(a,2f15.4)') 'pMLT min,max = ',hmina,hmaxa
-              write (lp,'(a,2f15.4)') 'pMLT  65, 14 = ',util1( 65, 14)
-              write (lp,'(a,2f15.4)') 'pMLT 131, 43 = ',util1(131, 43)
           k=0
           ltheta=.false.
           write(cline,'(a,f4.2,a)')
@@ -133,6 +175,12 @@ c ---   ---------------------------------------
 c
         if     (tmljmp.gt.0.0) then
           call mixlay_loc(util1,temp,saln,p,flag,ii,jj,kk, tmljmp)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'MLT     =',util1(i,j)
+          endif !itest
               write (lp,'(a,2I6,I3)') 'ii,jj,kz = ',ii,jj,1
               call ncrange_2d(util1,ii,jj, flag, hmina,hmaxa)
               write (lp,'(a,2f15.4)') ' MLT min,max = ',hmina,hmaxa
@@ -154,6 +202,12 @@ c ---   -----------------------
 c
         if     (tempml.gt.0.0) then
           call mixlay_ild(util1,temp,p,flag,ii,jj,kk, tempml)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'ILT     =',util1(i,j)
+          endif !itest
               call ncrange_2d(util1,ii,jj, flag, hmina,hmaxa)
               write (lp,'(a,2f15.4)') ' ILT min,max = ',hmina,hmaxa
           k=0
@@ -175,6 +229,12 @@ c
         if     (tmlnav.gt.0.0) then
 c ---     mode=1 for temperature
           call mixlay_rp33(util1,temp,saln,p,flag,ii,jj,kk,tmlnav,1)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'nILT    =',util1(i,j)
+          endif !itest
           k=0
           ltheta=.false.
           write(cline,'(a,f4.2,a)')
@@ -219,6 +279,12 @@ c
             enddo !i
           enddo !j
           call mixlay(util1,utilk,p,flag,ii,jj,kk)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'MLT     =',util1(i,j)
+          endif !itest
           k=0
           ltheta=.false.
           write(cline,'(a,f4.2,a)')
@@ -238,6 +304,12 @@ c
         if     (dmlnav.gt.0.0) then
 c ---     mode=2 for density
           call mixlay_rp33(util1,temp,saln,p,flag,ii,jj,kk,dmlnav,2)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'nMLT    =',util1(i,j)
+          endif !itest
           k=0
           ltheta=.false.
           write(cline,'(a,f4.2,a)')
@@ -256,6 +328,12 @@ c ---   -----------------------------------------
 c
         if     (tmlorb.eq.0.0) then
           call mixlay_lorb(util1,temp,p,flag,ii,jj,kk)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'ILT Loc =',util1(i,j)
+          endif !itest
           k=0
           ltheta=.false.
           call horout(util1, artype,yrflag,time3,iexpt,.true.,
@@ -288,6 +366,12 @@ c
             enddo !i
           enddo !j
           call mixlay_lorb(util1,utilk,p,flag,ii,jj,kk)
+          if     (itest.gt.0) then
+            i = itest
+            j = jtest
+            write(6,'(a,f12.4)')
+     &          'MLT Loc =',util1(i,j)
+          endif !itest
           k=0
           ltheta=.false.
           call horout(util1, artype,yrflag,time3,iexpt,.true.,

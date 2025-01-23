@@ -175,6 +175,76 @@ c
       return
       end subroutine getdat_gofs_ts
 
+      subroutine getdat_espc_depth(flnm_d)
+      use mod_xc    ! HYCOM communication API
+      use mod_plot  ! HYCOM plot array interface
+      USE netcdf    ! NetCDF fortran 90 interface
+      implicit none
+c
+      character*(*) flnm_d
+c
+c --- read bathymetry from ESPC netcdf
+c
+c --- 'flnm_d' = name of netCDF file containing depth
+c
+      logical          lperiodic,lshort
+      integer          i,j,k
+      integer          ncFID,ncVID,ncDID,ncTYP
+      integer*2        m_value
+      real             void,loni(ii)
+c
+      real*4,    allocatable :: work4(:,:)
+c
+      real*4,    parameter   :: spval=2.0**100
+c
+      allocate( work4(ii,jj) )
+c
+c --- bathymetry
+      call nchkg('nf90_open(flnm_d',
+     &            nf90_open(flnm_d, nf90_nowrite, ncFID))
+c
+      call nchkg('nf90_inq_varid("Longitude"',
+     &            nf90_inq_varid(ncFID,'Longitude',ncVID))
+      call nchkg('nf90_get_var(loni',
+     &            nf90_get_var(ncFID,ncVID,loni(1:ii)))
+      lperiodic = loni(ii)-loni(1).gt.350.0
+      if     (lperiodic) then
+        write(lp,'(a,f8.2)') '    periodic: lonext = ',loni(ii)-loni(1)
+      else
+        write(lp,'(a,f8.2)') 'not periodic: lonext = ',loni(ii)-loni(1)
+      endif
+c
+      call nchkg('nf90_inq_varid("depth"',
+     &            nf90_inq_varid(ncFID,'depth',ncVID))
+      call nchkg('nf90_get_var(work4',
+     &            nf90_get_var(ncFID,ncVID, work4(:,:)))
+      call nchkg('nf90_close',
+     &            nf90_close(ncFID))
+      do j= 1,jj
+        do i= 1,ii
+          if     (work4(i,j).ne.spval) then
+            depths(i,j) = work4(i,j) 
+          else
+            depths(i,j) = 0.0
+          endif
+        enddo !i
+      enddo !j
+      if     (lperiodic) then
+        depths(0,:) = depths(ii,:)
+        depths(:,0) = 0.0
+      else
+        depths(0,:) = 0.0
+        depths(:,0) = 0.0
+      endif
+      write(lp,'("input  ",a," into ",a)')
+     &        'depth',
+     &        'depths'
+c
+      deallocate( work4 )
+c
+      return
+      end subroutine getdat_espc_depth
+
       subroutine getdat_espc_tsrp(flnm_d,flnm_t,flnm_s, time)
       use mod_xc    ! HYCOM communication API
       use mod_plot  ! HYCOM plot array interface
@@ -935,7 +1005,7 @@ c
 
       subroutine getdat_espc(flnm_ssh,flnm_sssh,flnm_b,flnm_i,
      &                       flnm_t,flnm_s,flnm_u,flnm_v,
-     &                       icegln,time)
+     &                       icegln,time, itest,jtest)
       use mod_xc    ! HYCOM communication API
       use mod_plot  ! HYCOM plot array interface
       use mod_ppsw, only:  ! WHOI CTD functions
@@ -948,17 +1018,18 @@ c
      &                 flnm_t,flnm_s,flnm_u,flnm_v
       logical          icegln
       double precision time(3)
+      integer          itest,jtest
 c
 c --- read model fields and extract portion of global fields.
 c --- ESPC netCDF to HYCOM archive variables.
+c --- velocity stays on the p-grid.
 c
       double precision loni(idm),latj(jdm),zz(kk),zi(0:kk),time_hrs
       real             dbar,pz,onem,dpk(kk)
-      integer          i,idmg,ip1,j,jp1,k,kdmtst
-      integer          ncFID,ncVID,ncDID
+      integer          i,idmg,ip1,j,jdmg,jp1,k,kdmtst
+      integer          ncFID,ncVID,ncDID,ncTYP
       integer*2        m_value
 c
-      real,      allocatable :: worku(:,:,:),workv(:,:,:)
       real,      allocatable :: work4(:,:), work(:,:)
       integer*2, allocatable :: work2(:,:)
 c
@@ -967,7 +1038,6 @@ c
       m_value = -30000
       onem    = 9806.0   ! g/thref
 c
-      allocate( worku(ii,jj,0:kk), workv(ii,jj,0:kk) )
       allocate(  work(idm,jdm) )
       allocate( work4(idm,jdm) )
       allocate( work2(idm,jdm) )
@@ -977,25 +1047,25 @@ c
 c --- water_temp
       call nchkg('nf90_open(flnm_t',
      &            nf90_open(flnm_t, nf90_nowrite, ncFID))
-      call nchkg('nf90_inq_dimid("lat"',
+      call nchkg('nf90_inq_dimid("lon"',
      &            nf90_inq_dimid(ncFID,"lon",ncDID))
       call nchkg('nf90_Inquire_Dimension',
      &            nf90_Inquire_Dimension(ncFID,ncDID,len=idmg))
       call nchkg('nf90_inq_dimid("lat"',
      &            nf90_inq_dimid(ncFID,"lat",ncDID))
       call nchkg('nf90_Inquire_Dimension',
-     &            nf90_Inquire_Dimension(ncFID,ncDID,len=jdm))
+     &            nf90_Inquire_Dimension(ncFID,ncDID,len=jdmg))
       call nchkg('nf90_inq_dimid("depth"',
      &            nf90_inq_dimid(ncFID,"depth",ncDID))
       call nchkg('nf90_Inquire_Dimension',
      &            nf90_Inquire_Dimension(ncFID,ncDID,len=kdmtst))
 c
-      if (idmg.ne.idm .or. jdm.ne.jdm) then
+      if (idmg.ne.idm .or. jdmg.ne.jdm) then
         write(lp,*)
-        write(lp,*) 'error in getdat_name - input idm,jdm',
+        write(lp,*) 'error in getdat_espc - input idm,jdm',
      &                        ' not consistent with parameters'
         write(lp,*) 'idm,jdm = ',idm, jdm, '  (stdin)'
-        write(lp,*) 'idm,jdm = ',idmg,jdm,'  (input)'
+        write(lp,*) 'idm,jdm = ',idmg,jdmg,'  (input)'
         write(lp,*)
         call flush(lp)
         call clsgks
@@ -1052,22 +1122,40 @@ c
 c
       call nchkg('nf90_inq_varid("water_temp"',
      &            nf90_inq_varid(ncFID,'water_temp',ncVID))
+      call nchkg('nf90_inquire_variable("ncTYP"',
+     &            nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
       do k= 1,kk
-        call nchkg('nf90_get_var(work2',
-     &              nf90_get_var(ncFID,ncVID,
-     &                           work2(:,:),
-     &                           (/ 1,1,k /) ))
-        do j= 1,jdm
-          do i= 1,idm
-            if     (work2(i,j).ne.m_value) then
-              work(i,j) = 0.001*work2(i,j) + 20.0
-            else
-              work(i,j) = spval
-            endif
-          enddo !i
-        enddo !j
-        call extrct_p(work,idm,jdm,iorign,jorign,
-     &                temp(1,1,k),ii,jj)
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 0.001*work2(i,j) + 20.0
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work4(i,j).ne.m_value) then
+                work(i,j) = work4(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        endif !short:float
+        call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                      temp(1,1,k),ii,jj, 'temp    ',itest,jtest)
         if     (k.eq.1 .or. k.eq.kk) then
           write(lp,'("input  ",a," into ",a,i3)')
      &          'water_temp',
@@ -1082,22 +1170,40 @@ c --- salinity
      &            nf90_open(flnm_s, nf90_nowrite, ncFID))
       call nchkg('nf90_inq_varid("salinity"',
      &            nf90_inq_varid(ncFID,'salinity',ncVID))
+      call nchkg('nf90_inquire_variable("ncTYP"',
+     &            nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
       do k= 1,kk
-        call nchkg('nf90_get_var(work2',
-     &              nf90_get_var(ncFID,ncVID,
-     &                           work2(:,:),
-     &                           (/ 1,1,k /) ))
-        do j= 1,jdm
-          do i= 1,idm
-            if     (work2(i,j).ne.m_value) then
-              work(i,j) = 0.001*work2(i,j) + 20.0
-            else
-              work(i,j) = spval
-            endif
-          enddo !i
-        enddo !j
-        call extrct_p(work,idm,jdm,iorign,jorign,
-     &                saln(1,1,k),ii,jj)
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 0.001*work2(i,j) + 20.0
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work4(i,j).ne.m_value) then
+                work(i,j) = work4(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        endif !short:float
+        call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                      saln(1,1,k),ii,jj, 'saln    ',itest,jtest)
         if     (k.eq.1 .or. k.eq.kk) then
           write(lp,'("input  ",a," into ",a,i3)')
      &          'salinity  ',
@@ -1112,26 +1218,44 @@ c --- water_u
      &            nf90_open(flnm_u, nf90_nowrite, ncFID))
       call nchkg('nf90_inq_varid("water_u"',
      &            nf90_inq_varid(ncFID,'water_u',ncVID))
+      call nchkg('nf90_inquire_variable("ncTYP"',
+     &            nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
       do k= 1,kk
-        call nchkg('nf90_get_var(work2',
-     &              nf90_get_var(ncFID,ncVID,
-     &                           work2(:,:),
-     &                           (/ 1,1,k /) ))
-        do j= 1,jdm
-          do i= 1,idm
-            if     (work2(i,j).ne.m_value) then
-              work(i,j) = 0.001*work2(i,j)
-            else
-              work(i,j) = spval
-            endif
-          enddo !i
-        enddo !j
-        call extrct_p(work,idm,jdm,iorign,jorign,
-     &                worku(1,1,k),ii,jj)
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 0.001*work2(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work4(i,j).ne.m_value) then
+                work(i,j) = work4(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        endif !short:float
+        call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                      u(1,1,k),ii,jj, 'water_u ',itest,jtest)
         if     (k.eq.1 .or. k.eq.kk) then
           write(lp,'("input  ",a," into ",a,i3)')
      &          'water_u   ',
-     &          'worku   ',k
+     &          'u       ',k
         endif !1st or last
       enddo !k
       call nchkg('nf90_close',
@@ -1142,26 +1266,44 @@ c --- water_v
      &            nf90_open(flnm_v, nf90_nowrite, ncFID))
       call nchkg('nf90_inq_varid("water_v"',
      &            nf90_inq_varid(ncFID,'water_v',ncVID))
+      call nchkg('nf90_inquire_variable("ncTYP"',
+     &            nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
       do k= 1,kk
-        call nchkg('nf90_get_var(work2',
-     &              nf90_get_var(ncFID,ncVID,
-     &                           work2(:,:),
-     &                           (/ 1,1,k /) ))
-        do j= 1,jdm
-          do i= 1,idm
-            if     (work2(i,j).ne.m_value) then
-              work(i,j) = 0.001*work2(i,j)
-            else
-              work(i,j) = spval
-            endif
-          enddo !i
-        enddo !j
-        call extrct_p(work,idm,jdm,iorign,jorign,
-     &                workv(1,1,k),ii,jj)
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 0.001*work2(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:),
+     &                             (/ 1,1,k /) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work4(i,j).ne.m_value) then
+                work(i,j) = work4(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        endif !short:float
+        call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                      v(1,1,k),ii,jj, 'water_u ',itest,jtest)
         if     (k.eq.1 .or. k.eq.kk) then
           write(lp,'("input  ",a," into ",a,i3)')
      &          'water_v   ',
-     &          'workv   ',k
+     &          'v       ',k
         endif !1st or last
       enddo !k
       call nchkg('nf90_close',
@@ -1184,12 +1326,13 @@ c --- u_barotropic_velocity
           endif
         enddo !i
       enddo !j
-      call extrct_p(work,idm,jdm,iorign,jorign,
-     &              ubaro,ii,jj)
+      call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                    ubaro,ii,jj, 'ubaro   ',itest,jtest)
       write(lp,'("input  ",a," into ",a)')
      &      'u_b._vel..',
      &      'ubaro   '
 c
+c --- v_barotropic_velocity
       call nchkg('nf90_inq_varid("v_barotropic_velocity"',
      &            nf90_inq_varid(ncFID,'v_barotropic_velocity',ncVID))
       call nchkg('nf90_get_var(work4',
@@ -1204,51 +1347,48 @@ c
           endif
         enddo !i
       enddo !j
-      call extrct_p(work,idm,jdm,iorign,jorign,
-     &              vbaro,ii,jj)
+      call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                    vbaro,ii,jj, 'vbaro   ',itest,jtest)
       write(lp,'("input  ",a," into ",a)')
      &      'v_b._vel..',
      &      'vbaro   '
       call nchkg('nf90_close',
      &            nf90_close(ncFID))
 c
-c --- ssh
-      call nchkg('nf90_open(flnm_ssh',
-     &            nf90_open(flnm_ssh, nf90_nowrite, ncFID))
-      call nchkg('nf90_inq_varid("ssh"',
-     &            nf90_inq_varid(ncFID,'ssh',ncVID))
-      call nchkg('nf90_get_var(work2',
+c --- mixed_layer_thickness
+      call nchkg('nf90_open(flnm_b',
+     &            nf90_open(flnm_b, nf90_nowrite, ncFID))
+      call nchkg('nf90_inq_varid("mixed_layer_thickness"',
+     &            nf90_inq_varid(ncFID,'mixed_layer_thickness',ncVID))
+      call nchkg('nf90_get_var(work4',
      &            nf90_get_var(ncFID,ncVID,
-     &                         work2(:,:) ))
+     &                         work4(:,:) ))
       do j= 1,jdm
         do i= 1,idm
-          if     (work2(i,j).ne.m_value) then
-            work(i,j) = 9.806*(0.001*work2(i,j))
+          if     (work4(i,j).lt.0.5*spval) then
+            work(i,j) = work4(i,j) * onem
           else
             work(i,j) = spval
           endif
-*         if     (mod(i,100).eq.1 .and. mod(j,100).eq.1) then
-*           write(6,'(a,2i5,i3,1p2e12.4)')
-*    &       'ssh,ij =',i,j,
-*    &         ip(i,j),
-*    &       work(i,j),work4(i,j)
-*         endif  !debug
         enddo !i
       enddo !j
-      call extrct_p(work,idm,jdm,iorign,jorign,
-     &              srfht,ii,jj)
+      call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                    dpmixl,ii,jj, 'dpmixl  ',itest,jtest)
+      dpbl(:,:) = dpmixl(:,:)
       write(lp,'("input  ",a," into ",a)')
-     &      'ssh       ',
-     &      'srfht   '
+     &      'pMLT      ',
+     &      'dpmixl  '
       call nchkg('nf90_close',
      &            nf90_close(ncFID))
 c
-c --- steric_ssh
-      if     (flnm_sssh.ne.'NONE') then
-        call nchkg('nf90_open(flnm_sssh',
-     &              nf90_open(flnm_sssh, nf90_nowrite, ncFID))
-        call nchkg('nf90_inq_varid("steric_ssh"',
-     &              nf90_inq_varid(ncFID,'steric_ssh',ncVID))
+c --- ssh
+      call nchkg('nf90_open(flnm_ssh',
+     &            nf90_open(flnm_ssh, nf90_nowrite, ncFID))
+      call nchkg('nf90_inq_varid("surf_el"',
+     &            nf90_inq_varid(ncFID,'surf_el',ncVID))
+      call nchkg('nf90_inquire_variable("ncTYP"',
+     &            nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
+      if     (ncTYP.eq.NF90_SHORT) then
         call nchkg('nf90_get_var(work2',
      &              nf90_get_var(ncFID,ncVID,
      &                           work2(:,:) ))
@@ -1267,13 +1407,88 @@ c --- steric_ssh
 *           endif  !debug
           enddo !i
         enddo !j
-        call extrct_p(work,idm,jdm,iorign,jorign,
-     &                steric,ii,jj)
+      else !float
+        call nchkg('nf90_get_var(work4',
+     &              nf90_get_var(ncFID,ncVID,
+     &                           work4(:,:) ))
+        do j= 1,jdm
+          do i= 1,idm
+            if     (work4(i,j).ne.m_value) then
+              work(i,j) = 9.806*work4(i,j)
+            else
+              work(i,j) = spval
+            endif
+*           if     (mod(i,100).eq.1 .and. mod(j,100).eq.1) then
+*             write(6,'(a,2i5,i3,1p2e12.4)')
+*    &         'ssh,ij =',i,j,
+*    &           ip(i,j),
+*    &         work(i,j),work4(i,j)
+*           endif  !debug
+          enddo !i
+        enddo !j
+      endif !short:float
+      call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                    srfht,ii,jj, 'srfht   ',itest,jtest)
+      write(lp,'("input  ",a," into ",a)')
+     &      'surf_el   ',
+     &      'srfht   '
+      call nchkg('nf90_close',
+     &            nf90_close(ncFID))
+c
+c --- steric_ssh
+      if     (flnm_sssh.ne.'NONE') then
+        call nchkg('nf90_open(flnm_sssh',
+     &              nf90_open(flnm_sssh, nf90_nowrite, ncFID))
+        call nchkg('nf90_inq_varid("steric_ssh"',
+     &              nf90_inq_varid(ncFID,'steric_ssh',ncVID))
+        call nchkg('nf90_inquire_variable("ncTYP"',
+     &              nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 9.806*(0.001*work2(i,j))
+              else
+                work(i,j) = spval
+              endif
+*             if     (mod(i,100).eq.1 .and. mod(j,100).eq.1) then
+*               write(6,'(a,2i5,i3,1p2e12.4)')
+*    &           'ssh,ij =',i,j,
+*    &             ip(i,j),
+*    &           work(i,j),work4(i,j)
+*             endif  !debug
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work4(i,j).ne.m_value) then
+                work(i,j) = 9.806*work4(i,j)
+              else
+                work(i,j) = spval
+              endif
+*             if     (mod(i,100).eq.1 .and. mod(j,100).eq.1) then
+*               write(6,'(a,2i5,i3,1p2e12.4)')
+*    &           'ssh,ij =',i,j,
+*    &             ip(i,j),
+*    &           work(i,j),work4(i,j)
+*             endif  !debug
+            enddo !i
+          enddo !j
+        endif !short:float
+        call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                      steric,ii,jj, 'steric  ',itest,jtest)
         write(lp,'("input  ",a," into ",a)')
      &        'steric_ssh',
      &        'steric  '
-        call extrct_p(work,idm,jdm,iorign,jorign,
-     &                montg,ii,jj)
+        call extrct_p_debug(work,idm,jdm,iorign,jorign,
+     &                      montg,ii,jj, 'montg   ',itest,jtest)
         write(lp,'("input  ",a," into ",a)')
      &        'steric_ssh',
      &        'montg   '
@@ -1289,8 +1504,6 @@ c
 c --- dummy surface fields
       surflx(:,:) = 0.0
       salflx(:,:) = 0.0
-        dpbl(:,:) = dpk(1) * onem
-      dpmixl(:,:) = dpk(1) * onem
 c
 c --- sea ice fields
       if     (flnm_i.ne.'NONE') then
@@ -1300,18 +1513,35 @@ c
 c ---   covice
         call nchkg('nf90_inq_varid("sic"',
      &              nf90_inq_varid(ncFID,'sic',ncVID))
-        call nchkg('nf90_get_var(work2',
-     &              nf90_get_var(ncFID,ncVID,
-     &                           work2(:,:) ))
-        do j= 1,jdm
-          do i= 1,idm
-            if     (work2(i,j).ne.m_value) then
-              work(i,j) = 0.0001*work2(i,j)
-            else
-              work(i,j) = spval
-            endif
-          enddo !i
-        enddo !j
+        call nchkg('nf90_inquire_variable("ncTYP"',
+     &              nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 0.0001*work2(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work4(i,j).ne.m_value) then
+                work(i,j) = work4(i,j)
+              else
+                work(i,j) = spval
+              endif
+            enddo !i
+          enddo !j
+        endif !short:float
         call extrct_p(work,idm,jdm,iorign,jorign,
      &                covice,ii,jj)
         write(lp,'("input  ",a," into ",a)')
@@ -1321,18 +1551,35 @@ c
 c ---   thkice
         call nchkg('nf90_inq_varid("sih"',
      &              nf90_inq_varid(ncFID,'sih',ncVID))
-        call nchkg('nf90_get_var(work2',
-     &              nf90_get_var(ncFID,ncVID,
-     &                           work2(:,:) ))
-        do j= 1,jdm
-          do i= 1,idm
-            if     (work2(i,j).ne.m_value) then
-              work(i,j) = 0.001*work2(i,j)
-            else
-              work(i,j) = 0.0
-            endif
-          enddo !i
-        enddo !j
+        call nchkg('nf90_inquire_variable("ncTYP"',
+     &              nf90_inquire_variable(ncFID,ncVID,xtype=ncTYP))
+        if     (ncTYP.eq.NF90_SHORT) then
+          call nchkg('nf90_get_var(work2',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work2(:,:) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = 0.001*work2(i,j)
+              else
+                work(i,j) = 0.0
+              endif
+            enddo !i
+          enddo !j
+        else !float
+          call nchkg('nf90_get_var(work4',
+     &                nf90_get_var(ncFID,ncVID,
+     &                             work4(:,:) ))
+          do j= 1,jdm
+            do i= 1,idm
+              if     (work2(i,j).ne.m_value) then
+                work(i,j) = work4(i,j)
+              else
+                work(i,j) = 0.0
+              endif
+            enddo !i
+          enddo !j
+        endif !short:float
         call extrct_p(work,idm,jdm,iorign,jorign,
      &                thkice,ii,jj)
         write(lp,'("input  ",a," into ",a)')
@@ -1372,17 +1619,11 @@ c
       do j= 1,jj
         do i= 1,ii
           if     (ip(i,j).eq.0) then
-              worku(i,j,0) = 0.0
-              workv(i,j,0) = 0.0
             do k= 1,kk
-                 dp(i,j,k) = spval  !land point
-              worku(i,j,k) = 0.0
-              workv(i,j,k) = 0.0
+              dp(i,j,k) = spval  !land point
             enddo !k
           else
-            worku(i,j,0) = ubaro(i,j)  !p-grid
-            workv(i,j,0) = vbaro(i,j)  !p-grid
-                p(i,j,1) = 0.0
+            p(i,j,1) = 0.0
             do k= 1,kk
               if     (temp(i,j,k).ne.spval) then
                 p(i,j,k+1) = p(i,j,k) + dpk(k)
@@ -1392,8 +1633,8 @@ C ---           in-situ to potential temperature
                  temp(i,j,k) = 
      &             PPSW_theta(saln(i,j,k),temp(i,j,k), dbar,0.0)
 c---            total to baroclinic velocity 
-                worku(i,j,k) = worku(i,j,k) - ubaro(i,j)
-                workv(i,j,k) = workv(i,j,k) - vbaro(i,j)
+                u(i,j,k) = u(i,j,k) - ubaro(i,j)
+                v(i,j,k) = v(i,j,k) - vbaro(i,j)
               else !at bottom
                 if     (p(i,j,k).ne.depths(i,j)) then
 c ---             correct thickness at the bottom
@@ -1402,8 +1643,8 @@ c ---             correct thickness at the bottom
                     p(i,j,k+1) = depths(i,j)
                  temp(i,j,k)   =   temp(i,j,k-1)
                  saln(i,j,k)   =   saln(i,j,k-1)
-                worku(i,j,k)   = 0.0
-                workv(i,j,k)   = 0.0
+                    u(i,j,k)   = 0.0
+                    v(i,j,k)   = 0.0
               endif
             enddo !k
             do k= 1,kk
@@ -1416,39 +1657,11 @@ c ---             correct thickness at the bottom
       pz = 0.0
       do k= 1,kk
         pz = pz + dpk(k)
-        write(lp,'("set dp",i3," to",f8.2,", z,p are",2f9.2)')
+        write(lp,'("set dp",i3," to",f9.2,", z,p are",2f9.2)')
      &    k,dpk(k),zz(k),pz
       enddo !k
-      do j= 1,jj
-        jp1 = max(j+1,jj)
-        do i= 1,ii
-          if     (iu(i,j).eq.1) then
-            ip1 = mod(i,ii)+1  !2,...,ii,1
-            ubaro(i,j) = 0.5*(worku(i,j,0) + worku(ip1,j,0))
-            do k= 1,kk
-              u(i,j,k) = 0.5*(worku(i,j,k) + worku(ip1,j,k))
-            enddo !k
-          else
-            ubaro(i,j) = 0.0
-            do k= 1,kk
-              u(i,j,k) = 0.0
-            enddo !k
-          endif
-          if     (iv(i,j).eq.1) then
-            vbaro(i,j) = 0.5*(workv(i,j,0) + workv(i,jp1,0))
-            do k= 1,kk
-              v(i,j,k) = 0.5*(workv(i,j,k) + workv(i,jp1,k))
-            enddo !k
-          else
-            vbaro(i,j) = 0.0
-            do k= 1,kk
-              v(i,j,k) = 0.0
-            enddo !k
-          endif
-        enddo !i
-      enddo !j
 c
-      deallocate( work, work2, worku, workv )
+      deallocate( work, work2 )
 c
       return
       end subroutine getdat_espc

@@ -211,10 +211,12 @@ c
         stop
       endif
 c
-c --- artype==1 for normal archive files
-c --- artype==2 for   mean archive files
-c --- artype==3 for stddev archive files
-c --- artype==4 for   diff archive files
+c --- artype== 1 for normal archive files
+c --- artype==-1 for normal archive files with p-vel
+c --- artype== 2 for   mean archive files
+c --- artype==-2 for   mean archive files with p-vel
+c --- artype== 3 for stddev archive files
+c --- artype== 4 for   diff archive files
 c
       read( ni,'(a)') cline
       write(lp,'(a)') cline(1:len_trim(cline))
@@ -227,9 +229,12 @@ c
       else
         artype = 1
       endif
+      if     (cline(1:7).eq.'field_p') then
+        artype = -artype
+      endif
       write(lp,'(a,i2)') 'artype =',artype
 c
-      if     (artype.eq.3 .or. artype.eq.4) then
+      if     (abs(artype).eq.3 .or. abs(artype).eq.4) then
 c ---   always have thickness (deviation) as the 1st tracer, if any
         itr = min(2,ntracr+1)
       else
@@ -401,7 +406,8 @@ c
 c --- is there ke?
       read (ni,'(a)',iostat=ios) cline
       write(lp,'(a)')            cline(1:len_trim(cline))
-      lke = artype.gt.1 .and. ios.eq.0 .and. cline(1:8).eq.'kemix   '
+      lke = abs(artype).gt.1 .and.
+     &      ios.eq.0 .and. cline(1:8).eq.'kemix   '
       if     (lke) then  ! mean or std. or diff archive with ke
         i = index(cline,'=')
         read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
@@ -485,14 +491,26 @@ c ---   already input at end of k=1 loop.
       endif
       i = index(cline,'=')
       read (cline(i+1:),*)  nstep,time(3),layer,thet,hminb,hmaxb
-      if     (cline(1:8).ne.'u-vel.  ') then
-        write(lp,*)
-        write(lp,*) 'error in getdat - layer ',k,
-     &             ' does not exist (kk= ',kk,')'
-        write(lp,*)
-        call flush(lp)
-        call clsgks
-        stop
+      if     (artype.ge.0) then
+        if     (cline(1:8).ne.'u-vel.  ') then
+          write(lp,*)
+          write(lp,*) 'error in getdat - layer ',k,
+     &               ' does not exist (kk= ',kk,')'
+          write(lp,*)
+          call flush(lp)      
+          call clsgks
+          stop
+        endif
+      else
+        if     (cline(1:8).ne.'up-vel. ') then
+          write(lp,*)
+          write(lp,*) 'error in getdat - layer ',k,
+     &               ' does not exist (kk= ',kk,')'
+          write(lp,*) 
+          call flush(lp)
+          call clsgks
+          stop 
+        endif           
       endif
       call getfld(  work, ni, hminb,hmaxb, .true. ,lrange)
       call extrct_u(work,idm,jdm,iorign,jorign, 

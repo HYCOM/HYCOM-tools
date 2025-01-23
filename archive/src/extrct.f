@@ -1,3 +1,27 @@
+      subroutine extrct_p_debug(work,n,m,io,jo,array,no,mo,
+     &                          cname,itest,jtest)
+      implicit none
+c
+      integer     n,m,io,jo,no,mo, itest,jtest
+      real        work(n,m),array(no,mo)
+      character*8 cname
+c
+c --- array = work(io:io+no-1,jo:jo+mo-1)
+c
+c --- for the p-grid of global domains with arctic bi-polar patch.
+c --- it will also work for closed and near-global domains.
+c
+      integer i,iw,j,jw
+c
+      call extrct_p(work,n,m,io,jo,array,no,mo)
+c
+      if     (itest.ne.0) then
+        write(6,'(3a,2i6,e16.5)')
+     &    'extrct_p - ',cname,':',itest,jtest,array(itest,jtest)
+      endif
+      return
+      end
+c
       subroutine extrct_p(work,n,m,io,jo,array,no,mo)
       implicit none
 c
