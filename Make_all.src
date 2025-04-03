@@ -8,4 +8,5 @@
 #setenv ARCH sp4XLF
 #setenv ARCH xc30IF
 #
-setenv ARCH intelIF
+#setenv ARCH intelIF
+setenv ARCH xc30IF
