@@ -11,24 +11,37 @@
 # --- Cray systems, with ftn = ifort
 # module unload cray-netcdf
 # module   load cray-netcdf/4.4.0
-# module   list
-# setenv NCDFC	 ${NETCDF_DIR}
-# setenv NCDF	 ${NETCDF_DIR}
-# setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -lnetcdf -lnetcdff"
+# assume cray-netcdf and cray-hdf are already loaded
+module   list
+setenv NCDFC	 ${NETCDF_DIR}
+setenv NCDF	 ${NETCDF_DIR}
+setenv HDF5	 ${HDF5_DIR}
+setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -L${HDF5}/lib -lnetcdf -lnetcdff"
 #
 # --- DoD HPC systems with ifort:
-module   load costinit
-module unload netcdf-c
-module   load netcdf-c/intel/4.3.3.1
-module unload netcdf-fortran
-module   load netcdf-fortran/intel/4.4.2
-module   list
-setenv NCDFC	 ${NETCDFC_HOME}
-setenv NCDF	 ${NETCDFFORTRAN_HOME}
-setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -lnetcdf -lnetcdff"
+#module   load costinit
+#module unload netcdf-c
+#module   load netcdf-c/intel/4.3.3.1
+#module unload netcdf-fortran
+#module   load netcdf-fortran/intel/4.4.2
+#module   list
+#setenv NCDFC	 ${NETCDFC_HOME}
+#setenv NCDF	 ${NETCDFFORTRAN_HOME}
+#setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -lnetcdf -lnetcdff"
+#
+# --- NOAA WCOSS-2 systems with ifort:
+#module load envvar/1.0 intel/19.1.3.304 module load PrgEnv-intel/8.1.0 craype/2.7.10 netcdf/4.7.4
+#setenv NCDFC  /apps/prod/hpc-stack/intel-19.1.3.304/netcdf/4.7.4/
+#setenv NCDF   /apps/prod/hpc-stack/intel-19.1.3.304/netcdf/4.7.4/
+#setenv EXTRANCDF `nf-config --flibs`
 #
 # --- NASA NCCS systems with mpiifort:
 # module load comp/intel/2021.3.0 mpi/impi/2021.3.0 netcdf4/4.8.1-parallel
 # setenv NCDFC    /usr/local/other/netcdf4/4.8.1/intel/2021.3.0/
 # setenv NCDF     /usr/local/other/netcdf4/4.8.1/intel/2021.3.0/
 # setenv EXTRANCDF `nf-config --flibs`
+#
+# --- workstation, from nf-config with dummy NCDF and NCDFC
+#setenv NCDFC     ${HOME}/HYCOM-tools/lib
+#setenv NCDF      ${HOME}/HYCOM-tools/lib
+#setenv EXTRANCDF "-L/usr/lib/x86_64-linux-gnu -lnetcdff -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -flto=auto -Wl,-z,relro -Wl,-z,now -lnetcdf -lnetcdf -lm"

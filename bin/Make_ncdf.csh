@@ -28,8 +28,8 @@ if ($OS == "Linux") then
 # setenv OS XC30
 # setenv OS LinuxPGF
 # setenv OS LinuxGF
-# setenv OS LinuxAIF
-  setenv OS LinuxIF
+  setenv OS LinuxAIF
+# setenv OS LinuxIF
 endif
 #
 # --- the following are extracted from HYCOM-tools/config/*_setup

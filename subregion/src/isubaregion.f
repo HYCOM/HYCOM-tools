@@ -33,7 +33,7 @@ c
       integer              :: k,l0,l1, ibadl,ibads
       integer              :: if_sm,il_sm,jf_sm,jl_sm
       logical              :: lrot(2),lcheck,lnotsd
-      logical              :: layave,laythk,smooth,icegln
+      logical              :: layave,laythk,smooth,icegln,lpvel
       real                 :: hmina,hminb,hmaxa,hmaxb,
      &                        rtmp,up,vp
       integer, allocatable ::    m_sm(:,:),    iv_sm(:,:)
@@ -367,6 +367,10 @@ c
       write(lp,'(i5,4x,a)') jdm_out,"'jdm   ' = latitudinal  array size"
 c
       read( ni,'(a)') cline  ! field ...
+      lpvel = cline(1:7).eq.'field_p'
+      if    (lpvel) then
+        cline(1:7) = 'field  '  !input is field_p, output is field
+      endif
       write(no,'(a)') cline
       write(lp,'(a)') cline(1:len_trim(cline))
 c
@@ -413,17 +417,32 @@ c
 c
 c ---     u-grid, save the field (on the p-grid) for later processing.
 c
-          do j= 1,jdm
-            do i= 1,idm
-              if     (a_in(i,j).gt.hspval) then
-                a_in(i,j) = 0.0
-              endif
+          if     (lpvel) then  !already on p-grid
+            do j= 1,jdm
+              do i= 1,idm
+                if     (a_in(i,j).gt.hspval) then
+                  u_in(i,j) = 0.0
+                else
+                  u_in(i,j) = a_in(i,j)
+                endif
+              enddo
             enddo
-            do i= 1,idm-1
-              u_in(i,j) = 0.5*(a_in(i,j)+a_in(i+1,j))
+            if     (cline(1:6).eq.'up-vel') then
+              cline(1:7) = 'u-vel. '
+            endif
+          else
+            do j= 1,jdm
+              do i= 1,idm
+                if     (a_in(i,j).gt.hspval) then
+                  a_in(i,j) = 0.0
+                endif
+              enddo
+              do i= 1,idm-1
+                u_in(i,j) = 0.5*(a_in(i,j)+a_in(i+1,j))
+              enddo
+              u_in(idm,j) = 0.5*(a_in(idm,j)+a_in(1,j))
             enddo
-            u_in(idm,j) = 0.5*(a_in(idm,j)+a_in(1,j))
-          enddo
+          endif !lpvel:else
           cline_u = cline
 c
         elseif (cline(1:1).eq.'v' .and.
@@ -431,21 +450,36 @@ c
 c
 c ---     v-grid.  process both u and v fields.
 c
-          j=jdm
-            do i= 1,idm
-              if     (a_in(i,j).gt.hspval) then
-                a_in(i,j) = 0.0
-              endif
-              v_in(i,j) = 0.0
+          if     (lpvel) then  !already on p-grid
+            do j= 1,jdm
+              do i= 1,idm
+                if     (a_in(i,j).gt.hspval) then
+                  v_in(i,j) = 0.0
+                else
+                  v_in(i,j) = a_in(i,j)
+                endif
+              enddo
             enddo
-          do j= jdm-1,1,-1
-            do i= 1,idm
-              if     (a_in(i,j).gt.hspval) then
-                a_in(i,j) = 0.0
-              endif
-              v_in(i,j) = 0.5*(a_in(i,j)+a_in(i,j+1))
+            if     (cline(1:6).eq.'vp-vel') then
+              cline(1:7) = 'v-vel. '
+            endif
+          else
+            j=jdm
+              do i= 1,idm
+                if     (a_in(i,j).gt.hspval) then
+                  a_in(i,j) = 0.0
+                endif
+                v_in(i,j) = 0.0
+              enddo
+            do j= jdm-1,1,-1
+              do i= 1,idm
+                if     (a_in(i,j).gt.hspval) then
+                  a_in(i,j) = 0.0
+                endif
+                v_in(i,j) = 0.5*(a_in(i,j)+a_in(i,j+1))
+              enddo
             enddo
-          enddo
+          endif !lpvel:else
 c
 c         u_out (eastwards) and v_out (northwards) on p-grid.
 c

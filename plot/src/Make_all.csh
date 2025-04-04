@@ -7,8 +7,8 @@
 #
 # --- set ARCH to the correct value for this machine.
 #
-setenv NCARG_ROOT ~/pkgs/ncarg/gnu/5.2.1
-set path=($NCARG_ROOT/bin $path)
+#setenv NCARG_ROOT ~/pkgs/ncarg/gnu/5.2.1
+#set path=($NCARG_ROOT/bin $path)
 which ncargf90
 #
 source ../../Make_all.src
