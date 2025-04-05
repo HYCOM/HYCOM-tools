@@ -34,7 +34,7 @@ C     READ ARGUMENTS.
 C
       NARG = IARGC()
 C
-      IF     (NARG.EQ.6) THEN
+      IF     (NARG.EQ.4) THEN
         CALL GETARG(1,CFILE)
         CALL GETARG(2,CARG)
         READ(CARG,*) IDM
@@ -44,9 +44,9 @@ C
         J1   = 1
         IDM2 = (IDM+1)/2
         JDM2 = (JDM+1)/2
-        CALL GETARG(6,CFILEO)
+        CALL GETARG(4,CFILEO)
         NS = 1
-      ELSEIF (NARG.EQ.7) THEN
+      ELSEIF (NARG.EQ.5) THEN
         CALL GETARG(1,CFILE)
         CALL GETARG(2,CARG)
         READ(CARG,*) IDM
@@ -56,8 +56,8 @@ C
         J1   = 1
         IDM2 = (IDM+1)/2
         JDM2 = (JDM+1)/2
-        CALL GETARG(6,CFILEO)
-        CALL GETARG(7,CARG)
+        CALL GETARG(4,CFILEO)
+        CALL GETARG(5,CARG)
         READ(CARG,*) NS
       ELSEIF (NARG.EQ.8) THEN
         CALL GETARG(1,CFILE)

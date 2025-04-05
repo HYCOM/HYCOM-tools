@@ -60,9 +60,43 @@ C
         READ(CARG,*) S2
         CALL GETARG(7,CFILEO)
         REPEAT = NARG.EQ.8
+      ELSEIF (NARG.EQ.1) THEN  !hycom_expr -help
+        WRITE(6,*)
+     &    'Usage: hycom_expr'//
+     &    ' fin1.a fin2.a idm jdm s1 s2 fout.a [repeat]'
+        WRITE(6,*)
+        WRITE(6,*)
+     &    'Outputs an arithmetic expression of corresponding fields.'
+        WRITE(6,*)
+     &    '  For fin2.a=="SQ":        (s1*a1 + s2)**2'
+        WRITE(6,*)
+     &    '  For fin2.a=="SQSQ":      (s1*a1 + s2)**4'
+        WRITE(6,*)
+     &    '  For fin2.a=="SQRT":  sqrt(s1*a1 + s2)'
+        WRITE(6,*)
+     &    '  For fin2.a=="ABS":    abs(s1*a1 + s2)'
+        WRITE(6,*)
+     &    '  For fin2.a=="LOG":  log10(s1*a1 + s2)'
+        WRITE(6,*)
+     &    '  For fin2.a=="INT":   nint(s1*a1 + s2)'
+        WRITE(6,*)
+     &    '  For fin2.a=="ONE":        s1*a1 + s2'
+        WRITE(6,*)
+     &    '  For fin2.a=="INV":    s2/(s1*a1)'
+        WRITE(6,*)
+     &    '  For s1==s2==0.0:             a1 * a2'
+        WRITE(6,*)
+     &    '  Otherwise:                s1*a1 + s2*a2'
+        WRITE(6,*)
+        WRITE(6,*)
+     &    'If repeat is present, the first record of fin2.a'
+        WRITE(6,*)
+     &    ' is used repeatedly for all records in fin1.a'
+        CALL EXIT(1)
       ELSE
         WRITE(6,*)
-     &    'Usage: hycom_expr fin1.a fin2.a idm jdm s1 s2 fout.a'
+     &    'Usage: hycom_expr'//
+     &    ' fin1.a fin2.a idm jdm s1 s2 fout.a [repeat]'
         CALL EXIT(1)
       ENDIF
 C

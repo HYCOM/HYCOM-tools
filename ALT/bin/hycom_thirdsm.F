@@ -94,8 +94,8 @@ C
           READ(CARG,*) JDM
           I1   = 1
           J1   = 1
-          IDM2 = (IDM+1)/2
-          JDM2 = (JDM+1)/2
+          IDM2 = (IDM+2)/3
+          JDM2 = (JDM+2)/3
           CALL GETARG(4,CFILEO)
           CALL GETARG(5,CARG)
           READ(CARG,*) NS
@@ -109,8 +109,8 @@ C
           READ(CARG,*) JDM
           I1   = 1
           J1   = 1
-          IDM2 = (IDM+1)/2
-          JDM2 = (JDM+1)/2
+          IDM2 = (IDM+2)/3
+          JDM2 = (JDM+2)/3
           CALL GETARG(4,CFILEO)
           CALL GETARG(5,CARG)
           READ(CARG,*) NARCTIC
@@ -225,8 +225,8 @@ C
           READ(CARG,*) JDM
           I1   = 1
           J1   = 1
-          IDM2 = (IDM+1)/2
-          JDM2 = (JDM+1)/2
+          IDM2 = (IDM+2)/3
+          JDM2 = (JDM+2)/3
           CALL GETARG(4,CFILEO)
           CALL GETARG(5,CARG)
           READ(CARG,*) NS
@@ -239,8 +239,8 @@ C
           READ(CARG,*) JDM
           I1   = 1
           J1   = 1
-          IDM2 = (IDM+1)/2
-          JDM2 = (JDM+1)/2
+          IDM2 = (IDM+2)/3
+          JDM2 = (JDM+2)/3
           CALL GETARG(4,CFILEO)
           CALL GETARG(5,CARG)
           READ(CARG,*) NARCTIC

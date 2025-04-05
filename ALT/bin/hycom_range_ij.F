@@ -32,9 +32,9 @@ C
       IF     (NARG.EQ.3) THEN
         CALL GETARG(1,CFILE)
         CALL GETARG(2,CARG)
-        READ(CARG,5000) IDM
+        READ(CARG,*) IDM
         CALL GETARG(3,CARG)
-        READ(CARG,5000) JDM
+        READ(CARG,*) JDM
       ELSE
         WRITE(6,*) 'Usage: hycom_range_ij file.a idm jdm'
         CALL EXIT(1)
@@ -54,7 +54,6 @@ C
 C
       CALL RANGE(A,IDM,JDM,PAD,NPAD, CFILE)
       CALL EXIT(0)
- 5000 FORMAT(I4)
       END
       SUBROUTINE RANGE(A,IDM,JDM, PAD,NPAD, CFILE)
       IMPLICIT NONE
@@ -72,7 +71,7 @@ C
       INTEGER      IR_ISNAN
 C
 #endif
-      CHARACTER*21 CIJMAX,CIJMIN,CASN
+      CHARACTER*23 CIJMAX,CIJMIN,CASN
       INTEGER      LEN_TRIM
       INTEGER      I,IMN,IMX,J,JMN,JMX,K,IOS,NRECL
       REAL*4       AMN,AMX
@@ -166,7 +165,7 @@ C
   210   CONTINUE
         WRITE(CIJMIN,6100) 'min',IMN,JMN
         WRITE(CIJMAX,6100) 'max',IMX,JMX
- 6100   FORMAT(A,' at (',I4,',',I4,') = ')
+ 6100   FORMAT(A,' at (',I5,',',I5,') = ')
         WRITE(6,'(a,1pg16.8,2x,a,g16.8)') CIJMIN,AMN,CIJMAX,AMX
   110 CONTINUE
  1110 CONTINUE

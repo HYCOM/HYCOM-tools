@@ -466,8 +466,7 @@ C
         AMX = -SPVAL
         DO J= 1,JDM
           DO I= 1,IDM
-            IF     (   A(I,J).NE.SPVAL .AND.
-     +              AMSK(I,J).NE.SPVAL      ) THEN
+            IF     (AMSK(I,J).NE.SPVAL) THEN
               IZ = PLON(I,J)
               IF     (PLON(I,J).LT.0.0) THEN
                 IZ = IZ - 1

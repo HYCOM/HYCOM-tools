@@ -153,6 +153,16 @@ C
 #ifdef CRAY
       INTEGER*8    IU8,IOS8
 #endif
+C  
+      IF     (NPAD.EQ.0) THEN
+        INQUIRE( IOLENGTH=NRECL) U(1:IDM,1:JDM)
+      ELSE
+        INQUIRE( IOLENGTH=NRECL) U(1:IDM,1:JDM), PAD
+        PAD(:) = SPVAL
+#ifdef ENDIAN_IO
+        CALL ENDIAN_SWAP(PAD,NPAD)
+#endif
+      ENDIF
 C
 C     INPUT GRID ARRAY.
 C

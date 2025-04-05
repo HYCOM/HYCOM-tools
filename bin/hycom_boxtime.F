@@ -1,14 +1,21 @@
       PROGRAM HYCOM_BOXTIME
       IMPLICIT NONE
 C
-C  hycom_boxtime - Usage:  hycom_boxtime fin.a idm jdm nbox [w1st] fout.a
+C  hycom_boxtime - Usage:  hycom_boxtime fin.a idm jdm nbox [[w1] w2 ... wcen] fout.a
 C
 C                 Outputs a running time box average of the input
 C                 nbox  is the the box size, must be odd.
-C                 w1st  is the the weight of the 1st and last field default 1.0
+C                 w1    is the the weight of fields 1 & nbox     default 1.0
+C                 wX    is the the weight of fields X & nbox+1-X default 1.0
+C                        0 or 1 or (nbox+1)/2 weights can be provided
 C
 C  A typical use might be to filter tides from hourly fields with a 25-hour,
-C   or 24.84-hour (nbox=25, w1st=0.921), filter.
+C   or 24.84-hour (nbox=25, w1=0.921), filter.  Or for 3 hourly fields
+C   a 28.84 hour Composite Simpson's rule would have weights
+C   1.4494 3.9706 2.0 4.0 2.0
+C
+C  The first output field is the running mean of records 1 to nbox,
+C  so there are nbox-1 fewer records output than input.
 C
 C  fin*.a is assumed to contain idm*jdm 32-bit IEEE real values for
 C   each array, in standard f77 element order, followed by padding
@@ -26,7 +33,8 @@ C
       INTEGER       NARG
       CHARACTER*240 CARG
 C
-      INTEGER       IDM,JDM,NBOX,W1ST,NPAD
+      INTEGER       IDM,JDM,N,NBOX,NPAD
+      REAL*4        W(999)
       CHARACTER*240 CFILE,CFILEO
 C
 C     READ ARGUMENTS.
@@ -41,7 +49,7 @@ C
         READ(CARG,*) JDM
         CALL GETARG(4,CARG)
         READ(CARG,*) NBOX
-        W1ST = 1.0
+        W(1:(NBOX+1)/2) = 1.0
         CALL GETARG(5,CFILEO)
       ELSEIF (NARG.EQ.6) THEN
         CALL GETARG(1,CFILE)
@@ -52,17 +60,34 @@ C
         CALL GETARG(4,CARG)
         READ(CARG,*) NBOX
         CALL GETARG(5,CARG)
-        READ(CARG,*) W1ST
+        READ(CARG,*) W(1)
+        W(2:(NBOX+1)/2) = 1.0
         CALL GETARG(6,CFILEO)
+      ELSEIF (NARG.GT.6) THEN
+        CALL GETARG(1,CFILE)
+        CALL GETARG(2,CARG)
+        READ(CARG,*) IDM
+        CALL GETARG(3,CARG)
+        READ(CARG,*) JDM
+        CALL GETARG(4,CARG)
+        READ(CARG,*) NBOX
+        IF     (NARG.EQ.5+(NBOX+1)/2) THEN
+          DO N= 1,(NBOX+1)/2
+            CALL GETARG(4+N,CARG)
+            READ(CARG,*) W(N)
+          ENDDO
+          CALL GETARG(5+(NBOX+1)/2,CFILEO)
+        ELSE
+        ENDIF
       ELSE
         WRITE(6,*)
-     &  'Usage: hycom_boxtime fin.a idm jdm nbox [w1st] fout.a'
+     &  'Usage: hycom_boxtime fin.a idm jdm nbox [[w1] ... wcen] fout.a'
         CALL EXIT(1)
       ENDIF
 C
       IF     (MOD(NBOX,2).EQ.0 .OR. NBOX.LE.1) THEN
         WRITE(6,*)
-     &  'Usage: hycom_boxtime fin.a idm jdm nbox [w1st] fout.a'
+     &  'Usage: hycom_boxtime fin.a idm jdm nbox [[w1] ... wcen] fout.a'
         WRITE(6,*)
      &  '       nbox must be odd'
         CALL EXIT(3)
@@ -86,18 +111,19 @@ C
         CALL EXIT(2)
       ENDIF
 C
-      CALL SMTH(A,B,IDM,JDM,PAD,NPAD, NBOX,W1ST, CFILE,CFILEO)
+      CALL SMTH(A,B,IDM,JDM,PAD,NPAD, NBOX,W, CFILE,CFILEO)
       CALL EXIT(0)
       END
       SUBROUTINE SMTH(A,B,IDM,JDM,PAD,NPAD,
-     +                NBOX,W1ST, CFILE,CFILEO)
+     +                NBOX,W, CFILE,CFILEO)
       IMPLICIT NONE
 C
       REAL*4     SPVAL
       PARAMETER (SPVAL=2.0**100)
 C
       CHARACTER*240 CFILE,CFILEO
-      INTEGER      IDM,JDM,NPAD,NBOX,W1ST
+      INTEGER      IDM,JDM,NPAD,NBOX
+      REAL*4       W(999)
       REAL*4       A(IDM,JDM,NBOX),
      +             B(IDM,JDM),PAD(NPAD)
 C
@@ -107,8 +133,8 @@ C
       INTEGER*8    IU8,IOS8
 #endif
       CHARACTER*18 CASN
-      INTEGER      I,J,K,IOS,NRECL,N
-      REAL*4       AMN,AMX
+      INTEGER      I,J,K,IOS,NRECL,N,NH
+      REAL*4       WS(999),WSUM,AMN,AMX
 C
       INQUIRE( IOLENGTH=NRECL) B,PAD
 #ifdef CRAY
@@ -167,8 +193,15 @@ C
 C
 C --- STARTUP PROCESSING
 C
-      DO K= 1,NBOX
-        READ(11,REC=K,IOSTAT=IOS) A(:,:,K)
+      NH = (NBOX+1)/2
+      WSUM = W(NH) + 2.0*SUM( W(1:NH-1) )
+      DO N=1,NH
+        WS(N) = W(N) / WSUM
+        WRITE(6,'(a,i3,2f12.5)') '#W:',N,W(N),WS(N)
+      ENDDO !n
+C
+      DO K= 1,NBOX-1
+        READ(11,REC=K,IOSTAT=IOS) A(:,:,K+1)
 #ifdef ENDIAN_IO
         CALL ENDIAN_SWAP(A(1,1,K),IDM*JDM)
 #endif
@@ -182,35 +215,9 @@ C
         ENDIF
       ENDDO !k
 C
-      AMN =  SPVAL
-      AMX = -SPVAL
-      DO J= 1,JDM
-        DO I= 1,IDM
-          IF     (A(I,J,1) .NE. SPVAL) THEN
-            B(I,J) = W1ST*(A(I,J,1)+A(I,J,NBOX))
-            DO N=2,NBOX-1
-              B(I,J) = B(I,J) + A(I,J,N)
-            ENDDO !n
-            B(I,J) = B(I,J)/(NBOX+2.0*(W1ST-1.0))
-            AMX = MAX( AMX, B(I,J) )
-            AMN = MIN( AMN, B(I,J) )
-          ELSE
-            B(I,J) = SPVAL
-          ENDIF
-        ENDDO !i
-      ENDDO !j
-#ifdef ENDIAN_IO
-      CALL ENDIAN_SWAP(B,IDM*JDM)
-#endif
-      DO N=1,NBOX/2+1
-        WRITE(21,REC=N,IOSTAT=IOS) B
-        WRITE(6,'(i6,a,1p2g16.8)')
-     &     N,' min, max = ',AMN,AMX
-      ENDDO !n
-C
 C --- STANDARD PROCESSING
 C
-      DO K= NBOX+1,9999999
+      DO K= NBOX,9999999
 C ---   PHYSICALLY SHIFT THE ARRAYS (NOT MOST EFFICIENT APPROACH)
         DO J= 1,JDM
           DO I= 1,IDM
@@ -232,11 +239,10 @@ C
         DO J= 1,JDM
           DO I= 1,IDM
             IF     (A(I,J,1) .NE. SPVAL) THEN
-              B(I,J) = W1ST*(A(I,J,1)+A(I,J,NBOX))
-              DO N=2,NBOX-1
-                B(I,J) = B(I,J) + A(I,J,N)
+              B(I,J) = WS(NH)*A(I,J,NH)
+              DO N=1,NH-1
+                B(I,J) = B(I,J) + WS(N)*(A(I,J,N) + A(I,J,NBOX+1-N))
               ENDDO !n
-              B(I,J) = B(I,J)/(NBOX+2.0*(W1ST-1.0))
               AMX = MAX( AMX, B(I,J) )
               AMN = MIN( AMN, B(I,J) )
             ELSE
@@ -247,18 +253,10 @@ C
 #ifdef ENDIAN_IO
         CALL ENDIAN_SWAP(B,IDM*JDM)
 #endif
-        WRITE(21,REC=K-NBOX/2,IOSTAT=IOS) B
-        WRITE(6,'(i6,a,1p2g16.8)')
-     &     K-NBOX/2,' min, max = ',AMN,AMX
+        WRITE(21,REC=K-NBOX+1,IOSTAT=IOS) B
+        WRITE(6,'(2i6,a,1p2g16.8)')
+     &     K-NBOX+1,K-NBOX/2,' min, max = ',AMN,AMX
       ENDDO !k
-C
-C --- CLEANUP PROCESSING
-C
-      DO N=0,NBOX/2-1
-        WRITE(21,REC=K+N-NBOX/2,IOSTAT=IOS) B
-        WRITE(6,'(i6,a,1p2g16.8)')
-     &     K-NBOX/2+N,' min, max = ',AMN,AMX
-      ENDDO !n
 C
       CLOSE(11)
       CLOSE(21)

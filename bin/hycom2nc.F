@@ -10,7 +10,7 @@ C                 kdm layers from each time, or if kdm is
 C                 0 (the default) the arrays represent the same
 C                 field over time.
 C
-C                 if jdma is present, outout (1:idm,1:jdma)
+C                 if jdma is present, output (1:idm,1:jdma)
 C                 if jdma and spval are present replace HYCOM
 C                 data_void with spval
 C
@@ -95,6 +95,58 @@ C
         JDMA   = JDM
         LSPVAL = .FALSE.
         CALL GETARG(5,CFILEN)
+      ELSEIF (NARG.EQ.1) THEN  !hycom2nc -help
+        WRITE(6,*) 
+     &   'Usage:  hycom2nc file.a idm jdm kdm [jdma [spval]] file.nc'
+        WRITE(6,*) 
+        WRITE(6,*) 
+     &        '   The input array sequence is assumed to contain'
+        WRITE(6,*) 
+     &        '   kdm layers from each time, or if kdm is'
+        WRITE(6,*) 
+     &        '   0 (the default) the arrays represent the same'
+        WRITE(6,*) 
+     &        '   field over time.'
+        WRITE(6,*) 
+        WRITE(6,*) 
+     &        '   if jdma is present, output (1:idm,1:jdma)'
+        WRITE(6,*) 
+     &        '   if jdma and spval are present replace HYCOM'
+        WRITE(6,*) 
+     &        '   data_void with spval'
+        WRITE(6,*) 
+        WRITE(6,*) 
+     &        '   NetCDF environment variables:'
+        WRITE(6,*) 
+     &        '      CDF_TITLE  title'
+        WRITE(6,*) 
+     &        '      CDF_INST   institution'
+        WRITE(6,*) 
+     &        '      CDF_CNAME  field name (short, no spaces)'
+        WRITE(6,*) 
+     &        '      CDF_PNAME  plot  name (longer,   spaces)'
+        WRITE(6,*) 
+     &        '      CDF_SNAME  field standard name'
+        WRITE(6,*) 
+     &        '      CDF_UNAME  field units'
+        WRITE(6,*) 
+     &        '      CDF_DAY1   first day (-1.0 no time axis)'
+        WRITE(6,*) 
+     &        '      CDF_DAYI   increment between fields in days'
+        WRITE(6,*) 
+     &  '      CDF_YEAR   type of year (0=360,1=366,2=366Jan1,3=actual)'
+        WRITE(6,*) 
+     &        '      CDF_ZFILE  filename, containing list of z-levels'
+        WRITE(6,*) 
+     &        '      CDF_DFILE  filename, containing list of days'
+        WRITE(6,*) 
+        WRITE(6,*) 
+     &        '   NetCDF environment variables:'
+        WRITE(6,*) 
+     &        '   The netCDF axis dimensions are generic.'
+        WRITE(6,*) 
+     &        '   Use field2ncdf to get lon,lat in netCDF output file.'
+        CALL EXIT(1)
       ELSE
         WRITE(6,*) 
      &   'Usage:  hycom2nc file.a idm jdm kdm [jdma [spval]] file.nc'
@@ -297,6 +349,8 @@ c
         write(6,'(2a)') 'horout - names=',trim(names)
         write(6,'(2a)') 'horout - units=',trim(units)
 c
+        write(6,'(a,i4)') 'horout - ii   =',jj
+        write(6,'(a,i4)') 'horout - jj   =',jj
         write(6,'(a,i4)') 'horout - kk   =',kk
 c
         if     (kk.gt.0) then

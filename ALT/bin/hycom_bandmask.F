@@ -115,7 +115,7 @@ C
 C
 #endif
       CHARACTER*18 CASN
-      INTEGER      I,J,K,IOS,N,NRECL
+      INTEGER      I,J,K,IOS,M,N,NRECL
       REAL*4       AMN,AMX
 #ifdef CRAY
       INTEGER*8    IU8,IOS8
@@ -196,6 +196,7 @@ c
         ENDIF
         AMN =  SPVAL
         AMX = -SPVAL
+        M   =  0
         N   =  0
         DO 210 J= 1,JDM
           DO 212 I= 1,IDM
@@ -204,21 +205,23 @@ c
               IF     (A(I,J).NE.SPVAL) THEN
                 IF     (ITYPE.EQ.1) THEN !hycom_bandmask
                   IF     (A(I,J).GE.BL .AND.
-     +                    A(I,J).LE.BH      ) THEN
+     +                    A(I,J).LE.BH      ) THEN  !masked
                     A(I,J) = BN
-                    N = N+1
+                    M = M+1
                   ELSE
                     AMN = MIN( AMN, A(I,J) )
                     AMX = MAX( AMX, A(I,J) )
+                    N = N+1
                   ENDIF
                 ELSE !hycom_bandmask_inv
                   IF     (A(I,J).GE.BL .AND.
      +                    A(I,J).LE.BH      ) THEN
                     AMN = MIN( AMN, A(I,J) )
                     AMX = MAX( AMX, A(I,J) )
-                  ELSE
-                    A(I,J) = BN
                     N = N+1
+                  ELSE !masked
+                    A(I,J) = BN
+                    M = M+1
                   ENDIF
                 ENDIF !itype
               ENDIF
@@ -227,21 +230,23 @@ c
             IF     (A(I,J).NE.SPVAL) THEN
               IF     (ITYPE.EQ.1) THEN !hycom_bandmask
                 IF     (A(I,J).GE.BL .AND.
-     +                  A(I,J).LE.BH      ) THEN
+     +                  A(I,J).LE.BH      ) THEN  !masked
                   A(I,J) = BN
-                  N = N+1
+                  M = M+1
                 ELSE
                   AMN = MIN( AMN, A(I,J) )
                   AMX = MAX( AMX, A(I,J) )
+                  N = N+1
                 ENDIF
               ELSE !hycom_bandmask_inv
                 IF     (A(I,J).GE.BL .AND.
      +                  A(I,J).LE.BH      ) THEN
                   AMN = MIN( AMN, A(I,J) )
                   AMX = MAX( AMX, A(I,J) )
-                ELSE
-                  A(I,J) = BN
                   N = N+1
+                ELSE  !masked
+                  A(I,J) = BN
+                  M = M+1
                 ENDIF
               ENDIF !itype
             ENDIF
@@ -256,8 +261,8 @@ c
         ELSE
           WRITE(21,REC=K,IOSTAT=IOS) A,PAD
         ENDIF
-        WRITE(6,'(a,1p2g16.8,i8)')
-     &     'min, max, masked = ',AMN,AMX,N
+        WRITE(6,'(a,1p2g16.8,2i8)')
+     &     'min, max, masked = ',AMN,AMX,M,N
   110 CONTINUE
  1110 CONTINUE
       WRITE(6,*) 

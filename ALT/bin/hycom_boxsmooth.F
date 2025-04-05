@@ -9,11 +9,6 @@ C                 rtype is the the region type
 C                         =0; closed domain (default)
 C                         =1; near   global (periodic in longitude)
 C                         =2; fully  global (tripole grid)
-C
-C  This smoother is optimized for HYCOM's 6-point halo.  It averages
-C   up to 13 by 13 boxes in each pass with the number of passes 
-C   being (nbox+10)/12.  All passes except the last use 13x13 boxes.
-C
 C  fin*.a is assumed to contain idm*jdm 32-bit IEEE real values for
 C   each array, in standard f77 element order, followed by padding
 C   to a multiple of 4096 32-bit words, but otherwise with no control
@@ -83,7 +78,7 @@ C
      +             IDM*JDM,' words'
         CALL EXIT(2)
       ENDIF
-      ALLOCATE( B(-5:IDM+6,-5:JDM+6), STAT=IOS )
+      ALLOCATE( B(-NBOX/2:IDM+NBOX/2,-NBOX/2:JDM+NBOX/2), STAT=IOS )
       IF     (IOS.NE.0) THEN
         WRITE(6,*) 'Error in hycom_boxsmooth: could not allocate 2nd ',
      +             IDM*JDM,' words'
@@ -103,7 +98,7 @@ C
       CHARACTER*240 CFILE,CFILEO
       INTEGER      IDM,JDM,NPAD,NBOX,RTYPE
       REAL*4       A(IDM,JDM),
-     +             B(-5:IDM+6,-5:JDM+6),PAD(NPAD)
+     +             B(-NBOX/2:IDM+NBOX/2,-NBOX/2:JDM+NBOX/2),PAD(NPAD)
 C
 C     MOST OF WORK IS DONE HERE.
 C
@@ -111,7 +106,7 @@ C
       INTEGER*8    IU8,IOS8
 #endif
       CHARACTER*18 CASN
-      INTEGER      I,II,IQ,ISM,J,JJ,JQ,K,IOS,NRECL,NS,NH
+      INTEGER      I,II,IQ,J,JJ,JQ,K,IOS,NRECL,NH,ICOUNT
       REAL*4       AMN,AMX,RS,US
 *     LOGICAL      LDEBUG
 C
@@ -170,6 +165,7 @@ C
         CALL EXIT(3)
       ENDIF
 C
+      NH = NBOX/2
       DO 110 K= 1,9999
         READ(11,REC=K,IOSTAT=IOS) A
 #ifdef ENDIAN_IO
@@ -183,12 +179,7 @@ C
             GOTO 1110
           ENDIF
         ENDIF
-C
-C       NS SMOOTHING PASSES.
-C
-        NS = (NBOX+10)/12
-C
-        DO ISM= 1,NS
+c
           DO J= 1,JDM
             DO I= 1,IDM
               B(I,J) = A(I,J)
@@ -196,55 +187,55 @@ C
           ENDDO
           IF     (RTYPE.EQ.0) THEN !closed
             DO J= 1,JDM
-              DO IQ= 1,6
+              DO IQ= 1,NH
                 B(  1-IQ,J) = SPVAL
                 B(IDM+IQ,J) = SPVAL
               ENDDO
             ENDDO
-            DO I= -5,IDM+6
-              DO JQ= 1,6
+            DO I= 1-NH,IDM+NH
+              DO JQ= 1,NH
                 B(I,  1-JQ) = SPVAL
                 B(I,JDM+JQ) = SPVAL
               ENDDO
             ENDDO
           ELSEIF (RTYPE.EQ.1) THEN !near global
             DO J= 1,JDM
-              DO IQ= 1,6
+              DO IQ= 1,NH
                 B(  1-IQ,J) = A(IDM+1-IQ,J)
                 B(IDM+IQ,J) = A(      IQ,J)
               ENDDO
             ENDDO
-            DO I= -5,IDM+6
-              DO JQ= 1,6
+            DO I= 1-NH,IDM+NH
+              DO JQ= 1,NH
                 B(I,  1-JQ) = SPVAL
                 B(I,JDM+JQ) = SPVAL
               ENDDO
             ENDDO
           ELSE !tripole
             DO J= 1,JDM
-              DO IQ= 1,6
+              DO IQ= 1,NH
                 B(  1-IQ,J) = A(IDM+1-IQ,J)
                 B(IDM+IQ,J) = A(      IQ,J)
               ENDDO
             ENDDO
-            DO I= -5,IDM+6
+            DO I= 1-NH,IDM+NH
                II = IDM-MOD(I-1,IDM)
-               DO JQ= 1,6
+               DO JQ= 1,NH
                 B(I,  1-JQ) = SPVAL
                 B(I,JDM+JQ) = B(II,JDM-JQ-1)
               ENDDO
             ENDDO
           ENDIF
 C
-          NH  = MIN( 6, (NBOX - (ISM-1)*12)/2)
-          write(6,*) 'ism,nh = ',ism,nh
-C
+*         ICOUNT = 0 !for debugging
           AMN =  SPVAL
           AMX = -SPVAL
           DO J= 1,JDM
             DO I= 1,IDM
 *             LDEBUG = I.EQ.IDM/2 .AND. J.EQ.JDM/2
               IF     (B(I,J) .NE. SPVAL) THEN
+*               ICOUNT = ICOUNT + 1
+*               LDEBUG = MOD(ICOUNT,(IDM*JDM)/100).EQ.1
                 RS = 0.0
                 US = 0.0
                 DO JQ= -NH,NH
@@ -261,16 +252,14 @@ C
                 ENDDO !jq
                 A(I,J) = RS/US
 *               IF     (LDEBUG) THEN
-*                 write(6,*) 'a     =',a(i,j)
+*                 write(6,*) 'a     =',a(i,j),i,j
 *               ENDIF
                 AMX = MAX( AMX, A(I,J) )
                 AMN = MIN( AMN, A(I,J) )
               ENDIF
             ENDDO !i
           ENDDO !j
-        ENDDO !ism
-  212     CONTINUE
-  210   CONTINUE
+C
 #ifdef ENDIAN_IO
         CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif

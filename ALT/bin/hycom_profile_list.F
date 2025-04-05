@@ -58,6 +58,7 @@ C
      +                       CICE(:),HICE(:),TICE(:)
       REAL*4              :: PAD(4096)
       REAL*4              :: UBIJ,VBIJ,UKIJ,VKIJ,DIF(3)
+      REAL*8, ALLOCATABLE :: usum(:),vsum(:),hsum(:)
 C
       INTEGER       IARGC
       INTEGER       NARG
@@ -253,6 +254,14 @@ C
      +               IEXPT,YRFLAG,IDM,JDM,KDM,NSURF,NLAY,NDIF,NTRC,
      +               LSTERIC,LONETA,LWTRFLX,LSEAICE,
      +               ARTYPE,SIGVER,THBASE,TIME3,NSTEP)
+!     write(6,*) '#D artype = ',artype
+!     write(6,*) '#D sigver = ',sigver
+!     write(6,*) '#D lsteric= ',lsteric
+!     write(6,*) '#D loneta = ',loneta 
+!     write(6,*) '#D lwtrflx= ',lwtrflx
+!     write(6,*) '#D lseaice  ',lseaice 
+!     write(6,*) '#D luv    = ',luv    
+!     write(6,*) '#D lnotrc = ',lnotrc 
       TIME = TIME3(1)
       IF     (ARTYPE.EQ.2 .AND. SIGVER.GT.0) THEN
         NLAY = NLAY - 1
@@ -314,6 +323,7 @@ C
      +             '(...,1:n) arrays'
         CALL EXIT(2)
       ENDIF
+      ALLOCATE( usum(n), vsum(n), hsum(n) )
 C
 C     GENERATE IP,JP
 C
@@ -344,7 +354,7 @@ C
         OPEN(UNIT=99, FILE=CFILEL, FORM='FORMATTED', STATUS='OLD',
      +           IOSTAT=IOS)
         IF     (IOS.NE.0) THEN
-          write(6,*) 'CFILEL = ',TRIM(CFILEL)
+          WRITE(6,*) 'CFILEL = ',TRIM(CFILEL)
           WRITE(6,*) 'Error: can''t open ',TRIM(CFILEL)
           WRITE(6,*) 'ios   = ',ios
           CALL EXIT(3)
@@ -357,7 +367,7 @@ C
             READ(99,*,IOSTAT=IOS) IP(I),JP(I),SP(I)
           ENDIF
           IF     (IOS.NE.0) THEN
-            write(6,*) 'CFILEL = ',TRIM(CFILEL)
+            WRITE(6,*) 'CFILEL = ',TRIM(CFILEL)
             WRITE(6,*) 'Error: can''t read ',TRIM(CFILEL)
             WRITE(6,*) 'ios   = ',ios
             WRITE(6,*) 'i,n   = ',i,n
@@ -456,7 +466,7 @@ C
       OPEN(UNIT=11, FILE=CFILER, FORM='UNFORMATTED', STATUS='OLD',
      +         ACCESS='DIRECT', RECL=NRECL, IOSTAT=IOS)
       IF     (IOS.NE.0) THEN
-        write(6,*) 'CFILER = ',TRIM(CFILER)
+        WRITE(6,*) 'CFILER = ',TRIM(CFILER)
         WRITE(6,*) 'Error: can''t open ',TRIM(CFILER)
         WRITE(6,*) 'ios   = ',ios
         WRITE(6,*) 'nrecl = ',nrecl
@@ -471,7 +481,7 @@ C
         CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
         IF     (IOS.NE.0) THEN
-          write(6,*) 'CFILER = ',TRIM(CFILER)
+          WRITE(6,*) 'CFILER = ',TRIM(CFILER)
           WRITE(6,*) 'can''t read ',TRIM(CFILER)
           CALL EXIT(4)
         ENDIF
@@ -486,7 +496,7 @@ C
       OPEN(UNIT=11, FILE=CFILEA, FORM='UNFORMATTED', STATUS='OLD',
      +         ACCESS='DIRECT', RECL=NRECL, IOSTAT=IOS)
       IF     (IOS.NE.0) THEN
-        write(6,*) 'CFILEA = ',TRIM(CFILEA)
+        WRITE(6,*) 'CFILEA = ',TRIM(CFILEA)
         WRITE(6,*) 'Error: can''t open ',TRIM(CFILEA)
         WRITE(6,*) 'ios   = ',ios
         WRITE(6,*) 'nrecl = ',nrecl
@@ -501,7 +511,7 @@ C
         CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
         IF     (IOS.NE.0) THEN
-          write(6,*) 'CFILEA = ',TRIM(CFILEA)
+          WRITE(6,*) 'CFILEA = ',TRIM(CFILEA)
           WRITE(6,*) 'can''t read ',TRIM(CFILEA)
           CALL EXIT(4)
         ENDIF
@@ -547,6 +557,9 @@ C
         ENDIF
       ENDIF
 C
+      usum = 0.0
+      vsum = 0.0
+      hsum = 0.0
       P(1,:) = 0.0
       DO K= 1,KDM
         KREC0 = NSURF+(NLAY+NDIF+NTRC)*(K-1)
@@ -556,7 +569,7 @@ C
           CALL ENDIAN_SWAP(A,IDM*JDM)
 #endif
           IF     (IOS.NE.0) THEN
-            write(6,*) 'CFILEA = ',TRIM(CFILEA)
+            WRITE(6,*) 'CFILEA = ',TRIM(CFILEA)
             WRITE(6,*) 'can''t read ',TRIM(CFILEA)
             CALL EXIT(4)
           ENDIF
@@ -580,25 +593,40 @@ C
             UK(K, :) =  UB(:) + 0.5*(PROF(1,K,:)+PROU(1,K,:))
             VK(K, :) =  VB(:) + 0.5*(PROF(2,K,:)+PROV(2,K,:))
             P(K+1,:) = P(K,:) + PROF(3,K,:)
+            usum(:) = usum(:) + PROF(3,K,:) * UK(K,:)
+            vsum(:) = vsum(:) + PROF(3,K,:) * VK(K,:)
+            hsum(:) = hsum(:) + PROF(3,K,:)
           ELSEIF (ARTYPE.EQ.2) THEN  !mean archive
             UK(K, :) = 0.5*(PROF(1,K,:)+PROU(1,K,:))  !already full layer velocity
             VK(K, :) = 0.5*(PROF(2,K,:)+PROV(2,K,:))  !already full layer velocity
             P(K+1,:) = P(K,:) + PROF(4,K,:)
+            usum(:) = usum(:) + PROF(4,K,:) * UK(K,:)
+            vsum(:) = vsum(:) + PROF(4,K,:) * VK(K,:)
+            hsum(:) = hsum(:) + PROF(4,K,:)
           ELSE  !std. or diff archive
             UK(K, :) = 0.5*(PROF(1,K,:)+PROU(1,K,:))  !already full layer velocity
             VK(K, :) = 0.5*(PROF(2,K,:)+PROV(2,K,:))  !already full layer velocity
-            P(K+1,:)         = P(K,:) + PROF(NLAY-4,K,:)     !mnthknss
-            PROF(NLAY+NDIF+NTRC1,K,:) = PROF(NLAY-3,K,:)/ONEM  !thknss
+            P(K+1,:)         = P(K,:) + PROF(NLAY-4,K,:)  !mnthknss
+            PROF(NLAY+NDIF+NTRC1,K,:) = PROF(NLAY-3,K,:)  !thknss
+            usum(:) = usum(:) + PROF(NLAY-3,K,:) * UK(K,:)
+            vsum(:) = vsum(:) + PROF(NLAY-3,K,:) * VK(K,:)
+            hsum(:) = hsum(:) + PROF(NLAY-3,K,:)
           END IF
         ELSE !p-grid archive
           IF     (ARTYPE.EQ.-1) THEN
             UK(K, :) =  UB(:) + PROF(1,K,:)
             VK(K, :) =  VB(:) + PROF(2,K,:)
             P(K+1,:) = P(K,:) + PROF(3,K,:)
+            usum(:) = usum(:) + PROF(3,K,:) * UK(K,:)
+            vsum(:) = vsum(:) + PROF(3,K,:) * VK(K,:)
+            hsum(:) = hsum(:) + PROF(3,K,:)
           ELSE  !mean archive
             UK(K, :) =          PROF(1,K,:)  !already full layer velocity
             VK(K, :) =          PROF(2,K,:)  !already full layer velocity
             P(K+1,:) = P(K,:) + PROF(NLAY-3,K,:)
+            usum(:) = usum(:) + PROF(NLAY-3,K,:) * UK(K,:)
+            vsum(:) = vsum(:) + PROF(NLAY-3,K,:) * VK(K,:)
+            hsum(:) = hsum(:) + PROF(NLAY-3,K,:)
           ENDIF
         ENDIF
 C
@@ -610,6 +638,10 @@ C
           ENDDO !I
         ENDIF
       ENDDO !K
+!     do i= 1,n
+!       write(6,*) '#D ubaro  = ',i,usum(i)/hsum(i),ub(i)
+!       write(6,*) '#D vbaro  = ',i,vsum(i)/hsum(i),vb(i)
+!     enddo
 C
       IF     (LSEAICE) THEN
         IF     (ABS(ARTYPE).EQ.1) THEN
@@ -671,11 +703,11 @@ C         remove steric SSH
           SURF(8,:) = SURF( 9,:) !smix
           SURF(9,:) = SURF(10,:) !thmix
           ONETA( :) = 1.0
-          WFLX(  :) = -SURF( 4,I)*1.E-3/PROF(NLAY,1,:)
+          WFLX(  :) = -SURF( 4,:)*MAX(SURF(8,:),0.001)
         ELSE
           SSHS(  :) = SURF(1,:) !steric = montg1
           ONETA( :) = 1.0
-          WFLX(  :) = -SURF( 4,I)*1.E-3/PROF(NLAY,1,:)
+          WFLX(  :) = -SURF( 4,:)*MAX(SURF(8,:),0.001)
         ENDIF  !steric/oneta/wtrflx
         SURF(7,:) = PROF(NLAY-1,1,:)         !T
         SURF(8,:) = PROF(NLAY,  1,:)         !S
@@ -839,6 +871,7 @@ C         remove steric SSH
           ENDIF
         ENDIF  !steric/oneta/wtrflx
       ENDIF  !ARTYPE
+!     write(6,*) '#D wflx   = ',i,wflx(1)
 C
 C     LOOP THROUGH OUTPUT PROFILE FILES.
 C
@@ -882,7 +915,7 @@ C   from profX, form profIIII.txt, where IIII is i as 4 digits.
             OPEN(UNIT=IU, FILE=CFILEB, FORM='FORMATTED', STATUS='NEW',
      +           IOSTAT=IOS)
             IF     (IOS.NE.0) THEN
-              write(6,*) 'CFILEB = ',TRIM(CFILEB)
+              WRITE(6,*) 'CFILEB = ',TRIM(CFILEB)
               WRITE(6,'(2a)') 'Can''t open: ',TRIM(CFILEB)
               CYCLE
 *           ELSE
