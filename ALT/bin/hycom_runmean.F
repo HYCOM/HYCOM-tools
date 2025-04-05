@@ -3,6 +3,7 @@
 C
 C  hycom_runmean      - Usage:  hycom_runmean      fin.a idm jdm numsum itlrec increc numout fout.a
 C  hycom_runmean_half - Usage:  hycom_runmean_half fin.a idm jdm numsum itlrec increc numout fout.a
+C  hycom_runmean_M2   - Usage:  hycom_runmean_M2   fin.a idm jdm numsum itlrec increc numout fout.a
 C
 C                 Outputs means of numsum consecutive fields.
 C                 The n-th mean starts with input field itlrec+(n-1)*increc.
@@ -11,6 +12,8 @@ C                 contain at least itlrec+(numout)*increc+numsum-1 fields.
 C                 If numout=0 the maximum number of means is produced.
 C                 For hycom_runmean_half the 1st and last fields in the
 C                  mean are multiplied by 0.5.
+C                 For hycom_runmean_M2 numsum must be 9 or 25 and the
+C                 2xM2 (24.84 hr) mean of 3hrly or hrly fields is output.
 C
 C  One typical usage is to have increc=numsum, e.g. to produce a daily
 C  mean from 6-hrly fields (increc=numsum=4).
@@ -37,7 +40,7 @@ C
       INTEGER       NARG
       CHARACTER*240 CARG
 C
-      LOGICAL       LHALF
+      LOGICAL       LHALF,LM2
       INTEGER       IDM,JDM,NUMSUM,ITLREC,INCREC,NUMOUT,NPAD
       CHARACTER*240 CFILE1,CFILEO
 C
@@ -46,6 +49,7 @@ C
       CALL GETARG(0,CARG)
       L = LEN_TRIM(CARG)
       LHALF = CARG(L-4:L).EQ.'_half'
+      LM2   = CARG(L-4:L).EQ.'_M2'
 C
       NARG = IARGC()
 C
@@ -64,6 +68,12 @@ C
         CALL GETARG(7,CARG)
         READ(CARG,*) NUMOUT
         CALL GETARG(8,CFILEO)
+      ELSEIF (LM2) THEN
+        WRITE(6,'(3a)')
+     &    'Usage:  ',
+     &    'hycom_runmean_M2 ',
+     &    'fin.a idm jdm numsum itlrec increc numout fout.a'
+        CALL EXIT(1)
       ELSEIF (LHALF) THEN
         WRITE(6,'(3a)')
      &    'Usage:  ',
@@ -78,10 +88,27 @@ C
         CALL EXIT(1)
       ENDIF
 C
+      IF     (LM2 .AND. .NOT.(NUMSUM.EQ.9 .OR. NUMSUM.EQ.25)) THEN
+        WRITE(6,'(3a)')
+     &    'Usage:  ',
+     &    'hycom_runmean_M2 ',
+     &    'fin.a idm jdm numsum itlrec increc numout fout.a'
+        WRITE(6,*)
+        WRITE(6,*) 'Error in hycom_runmean_M2: numsum must be'//
+     &             ' 9 or 25'
+        CALL EXIT(2)
+      ENDIF
+C
       IF     (ITLREC.LT.1) THEN  !special case, periodic input
         IF     (ITLREC.NE.1-(numsum+1)/2 .OR.
      &          INCREC.NE.1 .OR. NUMOUT.LE.0) THEN
-          IF (LHALF) THEN
+          IF (LM2) THEN
+            WRITE(6,'(3a)')
+     &        'Usage (periodic):  ',
+     &        'hycom_runmean_M2 ',
+     &        'fin.a idm jdm numsum 1-(numsum+1)/2 1 numrec fout.a'
+            CALL EXIT(0)
+          ELSEIF (LHALF) THEN
             WRITE(6,'(3a)')
      &        'Usage (periodic):  ',
      &        'hycom_runmean_half ',
@@ -116,18 +143,20 @@ C
       ENDIF
 C
       CALL MEAN(A,AM,IDM,JDM,PAD,NPAD,
-     &          NUMSUM,ITLREC,INCREC,NUMOUT, LHALF, CFILE1,CFILEO)
+     &          NUMSUM,ITLREC,INCREC,NUMOUT,
+     &          LHALF,LM2, CFILE1,CFILEO)
       CALL EXIT(0)
       END
       SUBROUTINE MEAN(A,AM,IDM,JDM,PAD,NPAD,
-     &                NUMSUM,ITLREC,INCREC,NUMOUT, LHALF, CFILE1,CFILEO)
+     &                NUMSUM,ITLREC,INCREC,NUMOUT,
+     &                LHALF,LM2, CFILE1,CFILEO)
       IMPLICIT NONE
 C
       REAL*4     SPVAL
       PARAMETER (SPVAL=2.0**100)
 C
       CHARACTER*240 CFILE1,CFILEO
-      LOGICAL      LHALF
+      LOGICAL      LHALF,LM2
       INTEGER      IDM,JDM,NPAD,NUMSUM,ITLREC,INCREC,NUMOUT
       REAL*4       A(IDM,JDM),AM(IDM,JDM),PAD(NPAD)
 C
@@ -140,10 +169,42 @@ C
       CHARACTER*18 CASN
       INTEGER      LEN_TRIM
       INTEGER      I,J,IOS,IOUT,IR,NR,NRECL,NUMR
-      REAL*4       AMN,AMX,RNUMR
+      REAL*4       AMN,AMX
+      REAL*4       W(NUMSUM),RW
 #ifdef CRAY
       INTEGER*8    IU8,IOS8
 #endif
+C
+C --- SET WEIGHTS
+C
+      IF     (LM2) THEN
+        IF     (NUMSUM.EQ.9) THEN
+          W(1) = 1.4494
+          W(9) = 1.4494
+          W(2) = 3.9706
+          W(8) = 3.9706
+          W(3) = 2.0
+          W(7) = 2.0
+          W(4) = 4.0
+          W(6) = 4.0
+          W(5) = 2.0
+        ELSE   !NUMSUM.EQ.25
+          W(:)  = 1.0
+          W(1)  = 0.92
+          W(25) = 0.92
+        ENDIF
+      ELSEIF (LHALF) THEN
+        W(:)      = 1.0
+        W(1)      = 0.5
+        W(NUMSUM) = 0.5
+      ELSE
+        W(:) = 1.0
+      ENDIF
+      RW = 0.0
+      DO NR= 1,NUMSUM
+        RW = RW + W(NR)
+      ENDDO
+      RW = 1.0/RW
 C
       INQUIRE( IOLENGTH=NRECL) A,PAD
 #ifdef CRAY
@@ -230,52 +291,29 @@ C
               CALL EXIT(4)
             ENDIF
           ENDIF
-          IF     (LHALF .AND. (NR.EQ.1 .OR. NR.EQ.NUMSUM)) THEN
-            DO J= 1,JDM
-              DO I= 1,IDM
+          DO J= 1,JDM
+            DO I= 1,IDM
 #ifdef sun
-                IF     (IR_ISNAN(A(I,J)).NE.1) THEN
-                  IF     (A(I,J).NE.SPVAL) THEN
-                    AM(I,J) = AM(I,J) + 0.5*A(I,J)
-                  ENDIF
-                ENDIF
-#else
+              IF     (IR_ISNAN(A(I,J)).NE.1) THEN
                 IF     (A(I,J).NE.SPVAL) THEN
-                  AM(I,J) = AM(I,J) + 0.5*A(I,J)
+                  AM(I,J) = AM(I,J) + W(NR)*A(I,J)
                 ENDIF
-#endif
-              ENDDO !i
-            ENDDO !j
-          ELSE
-            DO J= 1,JDM
-              DO I= 1,IDM
-#ifdef sun
-                IF     (IR_ISNAN(A(I,J)).NE.1) THEN
-                  IF     (A(I,J).NE.SPVAL) THEN
-                    AM(I,J) = AM(I,J) + A(I,J)
-                  ENDIF
-                ENDIF
+              ENDIF
 #else
-                IF     (A(I,J).NE.SPVAL) THEN
-                  AM(I,J) = AM(I,J) + A(I,J)
-                ENDIF
+              IF     (A(I,J).NE.SPVAL) THEN
+                AM(I,J) = AM(I,J) + W(NR)*A(I,J)
+              ENDIF
 #endif
-              ENDDO !i
-            ENDDO !j
-          ENDIF !lhalf
+            ENDDO !i
+          ENDDO !j
         ENDDO !nr
 C
-        IF     (LHALF) THEN
-          RNUMR = 1.0/(NUMSUM-1)
-        ELSE
-          RNUMR = 1.0/NUMSUM
-        ENDIF
         AMN =  SPVAL
         AMX = -SPVAL
         DO J= 1,JDM
           DO I= 1,IDM
             IF     (A(I,J).NE.SPVAL) THEN
-              A(I,J) = AM(I,J)*RNUMR
+              A(I,J) = AM(I,J)*RW
               AMN = MIN( AMN, A(I,J) )
               AMX = MAX( AMX, A(I,J) )
             ELSE
@@ -290,7 +328,11 @@ C
         WRITE(6,'(a,1p2g16.8)') 'min, max = ',AMN,AMX
   110 CONTINUE
  1110 CONTINUE
-      IF     (LHALF) THEN
+      IF     (LM2) THEN
+        WRITE(6,*)
+        WRITE(6,*) NUMOUT,' M2-WEIGHTED MEANS PRODUCED'
+        WRITE(6,*)
+      ELSEIF (LHALF) THEN
         WRITE(6,*)
         WRITE(6,*) NUMOUT,' END-WEIGHTED MEANS PRODUCED'
         WRITE(6,*)
