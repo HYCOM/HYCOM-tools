@@ -10,13 +10,9 @@
 #
 # --- DoD HPC systems with gfortran:
 unset echo
-module   load costinit
-module unload netcdf-c
-module   load netcdf-c/gnu/4.3.3.1
-module unload netcdf-fortran
-module   load netcdf-fortran/gnu/4.4.2
-modile list
+module swap PrgEnv-intel PrgEnv-gnu
+module list
 set echo
-setenv NCDFC	 ${NETCDFC_HOME}
-setenv NCDF	 ${NETCDFFORTRAN_HOME}
+setenv NCDFC	 ${NETCDF_DIR}
+setenv NCDF	 ${NETCDF_DIR}
 setenv EXTRANCDF "-L${NCDFC}/lib -L${NCDF}/lib -lnetcdf -lnetcdff"

@@ -33,7 +33,7 @@ case 'LinuxIF':
 	setenv CFLAGS	"-traceback -xHost -O"
 	breaksw
 case 'LinuxAIF':
-#       comile for Intel compiler and AMD processors
+#       compile for Intel compiler and AMD processors
 	setenv FC	"ifort"
 	setenv FFLAGS	"-traceback -march=core-avx2 -O3 -fp-model precise -ftz -align array64byte -convert big_endian -assume byterecl -warn nogeneral -diag-disable 10212"
 	setenv FLIBS	""
@@ -207,7 +207,7 @@ foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_mixlay hycom_mxthrd hycom_NaN hycom_NaN_fix \
             hycom_pad_fix hycom_pad_ok hycom_potdens \
             hycom_perturbation hycom_perturbation_scale hycom_print hycom_diff_print \
-            hycom_random hycom_range hycom_range_ij hycom_rivers hycom_rotate \
+            hycom_random hycom_range hycom_range_ij hycom_range_lonlat hycom_rivers hycom_rotate \
             hycom_runmean hycom_sample hycom_sample_list hycom_sea_ok hycom_shift \
             hycom_skill hycom_slopefit hycom_smooth hycom_speed hycom_stericssh \
             hycom_subset hycom_superset hycom_swfrac hycom_sym2d hycom_thirdsm \
@@ -219,7 +219,7 @@ foreach f ( cice_range hycom_accumulate hycom_cfl hycom_compare \
             hycom_regression hycom_sstice hycom_botfric hycom_botslope hycom_boxsmooth \
             hycom_diflat hycom_merge hycom_sample_xy hycom_scatter hycom_tidal_ap2dist \
             hycom_tidal_ap2ri hycom_tidal_best2 hycom_tidal_foreman \
-            hycom_tidal_ri2ap hycom_tidal_ri2port \
+            hycom_tidal_ri2ap hycom_tidal_ri2port hycom_tidal_filter hycom_detide \
             hycom_tidal_rms hycom_tideReIm8 hycom_tidebody hycom_tideport \
             hycom_vmean hycom_xward \
             hycom_archive_sea_ok hycom_subsample hycom_thinthick hycom_p2ugrid )
