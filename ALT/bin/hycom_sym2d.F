@@ -1,9 +1,9 @@
       PROGRAM HYCOM_SYM2D
       IMPLICIT NONE
 C
-C  hycom_sym2d - Usage:  hycom_sym2d fin.a idm jdm fout.a
+C  hycom_sym2d - Usage:  hycom_sym2d fin.a idm jdm fout.a [jc]
 C
-C                 sets [1:idm,2:jdm] to [1:idm,1] for 2D cases
+C                 projects [1:idm,jc] onto [1:idm,1:jdm], default jc is 1
 C
 C  fin.a is assumed to contain idm*jdm 32-bit IEEE real values for
 C   each array, in standard f77 element order, followed by padding
@@ -22,7 +22,7 @@ C
       INTEGER       NARG
       CHARACTER*240 CARG
 C
-      INTEGER       IDM,JDM,NPAD
+      INTEGER       IDM,JDM,JC,NPAD
       CHARACTER*240 CFILE,CFILEO
 C
 C     READ ARGUMENTS.
@@ -32,13 +32,23 @@ C
       IF     (NARG.EQ.4) THEN
         CALL GETARG(1,CFILE)
         CALL GETARG(2,CARG)
-        READ(CARG,5000) IDM
+        READ(CARG,*) IDM
         CALL GETARG(3,CARG)
-        READ(CARG,5000) JDM
+        READ(CARG,*) JDM
         CALL GETARG(4,CFILEO)
+        JC = 1
+      ELSEIF (NARG.EQ.5) THEN
+        CALL GETARG(1,CFILE)
+        CALL GETARG(2,CARG)
+        READ(CARG,*) IDM
+        CALL GETARG(3,CARG)
+        READ(CARG,*) JDM
+        CALL GETARG(4,CFILEO)
+        CALL GETARG(5,CARG)
+        READ(CARG,*) JC
       ELSE
         WRITE(6,*) 'Usage: ' //
-     +   'hycom_sym2d fin.a idm jdm fout.a'
+     +   'hycom_sym2d fin.a idm jdm fout.a [jc]'
         CALL EXIT(1)
       ENDIF
 C
@@ -54,24 +64,23 @@ C
         CALL EXIT(2)
       ENDIF
 C
-      CALL SYM2D(A,IDM,JDM,PAD,NPAD, CFILE,CFILEO)
+      CALL SYM2D(A,IDM,JDM,PAD,NPAD, JC, CFILE,CFILEO)
       CALL EXIT(0)
- 5000 FORMAT(I4)
       END
-      SUBROUTINE SYM2D(A,IDM,JDM, PAD,NPAD, CFILE,CFILEO)
+      SUBROUTINE SYM2D(A,IDM,JDM, PAD,NPAD, JC, CFILE,CFILEO)
       IMPLICIT NONE
 C
       REAL*4     SPVAL
       PARAMETER (SPVAL=2.0**100)
 C
       CHARACTER*240 CFILE,CFILEO
-      INTEGER       IDM,JDM,NPAD
+      INTEGER       IDM,JDM,NPAD,JC
       REAL*4        A(IDM,JDM),PAD(NPAD)
 C
 C     MOST OF WORK IS DONE HERE.
 C
       CHARACTER*18 CASN
-      REAL*4        AMX,AMN
+      REAL*4        AIJ,AMX,AMN
       INTEGER       I,J,K,IOS,NRECL
 #ifdef CRAY
       INTEGER*8     IU8,IOS8
@@ -158,12 +167,13 @@ c
         AMN =  SPVAL
         AMX = -SPVAL
         DO I= 1,IDM
-          IF     (A(I,1).NE.SPVAL) THEN
-            AMX = MAX( AMX, A(I,1) )
-            AMN = MIN( AMN, A(I,1) )
+          AIJ = A(I,JC)
+          IF     (AIJ.NE.SPVAL) THEN
+            AMX = MAX( AMX, AIJ )
+            AMN = MIN( AMN, AIJ )
           ENDIF
-          DO J= 2,JDM
-            A(I,J) = A(I,1)
+          DO J= 1,JDM
+            A(I,J) = AIJ
           ENDDO !i
         ENDDO !j
 #ifdef ENDIAN_IO
