@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm -f *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *advect *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *15sec *30sec *bedmap *RTopo *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
+	/bin/rm -f *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *dry *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *spd *cfl *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *15sec *30sec *bedmap *RTopo *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
 
 MODS = mod_xc.o mod_za.o wtime.o
 MODN = mod_xc.o mod_za.o wtime.o 
@@ -96,8 +96,11 @@ landsea_caspi:   $(MODS) landsea_caspi.o interp.o zh.o
 2d:              $(MODS) topo_2d.o         zh.o
 	$(LD) $(LDFLAGS) topo_2d.o         zh.o $(MODS) -o topo_2d
 
-advect:          $(MODG) topo_advect.o     zh.o
-	$(LD) $(LDFLAGS) topo_advect.o     zh.o $(MODS) -o topo_advect
+cfl2spd:         $(MODG) topo_cfl2spd.o    zh.o
+	$(LD) $(LDFLAGS) topo_cfl2spd.o    zh.o $(MODS) -o topo_cfl2spd
+
+spd2cfl:         $(MODG) topo_spd2cfl.o    zh.o
+	$(LD) $(LDFLAGS) topo_spd2cfl.o    zh.o $(MODS) -o topo_spd2cfl
 
 biharmonic:      $(MODG) topo_biharmonic.o zh.o
 	$(LD) $(LDFLAGS) topo_biharmonic.o zh.o $(MODS) -o topo_biharmonic
@@ -110,6 +113,9 @@ clip:            $(MODS) topo_clip.o       zh.o
 
 diff:            $(MODS) topo_diff.o       zh.o
 	$(LD) $(LDFLAGS) topo_diff.o       zh.o $(MODS) -o topo_diff
+
+dry:             $(MODS) topo_dry.o        zh.o
+	$(LD) $(LDFLAGS) topo_dry.o        zh.o $(MODS) -o topo_dry
 
 edit:            $(MODS) topo_edit.o       zh.o
 	$(LD) $(LDFLAGS) topo_edit.o       zh.o $(MODS) -o topo_edit
