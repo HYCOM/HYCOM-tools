@@ -1,56 +1,90 @@
       subroutine psmo1(alist,blist,pbot)
       use mod_plot  ! HYCOM plot array interface
       implicit none
-c
-      real alist(ii,jj),blist(ii,jj),pbot(ii,jj)
-c
-c --- ragged boundary version of basic 1-2-1 smoothing routine
-c --- smoothed array overwrites input array -alist-. -blist- is work array
-c --- this entry is set up to smooth data carried at -p- points
-c
+
+      real alist(ii,jj), blist(ii,jj), pbot(ii,jj)
+      real flxhi, flxlo
+      integer i, j, l
+      integer ia,ib,ja,jb
       real, parameter :: flag = 2.0**100
-      real, parameter :: wgt  = 0.25
-c
-      integer i,ia,ib,j,ja,jb,l
-      real    flxhi,flxlo
-c
-c --- psmo1 is specially set up for interface smoothing.
-c --- it only alters alist values that don't coincide with pbot.
-c
-      do 817 j=1,jj1
-      do 819 l=1,isp(j)
-      blist(ifp(j,l)  ,j)=0.
- 819  blist(ilp(j,l)+1,j)=0.
-      do 817 l=1,isu(j)
-      do 817 i=ifu(j,l),ilu(j,l)
-      flxhi= .25*(pbot(i  ,j)-alist(i  ,j))
-      flxlo=-.25*(pbot(i-1,j)-alist(i-1,j))
- 817  blist(i,j)=min(flxhi,max(flxlo,
-     .           .25*(alist(i-1,j)-alist(i,j))))
-c
-      do 11 i=1,ii
-      do 11 l=1,jsp(i)
-      do 11 j=jfp(i,l),jlp(i,l)
- 11   alist(i,j)=alist(i,j)-(blist(i+1,j)-blist(i,j))
-c
-      do 818 i=1,ii1
-      do 820 l=1,jsp(i)
-      blist(i,jfp(i,l)  )=0.
- 820  blist(i,jlp(i,l)+1)=0.
-      do 818 l=1,jsv(i)
-      do 818 j=jfv(i,l),jlv(i,l)
-      flxhi= .25*(pbot(i,j  )-alist(i,j  ))
-      flxlo=-.25*(pbot(i,j-1)-alist(i,j-1))
- 818  blist(i,j)=min(flxhi,max(flxlo,
-     .           .25*(alist(i,j-1)-alist(i,j))))
-c
-      do 12 i=1,ii
-      do 12 l=1,jsp(i)
-      do 12 j=jfp(i,l),jlp(i,l)
- 12   alist(i,j)=alist(i,j)-(blist(i,j+1)-blist(i,j))
+      real, parameter :: wgt = 0.25
+
+
+c --- Vertical flux smoothing
+      blist(:,:) = 0.0
+
+      do 10 j=1,jj1
+        do 20 l=1,isp(j)
+          if (ifp(j,l) .ge. 1 .and. ifp(j,l) .le. ii) then
+            blist(ifp(j,l),j) = 0.0
+          endif
+          if (ilp(j,l)+1 .le. ii) then
+            blist(ilp(j,l)+1,j) = 0.0
+          endif
+ 20     continue
+
+        do 30 l=1,isu(j)
+          do 30 i=ifu(j,l),ilu(j,l)
+            if (i .ge. 2 .and. i .le. ii) then
+              flxhi = 0.25*(pbot(i,j) - alist(i,j))
+              flxlo = -0.25*(pbot(i-1,j) - alist(i-1,j))
+              blist(i,j) = min(flxhi,
+     &                     max(flxlo, 0.25*(alist(i-1,j) - alist(i,j))))
+            endif
+ 30       continue
+ 10   continue
+
+
+c --- Apply vertical flux
+      do 40 i=1,ii
+        do 40 l=1,jsp(i)
+          do 40 j=jfp(i,l),jlp(i,l)
+            if (i+1 .le. ii) then
+              alist(i,j) = alist(i,j) - (blist(i+1,j) - blist(i,j))
+            else
+              alist(i,j) = alist(i,j) + blist(i,j) !blist(i+1,j)=0.0
+            endif
+ 40     continue
+
+
+c --- Horizontal flux smoothing
+      blist(:,:) = 0.0
+
+      do 50 i=1,ii1
+        do 60 l=1,jsp(i)
+          if (jfp(i,l) .ge. 1 .and. jfp(i,l) .le. jj) then
+            blist(i,jfp(i,l)) = 0.0
+          endif
+          if (jlp(i,l)+1 .le. jj) then
+            blist(i,jlp(i,l)+1) = 0.0
+          endif
+ 60     continue
+
+        do 70 l=1,jsv(i)
+          do 70 j=jfv(i,l),jlv(i,l)
+            if (j .ge. 2 .and. j .le. jj) then
+              flxhi = 0.25*(pbot(i,j) - alist(i,j))
+              flxlo = -0.25*(pbot(i,j-1) - alist(i,j-1))
+              blist(i,j) = min(flxhi,
+     &                     max(flxlo, 0.25*(alist(i,j-1) - alist(i,j))))
+            endif
+ 70       continue
+ 50   continue
+
+
+c --- Apply horizontal flux
+      do 80 i=1,ii
+        do 80 l=1,jsp(i)
+          do 80 j=jfp(i,l),jlp(i,l)
+            if (j+1 .le. jj) then
+              alist(i,j) = alist(i,j) - (blist(i,j+1) - blist(i,j))
+            else
+              alist(i,j) = alist(i,j) + blist(i,j)  !blist(i,j+1)=0.0
+            endif
+ 80     continue
+
       return
-c
-c
+
       entry psmoo(alist,blist)
 c
 c --- this entry is set up to smooth data carried at -p- points

@@ -134,7 +134,7 @@ c
           call blkinr(dp0k(k), 'dp0k  ','(a6," =",f10.4," m")')
 c
           if      (k.gt.nhybrd .and. dp0k(k).ne.0.0) then
-            write(lp,'(/ a,i3 /)')
+            write(lp,'(/ a,i4 /)')
      &        'error - dp0k must be zero for k>nhybrd'
             call flush(lp)
             stop
@@ -148,12 +148,12 @@ c
       call blkinr(dp00i, 'dp00i ','(a6," =",f10.4," m")')
 c
       if     (nhybrd.gt.kkout) then
-        write(lp,'(/ a,i3 /)')
+        write(lp,'(/ a,i4 /)')
      &    'error - maximum nhybrd is kdmnew =',kkout
         call flush(lp)
       endif
       if     (nsigma.gt.nhybrd) then
-        write(lp,'(/ a,i3 /)')
+        write(lp,'(/ a,i4 /)')
      &    'error - maximum nsigma is nhybrd =',nhybrd
         call flush(lp)
       endif
@@ -414,20 +414,21 @@ c ---       assume input density is valid at layer center
             p1(1) = 0.5*p(i,j,2)
             r1(1) = th3d(i,j,1)+thbase
               if     (i.eq.itest .and. j.eq.jtest) then
-                write(6,'(a,i3,2f14.5)') 'k,zz,r = ',
+                write(6,'(a,i4,2f14.5)') 'k,zz,r = ',
      &                                    1,p1(1)*qonem,r1(1)
               endif !test
             do k= 2,kkin
               p1(k) = 0.5*(p(i,j,k)+p(i,j,k+1))
               r1(k) = max(th3d(i,j,k)+thbase,r1(k-1)+denjmp)
               if     (i.eq.itest .and. j.eq.jtest) then
-                write(6,'(a,i3,2f14.5)') 'k,zz,r = ',
+                write(6,'(a,i4,2f14.5)') 'k,zz,r = ',
      &                                    k,p1(k)*qonem,r1(k)
               endif !test
             enddo !k
             pout(i,j,1) = 0.0
             loc = 1
             do k= 1,kkout-1
+              loc = max(loc, 1)  !Alex
               if     (i.eq.itest .and. j.eq.jtest) then
                 call find_densbug(zloc,0.5*(sigma(k)+sigma(k+1)),
      &                            r1,kkin,loc)
@@ -447,7 +448,7 @@ c ---           interface depth from target densities
                 pout(i,j,k+1) = max( pout(i,j,k), ploc )
               endif !loc
               if     (i.eq.itest .and. j.eq.jtest) then
-                write(6,'(a,i3,2f14.5)') 'k,loc,pout = ',
+                write(6,'(a,i4,2f14.5)') 'k,loc,pout = ',
      &                                    k,zloc,pout(i,j,k+1)*qonem
               endif !test
             enddo !k
@@ -463,7 +464,7 @@ c
         do k= 1,kkout-1
           call psmo1(pout(1,1,k+1),work,pout(1,1,kkout+1))
           if     (min(itest,jtest).gt.0) then
-            write(6,'(a,i3,f14.5)') 'k,pout = ',
+            write(6,'(a,i4,f14.5)') 'k,pout = ',
      &                                k,pout(itest,jtest,k+1)*qonem
           endif !test
         enddo !k
@@ -485,7 +486,7 @@ c ---         terrain following
               pout(i,j,k+1) = min(pout(i,j,k+1),
      &                            depths(i,j))
               if     (i.eq.itest .and. j.eq.jtest) then
-                write(6,'(a,i3,3f14.5)') 'K,dp0,pout = ',
+                write(6,'(a,i4,3f14.5)') 'K,dp0,pout = ',
      &                                      k, ds0k(k)*qonem,
      &                                        dp0ij(k)*qonem,
      &                                        pout(i,j,k+1)*qonem
@@ -497,7 +498,7 @@ c ---         terrain following
                 pout(i,j,k+1) = min(pout(i,j,k+1),
      &                              depths(i,j))
                 if     (i.eq.itest .and. j.eq.jtest) then
-                  write(6,'(a,i3,3f14.5)') 'K,dp0,pout = ',
+                  write(6,'(a,i4,3f14.5)') 'K,dp0,pout = ',
      &                                      k, ds0k(k)*qonem,
      &                                        dp0ij(k)*qonem,
      &                                        pout(i,j,k+1)*qonem
@@ -514,7 +515,7 @@ c ---         not terrain following
               pout(i,j,k+1) = min(pout(i,j,k+1),
      &                            depths(i,j))
               if     (i.eq.itest .and. j.eq.jtest) then
-                write(6,'(a,i3,3f14.5)') 'k,dp0,pout = ',
+                write(6,'(a,i4,3f14.5)') 'k,dp0,pout = ',
      &                                      k, dp0k(k)*qonem,
      &                                        dp0ij(k)*qonem,
      &                                        pout(i,j,k+1)*qonem
@@ -537,7 +538,7 @@ c ---           q is dp00i   when much deeper than surface fixed coordinates
                 pout(i,j,k+1) = min(pout(i,j,k+1),
      &                              depths(i,j))
                 if     (i.eq.itest .and. j.eq.jtest) then
-                  write(6,'(a,i3,3f14.5)') 'k,dp0,pout = ',
+                  write(6,'(a,i4,3f14.5)') 'k,dp0,pout = ',
      &                                      k, dp0k(k)*qonem,
      &                                        dp0ij(k)*qonem,
      &                                        pout(i,j,k+1)*qonem
