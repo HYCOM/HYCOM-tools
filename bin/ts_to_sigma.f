@@ -2,6 +2,7 @@
       implicit none
 c
 c     usage:  echo pot.temp saln sigtyp | ts_to_sigma
+c     usage:  tsp_to_sigma < tstype.txt
 c
 c     input:  temp saln {0,2}
 c     output: temp saln dens0_7t dens0_9t dens0_17t dens0_12t
@@ -21,7 +22,23 @@ c
 c     alan j. wallcraft, naval research laboratory, august 2002.
 c
       real*8  dens(4),saln,temp
-      integer ios,n,sigtyp,st_old
+      integer narg,ios,n,sigtyp,st_old
+      integer iargc
+c
+      narg = iargc()
+      if     (narg.ne.0) then  !ts_to_sigma -help
+        write(6,*)
+     &    'Usage:  echo pot.temp saln sigtyp | ts_to_sigma'
+       write(6,*)
+     &    'Usage:  ts_to_sigma < tstype.txt'
+        write(6,*)
+     &    'Output: temp saln dens0_7t dens0_9t dens0_17t dens0_12t'
+        write(6,*)
+     &    '    or: temp saln dens2_7t dens2_9t dens2_17t dens2_12t'
+        write(6,*)
+     &    'Example: echo pot.temp saln 2 | ts_to_sigma'
+        call exit(1)
+      endif
 c
       st_old = -1
       do
@@ -38,6 +55,7 @@ c
      &                                          ' dens2_17t dens2_12t'
           endif
         endif
+        st_old = sigtyp
         if     (sigtyp.eq.0) then
           do n= 1,4
             call sig_i( 2*n-1 )

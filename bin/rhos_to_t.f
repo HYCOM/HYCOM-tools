@@ -2,6 +2,7 @@
       implicit none
 c
 c     usage:  echo pot.density saln sigtyp | rhos_to_t
+c     usage:  rhos_to_t < rstype.txt
 c
 c     input:  p.density saln {0,2}
 c     output: p.density saln p.temp_7t p.temp_9t p.temp_17t p.temp_12t
@@ -18,8 +19,23 @@ c
 c     alan j. wallcraft, naval research laboratory, september 2013.
 c
       real*8  temp(4),saln,dens
-      integer ios,n,sigtyp,st_old
+      integer narg,ios,n,sigtyp,st_old
+      integer iargc
       real*8  tofsig_v
+c
+      narg = iargc()
+      if     (narg.ne.0) then  !rhos_to_t -help
+        write(6,*)
+     &    'Usage:  echo pot.density saln sigtyp | rhos_to_t'
+        write(6,*)
+     &    'Usage:  rhos_to_t < rstype.txt'
+        write(6,*)
+     &    'Input:  p.density saln {0,2}'
+        write(6,*)
+     &    'Output: p.density saln',
+     &    ' p.temp_7t p.temp_9t p.temp_17t p.temp_12t'
+        call exit(1)
+      endif
 c
       st_old = -1
       do

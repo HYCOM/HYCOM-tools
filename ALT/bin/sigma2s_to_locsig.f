@@ -2,6 +2,7 @@
       implicit none
 c
 c     usage:  echo pot.density saln depth | sigma2s_to_locsig
+c     usage:  sigma2s_to_locsig < rsd.txt
 c
 c     input:  p.density saln depth (sigma2 psu m)
 c     output: p.density saln p.temp depth density
@@ -16,10 +17,25 @@ c     potential temperature is always w.r.t the surface
 c
 c     alan j. wallcraft, COAPS, January 2018.
 c
-      integer ios
       real*8  temp,saln,depth,pden,dens
       real*8  tofsig_6,sigloc_6
+      integer narg,ios
+      integer iargc
 c
+c
+      narg = iargc()
+      if     (narg.ne.0) then  !sigma2s_to_locsig -help
+        write(6,*)
+     &    'Usage:  echo pot.density saln depth | sigma2s_to_locsig'
+        write(6,*)
+     &    'Usage:  sigma2s_to_locsig < rsd.txt'
+        write(6,*)
+     &    'Output: p.density saln p.temp depth density'
+        call exit(1)
+      endif
+c
+      write(6,'(2a)') '#   p.dens      saln    p.temp     depth',
+     &                '      dens'
       do
         read(5,*,iostat=ios) pden,saln,depth
         if     (ios.ne.0) then
