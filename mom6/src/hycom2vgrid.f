@@ -180,7 +180,8 @@ c
 c
 C --- MOM6-specific blkdat variable
 C
-c --- 'vtype ' = vertical coordinate type (0=GOLD, -1,1=HYCOM1, 2=HYBGEN)
+c --- 'vtype ' = vertical coordinate type (0=GOLD, -1,1,3=HYCOM1, 2=HYBGEN)
+c ---              1: calculate sigma2, 3; input sigm22
 c
       write(lp,*)
       call blkini(vtype, 'vtype ')
@@ -191,6 +192,38 @@ c
 c ---     'offset' = layer density offset (kg m-3)
           call blkind(offset(k),
      &           'offset','("blkind: ",a6," =",f11.4," kg m-3")')
+        enddo
+      elseif (vtype.eq.3) then !HYCOM1 input sigma2
+c
+c ---   'frcmpu' = fraction of compressibility to apply up (0.0 to 1.0)
+c ---   'frcomp' = fraction of compressibility to apply    (0.0 to 1.0)
+c
+        call blkind2(frcomp(1),k, 
+     &                'frcmpu','("blkind: ",a6," =",f11.4," 0-1")',
+     &                'frcomp','("blkind: ",a6," =",f11.4," 0-1")')
+        if     (k.eq.1) then !frcmpu
+          call blkind(frcomp(2),
+     &                'frcomp','("blkind: ",a6," =",f11.4," 0-1")')
+        else !frcomp
+          frcomp(2) = frcomp(1)
+        endif
+c
+c ---   target interface densities (sigma units)
+c
+        write(lp,*)
+        do k=1,kk+1
+          call blkind(sigma2(k),
+     &               'sigma2','("blkind: ",a6," =",f11.4," sig")')
+          sigma2(k) = sigma2(k) + 1000.d0
+c
+          if     (k.gt.1) then
+            if      (sigma2(k).le.sigma2(k-1)) then
+              write(lp,'(/ a /)')
+     &        'error - sigma2 is not stabally stratified'
+              call flush(lp)
+              stop
+            endif
+          endif
         enddo
       elseif (vtype.eq.1) then !HYCOM1 potentially with COMPRESSIBILITY
 c
@@ -325,14 +358,25 @@ c
            dz(k) =  dp0k(k)
         Layer(k) = sigma(k) + 1000.d0
       enddo !k
-      do k= 2,kk
-        sigma2(k) = 0.5d0*(Layer(k-1) + Layer(k))
-      enddo !k
-c --- make first and last 2x as large as the minimum choice
-      sigma2(   1) = Layer( 1) + (Layer( 1) - Layer(   2))
-      sigma2(kk+1) = Layer(kk) + (Layer(kk) - Layer(kk-1))
 c
-      if     (abs(vtype).eq.1) then !HYCOM1
+      if     (vtype.eq.3) then !HYCOM1 with input sigma2
+        do k= 1,kk
+          write(lp,"(a,i3,f10.4)") 'sigma2:',k,sigma2(k)
+          write(lp,"(a,i3,f10.4)") ' Layer:',k, Layer(k)
+          write(lp,"(a,i3,f10.4)") ' HYCOM:',k, sigma(k) + 1000.d0
+          call flush(lp)
+        enddo !k
+        k=kk+1
+          write(lp,"(a,i3,f10.4)") 'sigma2:',k,sigma2(k)
+          write(lp,*)
+          call flush(lp)
+      elseif (abs(vtype).eq.1) then !HYCOM1
+        do k= 2,kk
+          sigma2(k) = 0.5d0*(Layer(k-1) + Layer(k))
+        enddo !k
+c ---   make first and last 2x as large as the minimum choice
+        sigma2(   1) = Layer( 1) + (Layer( 1) - Layer(   2))
+        sigma2(kk+1) = Layer(kk) + (Layer(kk) - Layer(kk-1))
 c
 c ---   allow for compressibility
 c
@@ -419,7 +463,7 @@ c
       call nchek("nf90_def_dim-Layer",
      &            nf90_def_dim(ncfileID,
      &                         "Layer",      kk,   lDimID))
-      if     (abs(vtype).eq.1) then !HYCOM1
+      if     (abs(vtype).eq.1 .or. vtype.eq.3) then !HYCOM1
       call nchek("nf90_def_dim-interfaces",
      &            nf90_def_dim(ncfileID,
      &                         "interfaces", kk+1, iDimID))
@@ -430,7 +474,7 @@ c
      &                         "history",
      &                         "hycom2vgrid"))
 c
-      if     (abs(vtype).eq.1) then !HYCOM1
+      if     (abs(vtype).eq.1 .or. vtype.eq.3) then !HYCOM1
         call nchek("nf90_def_var-dz",
      &              nf90_def_var(ncfileID,"dz",nf90_double,
      &                           (/lDimID/),
@@ -527,7 +571,7 @@ c
 c
       ! put to all variables
 c
-      if     (abs(vtype).eq.1) then !HYCOM1
+      if     (abs(vtype).eq.1 .or. vtype.eq.3) then !HYCOM1
         call nchek("nf90_inq_varid-dz",
      &              nf90_inq_varid(ncfileID,"dz",
      &                                    varID))
