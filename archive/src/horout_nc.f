@@ -18,7 +18,7 @@ c
       integer          artype,yrflag,iexpt,io,l
       double precision time3(3)
       real             array(jdm)
-      real             zloc(1)
+      integer          zloc(1)
 c
       real, allocatable :: zlat(:)
 
@@ -84,7 +84,7 @@ c
       integer          :: i,j,k,l
       integer, save    :: iyear,month,iday,ihour,
      &                    iyrms,monms,idms,ihrms
-      real             :: hmin(999),hmax(999),alon
+      real             :: hmin,hmax,alon
       double precision :: dt,tau,yr0,year
       integer*2        :: m_value
       integer          :: navo_code
@@ -354,7 +354,7 @@ c
      &        "_FillValue",fill_value))
           call ncheck(nf90_put_att(ncfileID,varID,
      &        "valid_range",
-     &        (/hmin(1), hmax(1)/)))
+     &        (/hmin, hmax/)))
           if     (artype.eq.1) then
               call ncheck(nf90_put_att(ncfileID,varID,
      &            "long_name",
@@ -416,7 +416,7 @@ c
      &                               "_FillValue",fill_value))
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "valid_range",
-     &                               (/hmin(1), hmax(1)/)))
+     &                               (/hmin, hmax/)))
             if     (artype.eq.1) then
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
@@ -444,7 +444,7 @@ c
       endif
 
         write(lp,'(a49,a,2g15.6)')
-     &    trim(name)//label(51:81),':',hmin(1),hmax(1)
+     &    trim(name)//label(51:81),':',hmin,hmax
         call flush(lp)
       return
       end
@@ -469,7 +469,8 @@ c
       integer          artype,yrflag,iexpt,k,io,l
       double precision time3(3)
       real             array(jdm,k)
-      real             zz(k),zloc(1)
+      real             zz(k)
+      integer          zloc(1)
 c
       real, allocatable :: zlat(:)
 
@@ -534,7 +535,7 @@ c
       integer          :: i,j,k,l
       integer, save    :: iyear,month,iday,ihour,
      &                    iyrms,monms,idms,ihrms
-      real             :: hmin(999),hmax(999),alon
+      real             :: hmin,hmax,alon
       double precision :: dt,tau,yr0,year
       integer*2        :: m_value
       integer          :: navo_code
@@ -827,7 +828,7 @@ c
      &        "_FillValue",fill_value))
           call ncheck(nf90_put_att(ncfileID,varID,
      &        "valid_range",
-     &        (/hmin(1), hmax(1)/)))
+     &        (/hmin, hmax/)))
           if     (artype.eq.1) then
               call ncheck(nf90_put_att(ncfileID,varID,
      &            "long_name",
@@ -897,7 +898,7 @@ c
      &                               "_FillValue",fill_value))
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "valid_range",
-     &                               (/hmin(1), hmax(1)/)))
+     &                               (/hmin, hmax/)))
             if     (artype.eq.1) then
               call ncheck(nf90_put_att(ncfileID,varID,
      &                                 "long_name",
@@ -925,7 +926,7 @@ c
           call ncheck(nf90_close(ncfileID))
         endif
         write(lp,'(a49,a,2g15.6)')
-     &    trim(name)//label(51:81),':',hmin(1),hmax(1)
+     &    trim(name)//label(51:81),':',hmin,hmax
         call flush(lp)
       else
 
@@ -3149,7 +3150,8 @@ c
           stop
         endif
 c
-        call ncrange(array(1,1,kf),ii,jj,kl-kf+1, fill_value, hmin,hmax)
+        call ncrange(array(1,1,kf),ii,jj,kl-kf+1,
+     &                         fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -4249,7 +4251,7 @@ c
           stop
         endif
 c
-        call ncrange(array,ii,jj,kz, fill_value, hmin,hmax)
+        call ncrange(array,ii,jj,kz, fill_value, hmin(1),hmax(1))
 c
         inquire(file= ncfile, exist=lexist)
         if (.not.lexist) then
@@ -5369,7 +5371,7 @@ c
       integer          :: i,j,k,l
       integer, save    :: iyear,month,iday,ihour,
      &                    iyrms,monms,idms,ihrms
-      real             :: hmin(999),hmax(999)
+      real             :: hmin,hmax
       double precision :: dt,yr0,year
 c
       character*81,     save :: labeli  = ' '
@@ -5688,7 +5690,7 @@ c
      &                             "_FillValue",fill_value))
           call ncheck(nf90_put_att(ncfileID,varID,
      &                             "valid_range",
-     &                             (/hmin(1), hmax(1)/)))
+     &                             (/hmin, hmax/)))
           if     (artype.eq.1) then
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
@@ -5751,7 +5753,7 @@ c
      &                             "_FillValue",fill_value))
           call ncheck(nf90_put_att(ncfileID,varID,
      &                             "valid_range",
-     &                             (/hmin(1), hmax(1)/)))
+     &                             (/hmin, hmax/)))
           if     (artype.eq.1) then
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
@@ -5776,7 +5778,7 @@ c
           call ncheck(nf90_close(ncfileID))
         endif
         write(lp,'(a49,a,2g15.6)') 
-     &    trim(name)//label(51:81),':',hmin(1),hmax(1)
+     &    trim(name)//label(51:81),':',hmin,hmax
         call flush(lp)
       else
 c
@@ -5843,7 +5845,7 @@ c
       integer          :: i,j,k,l
       integer, save    :: iyear,month,iday,ihour,
      &                    iyrms,monms,idms,ihrms
-      real             :: hmin(999),hmax(999)
+      real             :: hmin,hmax
       double precision :: dt,yr0,year
 c
       character*81,     save :: labeli  = ' '
@@ -6157,7 +6159,7 @@ c
      &                             "_FillValue",fill_value))
           call ncheck(nf90_put_att(ncfileID,varID,
      &                             "valid_range",
-     &                             (/hmin(1), hmax(1)/)))
+     &                             (/hmin, hmax/)))
           if     (artype.eq.1) then
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
@@ -6212,7 +6214,7 @@ c
      &                             "_FillValue",fill_value))
           call ncheck(nf90_put_att(ncfileID,varID,
      &                             "valid_range",
-     &                             (/hmin(1), hmax(1)/)))
+     &                             (/hmin, hmax/)))
           if     (artype.eq.1) then
             call ncheck(nf90_put_att(ncfileID,varID,
      &                               "long_name",
@@ -6236,7 +6238,7 @@ c
           call ncheck(nf90_close(ncfileID))
         endif
         write(lp,'(a49,a,2g15.6)') 
-     &    trim(name)//label(51:81),':',hmin(1),hmax(1)
+     &    trim(name)//label(51:81),':',hmin,hmax
         call flush(lp)
       else
 c
