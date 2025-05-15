@@ -11,7 +11,7 @@ C
 C
 C     CLIM ARRAYS.
 C
-      REAL*4    XAMAX,XAMIN,YAMAX,YAMIN,VOID
+      REAL*4    XAMAX,XAMIN,YAMAX,YAMIN,VOID,PLAT4
       REAL*4    TSEAR4(IWI,JWIX),SSEAR4(IWI,JWIX)
       INTEGER*2 TSEAI2(IWI,JWI),SSEAI2(IWI,JWI)
       REAL*4    ADD_OFF,SCALE_F,DBAR,DEPTH,TINSIT
@@ -165,10 +165,11 @@ C
         J0    = JWIX - JWI
         DEPTH = ZLEV(KREC)
         DO J= 1,JWI
+          PLAT4 = PLAT(J+J0)
           DO I= 1,IWI
             SSEAR4(I,J+J0) = SSEAI2(I,J)*SCALE_F + ADD_OFF
             TINSIT         = TSEAI2(I,J)*SCALE_F + ADD_OFF
-            DBAR           = P80(DEPTH,PLAT(J+J0))
+            DBAR           = P80(DEPTH,PLAT4)
             TSEAR4(I,J+J0) = THETA(SSEAR4(I,J+J0),TINSIT, DBAR,0.0)
           ENDDO !i
         ENDDO !j
@@ -253,7 +254,7 @@ c
       integer          :: i,j,l,iyear,month,iday,ihour,
      &                          iyrms,monms,idms,ihrms
 c
-      integer,          save :: mt_rec  = 0
+      integer          :: mt_rec  = 0
 c
       save
 c
@@ -545,7 +546,7 @@ c r millard
 c march 9, 1983
 c check value: p80=7500.004 dbars;for lat=30 deg., depth=7321.45 meters
       function p80(dpth,xlat)
-      parameter pi=3.141592654
+      parameter(pi=3.141592654)
       plat=abs(xlat*pi/180.)
       d=sin(plat)
       c1=5.92e-3+d**2*5.25e-3
