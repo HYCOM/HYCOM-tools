@@ -168,7 +168,7 @@ C
           DO I= 1,IWI
             SSEAR4(I,J+J0) = SSEAI2(I,J)*SCALE_F + ADD_OFF
             TINSIT         = TSEAI2(I,J)*SCALE_F + ADD_OFF
-            DBAR           = P80(DEPTH,PLAT(J+J0))
+            DBAR           = P80(DEPTH,real(PLAT(J+J0),kind=4))
             TSEAR4(I,J+J0) = THETA(SSEAR4(I,J+J0),TINSIT, DBAR,0.0)
           ENDDO !i
         ENDDO !j
@@ -253,7 +253,9 @@ c
       integer          :: i,j,l,iyear,month,iday,ihour,
      &                          iyrms,monms,idms,ihrms
 c
-      integer,          save :: mt_rec  = 0
+cMHRI: Two options: Save individual or save all (done 4 lines below)
+c      integer,          save :: mt_rec  = 0  !!! TODO: Either keep this
+      integer          :: mt_rec  = 0
 c
       save
 c
@@ -545,7 +547,7 @@ c r millard
 c march 9, 1983
 c check value: p80=7500.004 dbars;for lat=30 deg., depth=7321.45 meters
       function p80(dpth,xlat)
-      parameter pi=3.141592654
+      parameter(pi=3.141592654)
       plat=abs(xlat*pi/180.)
       d=sin(plat)
       c1=5.92e-3+d**2*5.25e-3
