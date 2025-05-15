@@ -253,8 +253,6 @@ c
       integer          :: i,j,l,iyear,month,iday,ihour,
      &                          iyrms,monms,idms,ihrms
 c
-cMHRI: Two options: Save individual or save all (done 4 lines below)
-c      integer,          save :: mt_rec  = 0  !!! TODO: Either keep this
       integer          :: mt_rec  = 0
 c
       save
