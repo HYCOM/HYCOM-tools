@@ -50,9 +50,9 @@ EOF
 # RTOFS Binary [.ab] Files From Amazon S3 storage.
 setenv RTOFS_DATE 20251008 # YYYYMMDD
 # ~ 5GB download. ~12GB unzipped.
-aws s3 cp s3://noaa-nws-rtofs-pds/rtofs.${RTOFS_DATE}/rtofs_glo.t00z.f06.archv.a.tgz /data/
+aws s3 cp s3://noaa-nws-rtofs-pds/rtofs.${RTOFS_DATE}/rtofs_glo.t00z.f06.archv.a.tgz /data/ --no-sign-request
 tar -xzf /data/rtofs_glo.t00z.f06.archv.a.tgz
-aws s3 cp s3://noaa-nws-rtofs-pds/rtofs.${RTOFS_DATE}/rtofs_glo.t00z.f06.archv.b /data/
+aws s3 cp s3://noaa-nws-rtofs-pds/rtofs.${RTOFS_DATE}/rtofs_glo.t00z.f06.archv.b /data/ --no-sign-request
 
 ### Setup conversion
 set echo
