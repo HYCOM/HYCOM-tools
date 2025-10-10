@@ -1,0 +1,14 @@
+name: hycom
+
+services:
+  hycom:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/data
+    stdin_open: true
+    tty: true
+    environment:
+      - HYCOM_TOOLS_DIR=/usr/local/HYCOM-tools
+      - DATA_DIR=/data
