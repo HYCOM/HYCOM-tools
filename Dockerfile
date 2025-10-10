@@ -60,7 +60,7 @@ RUN nc-config --all && nf-config --all
 # Copy HYCOM-tools source
 WORKDIR /usr/local
 # COPY . HYCOM-tools/
-RUN git clone https://github.com/ScootScience/HYCOM-tools.git /usr/local/HYCOM-tools
+RUN git clone https://github.com/HYCOM/HYCOM-tools.git /usr/local/HYCOM-tools
 WORKDIR /usr/local/HYCOM-tools
 
 # Fix the config file for gfortran compilation with architecture-aware flags
