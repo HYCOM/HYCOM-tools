@@ -3,25 +3,32 @@
       implicit none
 c
       integer   i,ii,im1,ip1,isea,no_q,j,jj,jm1,jp1,k,nsea
-      real      hmaxa,hmaxb,hmina,hminb
+      real      dhmax,dhref,hmaxa,hmaxb,hmina,hminb
       character preambl(5)*79,cline*80
 c
 c --- read in a hycom topography file,
 c --- identify all "seas" not connected to the largest "sea"
 c --- on a b-grid.
 c --- write out the sea color array.
+c --- print the locations of any sea shallower than a refdepth
 c
 c --- note that HYCOM uses a c-grid, but can be coupled to the
 c --- CICE sea-ice model that uses a b-grid.
 c
       integer, allocatable :: ip(:,:),iq(:,:),jq(:)
-      real,    allocatable :: dh(:,:)
+      real,    allocatable :: dh(:,:),ds(:,:)
 c
       call xcspmd  !input idm,jdm
       allocate( jq(    jdm) )
       allocate( ip(idm,jdm) )
       allocate( iq(idm,jdm) )
       allocate( dh(idm,jdm) )
+      allocate( ds(idm,jdm) )
+c
+c --- read in the reference depth 
+c
+      read(5,*) dhref
+      write(6,'(a,f10.2)') 'reference shallow depth =',dhref
 c
 c --- read in a hycom topography file,
 c
@@ -39,6 +46,7 @@ c
       call zaiopn('old', 51)
       call zaiord(dh,ip,.false., hmina,hmaxa, 51)
       call zaiocl(51)
+      ds(:,:) = dh(:,:)  !saved depths
 c
       if     (abs(hmina-hminb).gt.abs(hminb)*1.e-4 .or.
      &        abs(hmaxa-hmaxb).gt.abs(hmaxb)*1.e-4     ) then
@@ -89,7 +97,7 @@ c
 c
 c     color fill the sea points, one color per sea.
 c
-      do k= 2,99999
+      do k= 2,idm*jdm
 c
 c       find an unfilled sea point
 c
@@ -149,11 +157,14 @@ c
       enddo !j
 c
       call zaiowr(dh, ip,.true., hmina,hmaxa, 61, .false.)
-      write(61,'(a,2f8.1)') 'seamap:  min,max = ',hmina,hmaxa
       call zaiocl(61)
+      write(61,'(a,2f8.1)') 'seamap:  min,max = ',hmina,hmaxa
+      close(61)
+      write( 6,'(a,2f8.1)') 'seamap:  min,max = ',hmina,hmaxa
 c
 c     bad b-grid points?
 c
+      write(6,*)
       if     (no_q.eq.0) then
         write(6,'(/a)')         'region has no bad b-grid points'
       else
@@ -164,14 +175,14 @@ c
         do i= 1,idm
           do j= 1,jdm-1  !this order to help transfer to the map
             if     (ip(i,j).eq.1) then
-              write(6,'(a,2i5)') '          at i,j =',i,j
+              write(6,'(a,2i6)') '          at i,j =',i,j
             endif
           enddo !j
         enddo !i
         do i= 1,idm
           j=jdm
             if     (ip(i,j).eq.1) then
-              write(6,'(a,2i5)') '          at i,j =',i,j
+              write(6,'(a,2i6)') '          at i,j =',i,j
             endif
         enddo !i
       endif
@@ -187,21 +198,25 @@ c
         write(6,'(/i6,a/)') nsea,' seas identified'
         do k= 2,nsea+1
           isea = 0
+          dhmax = 0.0
           do j= 1,jdm
             do i= 1,idm
               if     (ip(i,j).eq.k) then
-                isea = isea + 1
+                isea  = isea + 1
+                dhmax = max(dhmax, ds(i,j))
               endif
             enddo !i
           enddo !j
-          write(6,'(i9,a,f7.2,a)')
+          write(6,'(i9,a,f7.2,a,a,f10.2)')
      &      isea,' point sea (',
-     &      (isea*100.0)/real(idm*jdm),'% of points)'
-          if     (isea.lt.(idm*jdm)/10) then  !non-primary sea
+     &      (isea*100.0)/real(idm*jdm),'% of points)',
+     &      ' max depth =',dhmax
+          if     (isea.lt.(idm*jdm)/10 .and. dhmax.le.dhref) then
+            !non-primary or shallow sea
             do j= 1,jdm
               do i= 1,idm
                 if     (ip(i,j).eq.k) then
-                  write(6,'(a,2i5)') '          at i,j =',i,j
+                  write(6,'(a,2i6)') '          at i,j =',i,j
                 endif
               enddo !i
             enddo !j

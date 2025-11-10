@@ -92,7 +92,7 @@ c
           do i= 1,npe
             if     (iipx(i,j).ne.0) then
               k = k + 1
-*               write(6,'(a,7i5)')
+*               write(6,'(a,7i6)')
 *    &            'initial: pe,ipe,jpe,is,ix,js,jx = ',
 *    &            k,i,j,ispx(i,j),iipx(i,j),jspx(j),jjpx(j)
               ispt(k) = ispx(i,j)
@@ -107,7 +107,7 @@ c
                 enddo !it
               enddo !jt
               if     (lerror) then
-                write(6,'(a,7i5)')
+                write(6,'(a,7i6)')
      &            'overlap: pe,ipe,jpe,if,il,jf,jl = ',
      &            k,i,j,ispt(k),ilpt(k),jspt(k),jlpt(k)
                 lfatal = .true.
@@ -116,7 +116,7 @@ c
           enddo
         enddo
         if     (k.ne.nmpe) then
-          write(6,'(a,i5,a,i5)')
+          write(6,'(a,i6,a,i6)')
      &      'error - there are ',k,' sea-tiles, but nmpe = ',nmpe
           call zhflsh(6)
           lfatal = .true.
@@ -129,7 +129,7 @@ c
         do i= 1,idm
           if     (ip(i,j).eq.1) then
             lerror = .true.
-            write(6,'(a,2i5)')
+            write(6,'(a,2i6)')
      &            'missed sea: i,j = ',i,j
           endif
         enddo

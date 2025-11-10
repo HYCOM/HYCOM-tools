@@ -9,7 +9,7 @@ c
       character preambl(5)*79,cline*80
 c
 c --- read in a hycom topography file,
-c --- identify all "seas" not connected to the largest "sea".
+c --- identify all "seas" and print their size and min and max values.
 c --- write out the sea color array.
 c
       integer, allocatable :: ip(:,:),jp(:)
@@ -98,11 +98,13 @@ c
 c       flood-fill the sea that is connected to this point.
 c
         isea = 0
-        call fill(ii,jj, k,isea, ip,idm,jdm)
+        hmina = dh(ii,jj)
+        hmaxa = dh(ii,jj)
+        call fill(ii,jj, k,isea, hmina,hmaxa,dh,ip,idm,jdm)
 c
-        write(6,'(a,i8,a,i13,a,f8.3,a)')
+        write(6,'(a,i8,a,i13,a, a,2f10.3,a)')
      &    'sea',k,' has',isea,' points (',
-     &    (isea*100.0d0)/docean,'% of ocean points)'
+     &    'range =',hmina,hmaxa,')'
       enddo !k
 c
       dh(:,:) = ip(:,:)
@@ -110,12 +112,15 @@ c
       write(61,'(a,2f8.1)') 'seamap:  min,max = ',hmina,hmaxa
       call zaiocl(61)
       end
-      recursive subroutine fill(i,j,k, isea, ip,idm,jdm)
+      recursive subroutine fill(i,j, k,isea,
+     &                          hmin,hmax,h,ip,idm,jdm)
       implicit none
 c
+      real      hmin,hmax
       integer   i,j,k,idm,jdm
       integer*8 isea
       integer   ip(idm,jdm)
+      real       h(idm,jdm)
 c
 c     fill this point, if necessary, and then extend search n,s,e,w
 c
@@ -126,28 +131,30 @@ c
 *         call flush(6)
         ip(i,j) = k
         isea = isea + 1
+        hmin = min( hmin, h(i,j) )
+        hmax = max( hmax, h(i,j) )
         if     (i.ne.  1) then
-          call fill(i-1,j,  k, isea, ip,idm,jdm)
+          call fill(i-1,j,  k, isea, hmin,hmax,h,ip,idm,jdm)
         else
-          call fill(idm,j,  k, isea, ip,idm,jdm)  !must be periodic, i-1 for i=1
+          call fill(idm,j,  k, isea, hmin,hmax,h,ip,idm,jdm)  !must be periodic, i-1 for i=1
         endif
         if     (j.ne.  1) then
-          call fill(i,  j-1,k, isea, ip,idm,jdm)
+          call fill(i,  j-1,k, isea, hmin,hmax,h,ip,idm,jdm)
         endif
         if     (i.ne.idm) then
-          call fill(i+1,j,  k, isea, ip,idm,jdm)
+          call fill(i+1,j,  k, isea, hmin,hmax,h,ip,idm,jdm)
         else
-          call fill(  1,j,  k, isea, ip,idm,jdm)  !must be periodic, i+1 for i=idm
+          call fill(  1,j,  k, isea, hmin,hmax,h,ip,idm,jdm)  !must be periodic, i+1 for i=idm
         endif
         if     (j.lt.jdm-1) then
-          call fill(i,  j+1,k, isea, ip,idm,jdm)
+          call fill(i,  j+1,k, isea, hmin,hmax,h,ip,idm,jdm)
         elseif (j.eq.jdm-1) then
-          call fill(i,  j+1,k, isea, ip,idm,jdm)
+          call fill(i,  j+1,k, isea, hmin,hmax,h,ip,idm,jdm)
           ii = idm-mod(i-1,idm)
-          call fill(ii, j+1,k, isea, ip,idm,jdm)  !might be arctic, same point
+          call fill(ii, j+1,k, isea, hmin,hmax,h,ip,idm,jdm)  !might be arctic, same point
         else !j.eq.jdm
           ii = idm-mod(i-1,idm)
-          call fill(ii, j-1,k, isea, ip,idm,jdm)  !must  be arctic, same point
+          call fill(ii, j-1,k, isea, hmin,hmax,h,ip,idm,jdm)  !must  be arctic, same point
         endif
       elseif (ip(i,j).ne.0 .and. ip(i,j).ne.k) then
         write(6,*) 'error in fill, point in two seas: i,j =',i,j

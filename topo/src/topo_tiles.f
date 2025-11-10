@@ -135,7 +135,7 @@ c
               msmin = m
               ismin = isea
             endif
-            write(6,'(a,7i5,i10)')
+            write(6,'(a,7i6,i10)')
      &        '     pe,n,m,if,il,jf,jl,sea = ',
      &        k,n,m,ispt(k),ilpt(k),jspt(k),jlpt(k),isea
           endif
@@ -143,19 +143,19 @@ c
       enddo !m
 c
       if     (k.ne.nmpe) then
-        write(6,'(/ a,i5,a,i5 /)')
+        write(6,'(/ a,i6,a,i6 /)')
      &    'error - there are ',k,'sea-tiles, but nmpe = ',nmpe
         call zhflsh(6)
         stop
       endif
 c
       k = ksmin
-      write(6,'(/a,7i5,i10)')
+      write(6,'(/a,7i6,i10)')
      &  'min: pe,n,m,if,il,jf,jl,sea = ',
      &  k,nsmin,msmin,ispt(k),ilpt(k),jspt(k),jlpt(k),ismin
 c
       k = ksmax
-      write(6,'(a,7i5,i10/)')
+      write(6,'(a,7i6,i10/)')
      &  'max: pe,n,m,if,il,jf,jl,sea = ',
      &  k,nsmax,msmax,ispt(k),ilpt(k),jspt(k),jlpt(k),ismax
 c

@@ -45,7 +45,7 @@ c
               ilpt = ispx(i,j) + iipx(i,j) - 1
 c
               if     (ispt.le.iloc .and. ilpt.ge.iloc) then
-                write(6,'(a,2i4,a,4i5,a,4i5)') 
+                write(6,'(a,2i4,a,4i6,a,4i6)') 
      &           'npe,mpe = ',i,j,
      &           '  tile: ',ispt,ilpt,jspt,jlpt, 
      &           '  i,j,di,dj =',iloc,jloc,

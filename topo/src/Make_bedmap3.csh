@@ -2,9 +2,9 @@
 #
 #set echo
 #
-# --- Usage:  ./Make_ncdf.csh >& Make_ncdf.log
+# --- Usage:  ./Make_bedmap3ncdf.csh >& Make_bedmap3ncdf.log
 #
-# --- make all netCDF relax executables
+# --- make bedmap3 netCDF executable
 #
 source ../../Make_ncdf.src
 #
@@ -32,9 +32,11 @@ ln -s ${NCDF}/include/netcdf.mod .
 ln -s ${NCDF}/include/netcdf.inc .
 ln -s ${NCDF}/include/typesizes.mod .
 #
-# --- netCDF programs
+# --- bedmap3 requires the EMAPF library
 #
-foreach m ( bathy_01min landsea_01min bathy_30sec landsea_30sec bathy_15sec landsea_15sec landsea_75sec bathy_bedmap bathy_RTopo bathy_sindhu latlonmask hycom2mom6 hycom2mom6dx 2mom6 mom6 )
+ln -sf ~wallcraf/pkgs/emapf/libemapfF.a .
+#
+foreach m ( bathy_bedmap3 )
   make ${m} ARCH=${ARCH} >&! Make_${m}.log
   if ($status) then
     echo "Make failed:" ${m} " - see Make_${m}.log"

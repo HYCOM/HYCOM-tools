@@ -27,7 +27,7 @@ c
      +  '2-D (constant in j) shelf/deep/shelf bathymetry'
       write(preambl(2),'(a,3f8.2)')
      +        'shelf,break,flat =',shelf,break,flat
-      write(preambl(3),'(a,2i5)')
+      write(preambl(3),'(a,2i6)')
      +        'i/jdm =',
      +       idm,jdm
       preambl(4) = ' '

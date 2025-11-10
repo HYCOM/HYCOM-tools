@@ -77,7 +77,7 @@ c
         stop
       endif
 c
-      write(lp,'(/ a,2i5 /)') 'xcspmd: idm,jdm =',idm,jdm
+      write(lp,'(/ a,2i6 /)') 'xcspmd: idm,jdm =',idm,jdm
 c
       close(unit=11)
 c

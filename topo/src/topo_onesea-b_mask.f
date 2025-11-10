@@ -208,7 +208,7 @@ c ---   this order to help transfer to the map
           do j= jdm,1,-1
             do i= isf,isl
               if     (dh(i,j).eq.1.0) then
-                write(6,'(a,2i5)') '          at i,j =',i,j
+                write(6,'(a,2i6)') '          at i,j =',i,j
               endif
             enddo !j
           enddo !i
@@ -245,7 +245,7 @@ c
               do j= 1,jdm
                 do i= 1,idm
                   if     (ip(i,j).eq.k) then
-                    write(6,'(a,2i5)') '          at i,j =',i,j
+                    write(6,'(a,2i6)') '          at i,j =',i,j
                   endif
                 enddo !i
               enddo !j

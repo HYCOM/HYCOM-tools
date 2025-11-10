@@ -183,7 +183,7 @@ c
           ilast=min(idm,ifrst+nchar)
           write (char3,'(i3)') ilast-ifrst
           fmt(8:10)=char3
-          write(6,'(//''ip array, cols'',i5,'' --'',i5)') ifrst+1,ilast
+          write(6,'(//''ip array, cols'',i6,'' --'',i6)') ifrst+1,ilast
           write(6,fmt) -9999,(mod(i,10),i=ifrst+1,ilast)
           write(6,*) 
           do j= jdm,1,-1
@@ -249,7 +249,7 @@ c
             read(5,*) i,j
             ispx(i,j) = 0
             iipx(i,j) = 0
-*           write(6,'(a,5i5,i8)') 'pe,tile,sea = ',
+*           write(6,'(a,5i6,i8)') 'pe,tile,sea = ',
 *    &        nmpe,ispt(i,j),ispt(i,j)+iipe(i,j)-1,
 *    &             jspt(  j),jspt(  j)+jjpe(  j)-1,nsea
           enddo !k

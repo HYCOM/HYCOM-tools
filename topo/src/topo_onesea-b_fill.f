@@ -5,17 +5,18 @@ c
       logical   larctic,lfirst
       integer   i,ii,im1,ip1,isea,minsea,no_q,j,jj,jm1,jp1,k,
      &          nfill,nsea,nzero
-      real      hmaxa,hmaxb,hmina,hminb,qmax
+      real      dhmax,dhref,hmaxa,hmaxb,hmina,hminb,qmax
       character preambl(5)*79,cline*80
 c
 c --- read in a hycom topography file,
 c --- identify all "seas" not connected to the largest "sea"
 c --- on a b-grid.
-c --- fill all those smaller than an input number of points,
+c --- fill all those smaller than an input number of points 
+c --- and shallower than an input reference depth
 c --- and write it out.
 c
 c --- stdin (unit 5) should have:
-c      sea size to fill
+c      sea size to fill followed by a reference depth
 c
 c --- note that HYCOM uses a c-grid, but can be coupled to the
 c --- CICE sea-ice model that uses a b-grid.
@@ -29,7 +30,11 @@ c
       allocate( iq(idm,jdm) )
       allocate( dh(idm,jdm) )
 c
-      read(5,*) minsea
+c --- read in the sea size to fill followed by a reference depth
+      read(5,*) minsea,dhref
+      write(6,'(a,i10)')   'filled sea size =',minsea
+      write(6,'(a,f10.2)') 'reference depth =',dhref
+      write(6,*)
 c
 c --- read in a hycom topography file,
 c
@@ -112,7 +117,7 @@ c
 c
 c     color fill the sea points, one color per sea.
 c
-      do k= 2,99999
+      do k= 2,idm*jdm
 c
 c       find an unfilled sea point
 c
@@ -192,7 +197,7 @@ c
         do i= 1,idm
           do j= 1,jdm-1  !this order to help transfer to the map
             if     (ip(i,j).eq.1) then
-              write(6,'(a,2i5)') '          at i,j =',i,j
+              write(6,'(a,2i6)') '          at i,j =',i,j
 *             ip(i,j)=0     !landfill
 *             dh(i,j)=0.0   !landfill
             endif
@@ -201,7 +206,7 @@ c
         do i= 1,idm
           j=jdm
             if     (ip(i,j).eq.1) then
-              write(6,'(a,2i5)') '          at i,j =',i,j
+              write(6,'(a,2i6)') '          at i,j =',i,j
 *             ip(i,j)=0     !landfill
 *             dh(i,j)=0.0   !landfill
             endif
@@ -218,46 +223,50 @@ c
       else  !multiple seas
         write(6,'(/i6,a/)') nsea,' seas identified'
         do k= 2,nsea+1
-          isea = 0
+          isea  = 0
+          dhmax = 0.0
           do j= 1,jdm
             do i= 1,idm
               if     (ip(i,j).eq.k) then
                 isea = isea + 1
+                dhmax = max(dhmax, dh(i,j))
               endif
             enddo !i
           enddo !j
-          if     (isea.le.minsea) then  !filled sea
+          if     (isea.le.minsea .and. dhmax.le.dhref) then  !filled sea
             write(6,'(i9,a,f7.2,a)')
      &        isea,' point sea (',
      &        (isea*100.0)/real(idm*jdm),'% of points) FILLED'
           else
-            write(6,'(i9,a,f7.2,a)')
+            write(6,'(i9,a,f7.2,a,a,f10.2)')
      &        isea,' point sea (',
-     &        (isea*100.0)/real(idm*jdm),'% of points)'
+     &        (isea*100.0)/real(idm*jdm),'% of points)',
+     &      ' max depth =',dhmax
           endif
-          if     (isea.le.minsea) then  !filled sea
+          if     (isea.le.minsea .and. dhmax.le.dhref) then  !filled sea
             lfirst = .true.
             do j= 1,jdm
               do i= 1,idm
                 if     (ip(i,j).eq.k) then
                   if     (lfirst) then
-                    write(6,'(a,2i5)') '          at i,j =',i,j
+                    write(6,'(a,2i6)') '          at i,j =',i,j
                     lfirst = .false.
                   endif
-                  ip(i,j)=0     !landfill
-                  dh(i,j)=0.0   !landfill
+                  ip(i,j)=0   !landfill
+                  dh(i,j)=0.0 !landfill
                 endif
               enddo !i
             enddo !j
-          elseif (isea.lt.(idm*jdm)/3) then  !non-primary sea
+          else
             lfirst = .true.
             do j= 1,jdm
               do i= 1,idm
                 if     (ip(i,j).eq.k) then
                   if     (lfirst) then
-                    write(6,'(a,2i5)') '          at i,j =',i,j
+                    write(6,'(a,2i6)') '          at i,j =',i,j
                     lfirst = .false.
                   endif
+                  ip(i,j)=1  !still ocean
                 endif
               enddo !i
             enddo !j
@@ -298,7 +307,7 @@ c
             if (j.eq.  1.or.dh(i,j-1).le.0.0) nzero=nzero+1
             if (j.eq.jdm.or.dh(i,j+1).le.0.0) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i5,a,i5,a,i1,a)')
+              write (6,'(a,i6,a,i6,a,i1,a)')
      +          ' dh(',i,',',j,') set to zero (',
      +          nzero,' land nieghbours)'
               ip(i,j)=0

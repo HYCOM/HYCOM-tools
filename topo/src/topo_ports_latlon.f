@@ -228,26 +228,26 @@ C  Check ulon, ulat, vlon, vlat arrays by open boundaries
 c      WRITE(6,*)'ulon at upper corner'
 c      WRITE(6,'(3x,10I8)')(i,i=idm-5,idm)
 c      do j=jdm-5,jdm
-c        WRITE(6,'(i5,10F8.2)')i,(ulon(i,j),i=idm-5,idm)
+c        WRITE(6,'(i6,10F8.2)')i,(ulon(i,j),i=idm-5,idm)
 c      end do
 c
 c      WRITE(6,*)'ulat at upper corner'
 c      WRITE(6,'(3x,10I8)')(i,i=idm-5,idm)
 c      do j=jdm-5,jdm
-c        WRITE(6,'(i5,10F8.2)')i,(ulat(i,j),i=idm-5,idm)
+c        WRITE(6,'(i6,10F8.2)')i,(ulat(i,j),i=idm-5,idm)
 c      end do
 c
 c      WRITE(6,*)'vlon at upper corner'
 c      WRITE(6,'(3x,10I8)')(i,i=idm-5,idm)
 c      do j=jdm-5,jdm
-c        WRITE(6,'(i5,10F8.2)')i,(vlon(i,j),i=idm-5,idm)
+c        WRITE(6,'(i6,10F8.2)')i,(vlon(i,j),i=idm-5,idm)
 c      end do
 c
 c      write(6,*)'IDM, JDM = ',idm,jdm
 c      WRITE(6,*)'vlat at upper corner'
 c      WRITE(6,'(3x,10I8)')(i,i=idm-5,idm)
 c      do j=jdm-5,jdm
-c        WRITE(6,'(i5,10F8.2)')i,(vlat(i,j),i=idm-5,idm)
+c        WRITE(6,'(i6,10F8.2)')i,(vlat(i,j),i=idm-5,idm)
 c      end do
 c
 
@@ -423,7 +423,7 @@ c
               endif
         if(.not.lfatalp)then
            nobps=nobps+1
-      write(6,'(a,2i5,a,2i5,a,F8.2,a,2F9.3)')
+      write(6,'(a,2i6,a,2i6,a,F8.2,a,2F9.3)')
      +' #',l,nobps,' W',i,j,' depth',dh(i,j),
      +' p(i,j)  lon, lat :',plon(I,J),plat(I,J)
        xlon=plon(i,j)
@@ -461,7 +461,7 @@ c
         if(.not.lfatalp)then
            nobps=nobps+1
       ii=i-1       ! Eastern port grid correction
-      write(6,'(a,2i5,a,2i5,a,F8.2,a,2F9.3)')
+      write(6,'(a,2i6,a,2i6,a,F8.2,a,2F9.3)')
      +' #',l,nobps,' W',ii,j,' depth',dh(ii,j),
      +' p(ii,j) lon, lat :',plon(ii,J),plat(ii,J)
        xlon=plon(ii,j)
@@ -499,7 +499,7 @@ c
        if(.not.lfatalp)then
            nobps=nobps+1
            jj=j-1   !   Northern Port grid offset correction
-      write(6,'(a,2i5,a,2i5,a,F8.2,a,2F9.3)')
+      write(6,'(a,2i6,a,2i6,a,F8.2,a,2F9.3)')
      +' #',l,nobps,' W',i,jj,' depth',dh(i,jj),
      +' p(i,jj) lon, lat :',plon(I,jj),plat(I,jj)
        xlon=plon(i,jj)
@@ -536,7 +536,7 @@ c
               endif
        if(.not.lfatalp)then
            nobps=nobps+1
-      write(6,'(a,2i5,a,2i5,a,F8.2,a,2F9.3)')
+      write(6,'(a,2i6,a,2i6,a,F8.2,a,2F9.3)')
      +' #',l,nobps,' W',i,j,' depth',dh(i,j),
      +' p(i,j)  lon, lat :',plon(I,J),plat(I,J)
        xlon=plon(i,j)

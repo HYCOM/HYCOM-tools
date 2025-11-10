@@ -86,21 +86,28 @@ c
 c --- fill specified sub-regions
 c
       read(5,*) sea
+      write(6,'(a,f10.4)') ' sea value: ',sea
       read(5,*) nreg
       do kreg= 1,nreg
         read(5,*) itype,if,il,jf,jl
         if     (itype.lt.0) then
           read(5,*) sea  !new sea value
+          write(6,'(a,f10.4)') ' sea value: ',sea
           itype = -itype
         endif
         if     (itype.eq.1) then
-          write(6,'(a,4i5)') ' sea subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') ' sea subregion: ',if,il,jf,jl
         elseif (itype.eq.2) then
-          write(6,'(a,4i5)') ' max subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') ' max subregion: ',if,il,jf,jl
         elseif (itype.eq.3) then
-          write(6,'(a,4i5)') ' min subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') ' min subregion: ',if,il,jf,jl
         else
-          write(6,'(a,4i5)') 'land subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') 'land subregion: ',if,il,jf,jl
+        endif
+        if     (jf.gt.jl .or. if.gt.il) then
+          write(6,*) 'error = bad subregion'
+          call zhflsh(6)
+          stop
         endif
         do j= jf,jl
           do i= if,il
@@ -153,7 +160,7 @@ c
             if (j.eq.  1.or.dh(i,j-1).le.0.0) nzero=nzero+1
             if (j.eq.jdm.or.dh(i,j+1).le.0.0) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i5,a,i5,a,i1,a)')
+              write (6,'(a,i6,a,i6,a,i2,a)')
      +          ' dh(',i,',',j,') has',
      +          nzero,' land nieghbours'
               nfill=nfill+1

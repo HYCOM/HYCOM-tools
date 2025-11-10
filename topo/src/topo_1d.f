@@ -25,7 +25,7 @@ c --- header.
 c
       preambl(1) =
      +  '1-D (constant in i and j) flat bathymetry'
-      write(preambl(2),'(a,2i5)')
+      write(preambl(2),'(a,2i6)')
      +        'i/jdm =',
      +       idm,jdm
       preambl(3) = ' '

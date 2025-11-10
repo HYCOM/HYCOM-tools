@@ -292,7 +292,7 @@ c
             ilast=min(idm,ifrst+nchar)
             write (char3,'(i3)') ilast-ifrst
             fmt(8:10)=char3
-            write (6,'(a,i5,a,i5)')
+            write (6,'(a,i6,a,i6)')
      &        'iu array, cols',ifrst+1,' --',ilast
             lprint = .true.
             do j= jdm,1,-1
@@ -321,7 +321,7 @@ c
             ilast=min(idm,ifrst+nchar)
             write (char3,'(i3)') ilast-ifrst
             fmt(8:10)=char3
-            write (6,'(a,i5,a,i5)')
+            write (6,'(a,i6,a,i6)')
      &        'iv array, cols',ifrst+1,' --',ilast
             lprint = .true.
             do j= jdm,1,-1

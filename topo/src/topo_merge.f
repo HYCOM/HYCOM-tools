@@ -141,6 +141,10 @@ C
      &                    (1.0-si)*     sj *(boxscl(4,k)-boxscl(1,k))  )
               enddo
             enddo
+            write(6,*) 'scale=-9: ',if(k),jf(k),s2(if(k),jf(k))
+            write(6,*) 'scale=-9: ',if(k),jl(k),s2(if(k),jl(k))
+            write(6,*) 'scale=-9: ',il(k),jf(k),s2(il(k),jf(k))
+            write(6,*) 'scale=-9: ',il(k),jl(k),s2(il(k),jl(k))
             write(6,*) 'scale=-9: ',
      &                 (if(k)+il(k))/2,(jf(k)+jl(k))/2,
      &              s2((if(k)+il(k))/2,(jf(k)+jl(k))/2)
@@ -163,10 +167,15 @@ c
         jm2 = max(j-2,   1)
         jp2 = min(j+2, jdm)
         do i= 1,idm
+          if (dh(i,j).gt.2.0**99) then
+            dh(i,j) = 0.0
+          endif
+          if (dh2(i,j).gt.2.0**99) then
+            dh2(i,j) = 0.0
+          endif
           dhsave = dh(i,j)
           if     (s2(i,j).eq.0.0) then  ! 1st bathymetry only
-            if (dh(i,j).le.0.0     .or.
-     &          dh(i,j).gt.2.0**99     ) then
+            if (dh(i,j).le.0.0) then
               ip(i,j) = 0
               dh(i,j) = 0.0
               dhsave  = 0.0
@@ -174,8 +183,7 @@ c
               ip(i,j) = 1
             endif
           elseif (s2(i,j).eq.1.0) then  ! 2nd bathymetry only
-            if (dh2(i,j).le.0.0     .or.
-     &          dh2(i,j).gt.2.0**99     ) then
+            if (dh2(i,j).le.0.0) then
               ip(i,j) = 0
               dh(i,j) = 0.0
             else
@@ -183,10 +191,8 @@ c
               dh(i,j) = dh2(i,j)
             endif
           elseif (s2(i,j).eq.2.0) then  ! 2nd bathymetry where 1st is land
-            if (dh(i,j).le.0.0     .or.
-     &          dh(i,j).gt.2.0**99     ) then
-              if (dh2(i,j).le.0.0     .or.
-     &            dh2(i,j).gt.2.0**99     ) then
+            if (dh(i,j).le.0.0) then
+              if (dh2(i,j).le.0.0) then
                 ip(i,j) = 0
                 dh(i,j) = 0.0
                 dhsave  = 0.0
@@ -204,8 +210,7 @@ c
             dhmax = maxval(dh(im2:ip2,jm2:jp2))
             if (dhmin.le.0.0     .or.
      &          dhmax.gt.2.0**99     ) then
-              if (dh2(i,j).le.0.0     .or.
-     &            dh2(i,j).gt.2.0**99     ) then
+              if (dh2(i,j).le.0.0) then
                 ip(i,j) = 0
                 dh(i,j) = 0.0
                 dhsave  = 0.0
@@ -217,16 +222,14 @@ c
               ip(i,j) = 1
             endif
           elseif (s2(i,j).lt.0.0) then  ! merge land masks only
-            if (min(dh(i,j),dh2(i,j)).le.0.0     .or.
-     &          max(dh(i,j),dh2(i,j)).gt.2.0**99     ) then
+            if (min(dh(i,j),dh2(i,j)).le.0.0) then
               ip(i,j) = 0
               dh(i,j) = 0.0
             else
               ip(i,j) = 1
             endif
           else  ! merge bathymetries
-            if (min(dh(i,j),dh2(i,j)).le.0.0     .or.
-     &          max(dh(i,j),dh2(i,j)).gt.2.0**99     ) then
+            if (min(dh(i,j),dh2(i,j)).le.0.0) then
               ip(i,j) = 0
               dh(i,j) = 0.0
             else
@@ -235,8 +238,11 @@ c
             endif
           endif
           if     (i.eq.idm/2 .or. j.eq.jdm/2) then
-            if     (dh(i,j).ne.dhsave) then
-              write(6,'(a,2i5,4f10.3)') 'i,j,dh,s,dh1,dh2 =',
+            if     (s2(i,j).gt.0.0 .and. s2(i,j).lt.1.0) then
+              write(6,'(a,2i6,4f10.3)') 'I,J,dh,s,dh1,dh2 =',
+     &          i,j,dh(i,j),s2(i,j),dhsave,dh2(i,j)
+            elseif (mod(i,100).eq.1 .or. mod(j,100).eq.1) then
+              write(6,'(a,2i6,4f10.3)') 'i,j,dh,s,dh1,dh2 =',
      &          i,j,dh(i,j),s2(i,j),dhsave,dh2(i,j)
             endif
           endif
@@ -263,7 +269,7 @@ c
             if (j.eq.  1.or.dh(i,j-1).le.0.0) nzero=nzero+1
             if (j.eq.jdm.or.dh(i,j+1).le.0.0) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i5,a,i5,a,i2,a)')
+              write (6,'(a,i6,a,i6,a,i2,a)')
      +          ' dh(',i,',',j,') has',
      +          nzero,' land nieghbours'
               nfill=nfill+1
@@ -293,8 +299,8 @@ c
  7100 format('min,max depth =',2f12.5)
  9000 format('error - illegal if or il for k =',i3,
      +       '   must have 1<=if(k)<=il(k)<=idm' /
-     +       'if(k),il(k),idm = ',3i5 /)
+     +       'if(k),il(k),idm = ',3i6 /)
  9100 format('error - illegal jf or jl for k =',i3,
      +       '   must have 1<=jf(k)<=jl(k)<=jdm-1' /
-     +       'jf(k),jl(k),jdm-1 = ',3i5 /)
+     +       'jf(k),jl(k),jdm-1 = ',3i6 /)
       end

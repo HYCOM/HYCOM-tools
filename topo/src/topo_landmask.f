@@ -91,7 +91,7 @@ c --- fill specified sub-regions
 c
       do kreg= 1,nreg
         read(5,*) if,il,jf,jl
-        write(6,'(a,4i5)') 'fill subregion: ',if,il,jf,jl
+        write(6,'(a,4i6)') 'fill subregion: ',if,il,jf,jl
         do j= jf,jl
           do i= if,il
             ip(i,j)=0
@@ -125,7 +125,7 @@ c
             if (j.eq.  1.or.dh(i,j-1).le.0.0) nzero=nzero+1
             if (j.eq.jdm.or.dh(i,j+1).le.0.0) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i5,a,i5,a,i1,a)')
+              write (6,'(a,i6,a,i6,a,i1,a)')
      +          ' dh(',i,',',j,') has',
      +          nzero,' land nieghbours'
               nfill=nfill+1

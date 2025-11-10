@@ -7,15 +7,13 @@ c --- HYCOM I/O interface.
 c --- Serial version, for setup only.
 c
       integer, save, private              :: iarec(999)
-      real*4,  save, private, allocatable :: w(:)
+      real*4,  save, private, allocatable :: w(:),wminy(:),wmaxy(:)
 c
 c     n2drec = size of output 2-d array, multiple of 4096
 c     spval  = data void marker, 2^100 or about 1.2676506e30
 c
-      integer, save, private              :: n2drec
-      real*4,        private, parameter   :: spval=2.0**100
-c
-      private zaiordd,zaiowrd
+      integer*8, save, private              :: n2drec
+      real*4,          private, parameter   :: spval=2.0**100
 
       contains
 
@@ -57,7 +55,8 @@ c     the file should be closed using zaiocl.
 c*
 c**********
 c
-      integer   ios,nrecl
+      integer   ios
+      integer*8 nrecl
       character cfile*256,cenv*7
       character cact*9
 #if defined(TIMER)
@@ -87,6 +86,8 @@ c
 c     open file.
 c
       inquire(iolength=nrecl) w
+*     write(6,*) 'zaiopn - nrecl  = ',nrecl
+*     call flush(6)
 c
       if     (cstat.eq.'OLD' .or.
      &        cstat.eq.'old'     ) then
@@ -173,7 +174,8 @@ c     the file should be closed using zaiocl.
 c*
 c**********
 c
-      integer   ios,nrecl
+      integer   ios
+      integer*8 nrecl
       character cfile*256
       character cact*9
 #if defined(TIMER)
@@ -290,7 +292,8 @@ c     the file should be closed using zaiocl.
 c*
 c**********
 c
-      integer   ios,nrecl
+      integer   ios
+      integer*8 nrecl
       character cact*9
 #if defined(TIMER)
 c
@@ -392,13 +395,22 @@ c  2) see also zaiopn, zaiord, zaiowr, and zaiocl.
 c*
 c**********
 c
+      integer*8 idm8,jdm8
+c
 c     n2drec = size of output 2-d array, multiple of 4096
 c
-      n2drec = ((idm*jdm+4095)/4096)*4096
+      idm8 = idm
+      jdm8 = jdm
+      n2drec = idm8*jdm8+4095
+      n2drec = n2drec/4096
+      n2drec = n2drec*4096
+      write(6,*) 'zaiost - n2drec = ',n2drec
+      call flush(6)
 c
 c     initialize I/O buffer
 c
       allocate( w(n2drec) )
+      allocate( wminy(jdm), wmaxy(jdm) )  !for better OpenMP parallelization
 c
 c     initialize record counters
 c
@@ -571,12 +583,15 @@ c     error if mask.ne.0 anywhere the input is 2.0**100.
 c*
 c**********
 c
-      integer   ios, i,j
-      real*4    wmin,wmax
+      integer   ios
+      integer*8 idm8,jdm8,i,j
 #if defined(TIMER)
 c
       call xctmr0(17)
 #endif
+c
+      idm8 = idm
+      jdm8 = jdm
 c
 *     write(6,*) 'zaiord - iaunit,rec = ',iaunit,iarec(iaunit)
 *     call flush(6)
@@ -594,40 +609,40 @@ c
         call flush(6)
         stop
       endif
-      wmin =  spval 
-      wmax = -spval 
       if     (lmask) then
 !$OMP   PARALLEL DO PRIVATE(j,i)
-!$OMP&              REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-        do j= 1,jdm
-          do i= 1,idm
+        do j= 1,jdm8
+          wminy(j) =  spval
+          wmaxy(j) = -spval
+          do i= 1,idm8
             if     (mask(i,j).ne.0) then
-              h(i,j) = w(i+(j-1)*idm)
-              wmin = min( wmin, w(i+(j-1)*idm) )
-              wmax = max( wmax, w(i+(j-1)*idm) )
+              h(i,j) = w(i+(j-1)*idm8)
+              wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+              wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
             endif
           enddo
         enddo
-        if     (wmax.eq.spval) then
+        if     (maxval(wmaxy(1:jdm)).eq.spval) then
           write(6,9200) iarec(iaunit),iaunit
           call flush(6)
           stop
         endif
       else
 !$OMP   PARALLEL DO PRIVATE(j,i)
-!$OMP&              REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-        do j= 1,jdm
-          do i= 1,idm
-            h(i,j) = w(i+(j-1)*idm)
-            if     (w(i+(j-1)*idm).ne.spval) then
-              wmin = min( wmin, w(i+(j-1)*idm) )
-              wmax = max( wmax, w(i+(j-1)*idm) )
+        do j= 1,jdm8
+          wminy(j) =  spval
+          wmaxy(j) = -spval
+          do i= 1,idm8
+            h(i,j) = w(i+(j-1)*idm8)
+            if     (w(i+(j-1)*idm8).ne.spval) then
+              wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+              wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
             endif
           enddo
         enddo
       endif
-      hmin = wmin
-      hmax = wmax
+      hmin = minval(wminy(1:jdm))
+      hmax = maxval(wmaxy(1:jdm))
 c
 #if defined(TIMER)
 c
@@ -734,12 +749,15 @@ c     error if mask.ne.0 anywhere the input is 2.0**100.
 c*
 c**********
 c
-      integer   ios, i,j
-      real*4    wmin,wmax
+      integer   ios
+      integer*8 idm8,jdm8,i,j
 #if defined(TIMER)
 c
       call xctmr0(17)
 #endif
+c
+      idm8 = idm
+      jdm8 = jdm
 c
 *     write(6,*) 'zaiord - iaunit,rec = ',iaunit,iarec(iaunit)
 *     call flush(6)
@@ -757,40 +775,40 @@ c
         call flush(6)
         stop
       endif
-      wmin =  spval 
-      wmax = -spval 
       if     (lmask) then
 !$OMP   PARALLEL DO PRIVATE(j,i)
-!$OMP&              REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-        do j= 1,jdm
-          do i= 1,idm
+        do j= 1,jdm8
+          wminy(j) =  spval
+          wmaxy(j) = -spval
+          do i= 1,idm8
             if     (mask(i,j).ne.0) then
-              h(i,j) = w(i+(j-1)*idm)
-              wmin = min( wmin, w(i+(j-1)*idm) )
-              wmax = max( wmax, w(i+(j-1)*idm) )
+              h(i,j) = w(i+(j-1)*idm8)
+              wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+              wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
             endif
           enddo
         enddo
-        if     (wmax.eq.spval) then
+        if     (maxval(wmaxy(1:jdm)).eq.spval) then
           write(6,9200) iarec(iaunit),iaunit
           call flush(6)
           stop
         endif
       else
 !$OMP   PARALLEL DO PRIVATE(j,i)
-!$OMP&              REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-        do j= 1,jdm
-          do i= 1,idm
-            h(i,j) = w(i+(j-1)*idm)
-            if     (w(i+(j-1)*idm).ne.spval) then
-              wmin = min( wmin, w(i+(j-1)*idm) )
-              wmax = max( wmax, w(i+(j-1)*idm) )
+        do j= 1,jdm8
+          wminy(j) =  spval
+          wmaxy(j) = -spval
+          do i= 1,idm8
+            h(i,j) = w(i+(j-1)*idm8)
+            if     (w(i+(j-1)*idm8).ne.spval) then
+              wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+              wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
             endif
           enddo
         enddo
       endif
-      hmin = wmin
-      hmax = wmax
+      hmin = minval(wminy(1:jdm))
+      hmax = maxval(wmaxy(1:jdm))
 c
 #if defined(TIMER)
 c
@@ -810,9 +828,10 @@ c
       subroutine zaiordd(a,n, iunit,irec,ios)
       implicit none
 c
-      integer, intent(in)    :: n,iunit,irec
-      integer, intent(out)   :: ios
-      real*4,  intent(out)   :: a(n)
+      integer*8, intent(in)    :: n
+      integer,   intent(in)    :: iunit,irec
+      integer,   intent(out)   :: ios
+      real*4,    intent(out)   :: a(n)
 c
 c**********
 c*
@@ -874,7 +893,7 @@ c
      &   i3,' is not marked as open.'/ /)
       end subroutine zaiosk
 
-      subroutine zaiowr8(h, mask,lmask, hmin,hmax,  iaunit, lreal4)
+      subroutine zaiowr8(h, mask,lmask, hmin,hmax, iaunit, lreal4)
       implicit none
 c
       logical, intent(in)    :: lmask,lreal4
@@ -909,12 +928,15 @@ c     restart.
 c*
 c**********
 c
-      integer   ios, i,j
-      real*4    wmin,wmax
+      integer   ios
+      integer*8 idm8,jdm8,i,j
 #if defined(TIMER)
 c
       call xctmr0(18)
 #endif
+c
+      idm8 = idm
+      jdm8 = jdm
 c
       if     (iarec(iaunit).lt.0) then
         write(6,9000) iaunit
@@ -922,42 +944,42 @@ c
         stop
       endif
 c
-      wmin =  spval
-      wmax = -spval
       if     (lreal4) then
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
               if     (mask(i,j).ne.0) then
-                w(i+(j-1)*idm) = h(i,j)
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+                w(i+(j-1)*idm8) = h(i,j)
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               else
-                w(i+(j-1)*idm) = spval
+                w(i+(j-1)*idm8) = spval
               endif
 #if defined(REAL4)
-! ---         h(i,j) = w(i+(j-1)*idm)  ! h is already real*4
+! ---         h(i,j) = w(i+(j-1)*idm8)  ! h is already real*4
 #else
-              h(i,j) = w(i+(j-1)*idm)  ! h is not real*4, so update it
+              h(i,j) = w(i+(j-1)*idm8)  ! h is not real*4, so update it
 #endif
             enddo
           enddo
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
-              w(i+(j-1)*idm) = h(i,j)
-              if     (w(i+(j-1)*idm).ne.spval) then
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
+              w(i+(j-1)*idm8) = h(i,j)
+              if     (w(i+(j-1)*idm8).ne.spval) then
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               endif
 #if defined(REAL4)
-! ---         h(i,j) = w(i+(j-1)*idm)  ! h is already real*4
+! ---         h(i,j) = w(i+(j-1)*idm8)  ! h is already real*4
 #else
-              h(i,j) = w(i+(j-1)*idm)  ! h is not real*4, so update it
+              h(i,j) = w(i+(j-1)*idm8)  ! h is not real*4, so update it
 #endif
             enddo
           enddo
@@ -965,37 +987,39 @@ c
       else
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
               if     (mask(i,j).ne.0) then
-                w(i+(j-1)*idm) = h(i,j)
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+                w(i+(j-1)*idm8) = h(i,j)
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               else
-                w(i+(j-1)*idm) = spval
+                w(i+(j-1)*idm8) = spval
               endif
             enddo
           enddo
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
-              w(i+(j-1)*idm) = h(i,j)
-              if     (w(i+(j-1)*idm).ne.spval) then
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
+              w(i+(j-1)*idm8) = h(i,j)
+              if     (w(i+(j-1)*idm8).ne.spval) then
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               endif
             enddo
           enddo
         endif
       endif
-      do i= idm*jdm+1,n2drec
+      do i= idm8*jdm8+1,n2drec
         w(i) = spval
       enddo
-      hmin = wmin
-      hmax = wmax
+      hmin = minval(wminy(1:jdm))
+      hmax = maxval(wmaxy(1:jdm))
       iarec(iaunit) = iarec(iaunit) + 1
       call zaiowrd(w,n2drec, iaunit+1000,iarec(iaunit),ios)
       if     (ios.ne.0) then
@@ -1014,7 +1038,6 @@ c
  9100 format(/ /10x,'error in zaiowr -  can''t write record',
      &   i4,' on array I/O unit ',i3,'.'/ /)
       end subroutine zaiowr8
-
 
       subroutine zaiowr3(h, l, mask,lmask, hmin,hmax, iaunit, lreal4)
       implicit none
@@ -1068,7 +1091,7 @@ c
       return
       end subroutine zaiowr3
 
-      subroutine zaiowr(h, mask,lmask, hmin,hmax,  iaunit, lreal4)
+      subroutine zaiowr(h, mask,lmask, hmin,hmax, iaunit, lreal4)
       implicit none
 c
       logical, intent(in)    :: lmask,lreal4
@@ -1109,12 +1132,15 @@ c     restart.
 c*
 c**********
 c
-      integer   ios, i,j
-      real*4    wmin,wmax
+      integer   ios
+      integer*8 idm8,jdm8,i,j
 #if defined(TIMER)
 c
       call xctmr0(18)
 #endif
+c
+      idm8 = idm
+      jdm8 = jdm
 c
       if     (iarec(iaunit).lt.0) then
         write(6,9000) iaunit
@@ -1122,42 +1148,42 @@ c
         stop
       endif
 c
-      wmin =  spval
-      wmax = -spval
       if     (lreal4) then
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
               if     (mask(i,j).ne.0) then
-                w(i+(j-1)*idm) = h(i,j)
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+                w(i+(j-1)*idm8) = h(i,j)
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               else
-                w(i+(j-1)*idm) = spval
+                w(i+(j-1)*idm8) = spval
               endif
 #if defined(REAL4)
-! ---         h(i,j) = w(i+(j-1)*idm)  ! h is already real*4
+! ---         h(i,j) = w(i+(j-1)*idm8)  ! h is already real*4
 #else
-              h(i,j) = w(i+(j-1)*idm)  ! h is not real*4, so update it
+              h(i,j) = w(i+(j-1)*idm8)  ! h is not real*4, so update it
 #endif
             enddo
           enddo
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
-              w(i+(j-1)*idm) = h(i,j)
-              if     (w(i+(j-1)*idm).ne.spval) then
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
+              w(i+(j-1)*idm8) = h(i,j)
+              if     (w(i+(j-1)*idm8).ne.spval) then
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               endif
 #if defined(REAL4)
-! ---         h(i,j) = w(i+(j-1)*idm)  ! h is already real*4
+! ---         h(i,j) = w(i+(j-1)*idm8)  ! h is already real*4
 #else
-              h(i,j) = w(i+(j-1)*idm)  ! h is not real*4, so update it
+              h(i,j) = w(i+(j-1)*idm8)  ! h is not real*4, so update it
 #endif
             enddo
           enddo
@@ -1165,37 +1191,39 @@ c
       else
         if     (lmask) then
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
               if     (mask(i,j).ne.0) then
-                w(i+(j-1)*idm) = h(i,j)
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+                w(i+(j-1)*idm8) = h(i,j)
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               else
-                w(i+(j-1)*idm) = spval
+                w(i+(j-1)*idm8) = spval
               endif
             enddo
           enddo
         else
 !$OMP     PARALLEL DO PRIVATE(j,i)
-!$OMP&                REDUCTION(MIN:wmin) REDUCTION(MAX:wmax)
-          do j= 1,jdm
-            do i= 1,idm
-              w(i+(j-1)*idm) = h(i,j)
-              if     (w(i+(j-1)*idm).ne.spval) then
-                wmin = min( wmin, w(i+(j-1)*idm) )
-                wmax = max( wmax, w(i+(j-1)*idm) )
+          do j= 1,jdm8
+            wminy(j) =  spval
+            wmaxy(j) = -spval
+            do i= 1,idm8
+              w(i+(j-1)*idm8) = h(i,j)
+              if     (w(i+(j-1)*idm8).ne.spval) then
+                wminy(j) = min( wminy(j), w(i+(j-1)*idm8) )
+                wmaxy(j) = max( wmaxy(j), w(i+(j-1)*idm8) )
               endif
             enddo
           enddo
         endif
       endif
-      do i= idm*jdm+1,n2drec
+      do i= idm8*jdm8+1,n2drec
         w(i) = spval
       enddo
-      hmin = wmin
-      hmax = wmax
+      hmin = minval(wminy(1:jdm))
+      hmax = maxval(wmaxy(1:jdm))
       iarec(iaunit) = iarec(iaunit) + 1
       call zaiowrd(w,n2drec, iaunit+1000,iarec(iaunit),ios)
       if     (ios.ne.0) then
@@ -1218,9 +1246,10 @@ c
       subroutine zaiowrd(a,n, iunit,irec,ios)
       implicit none
 c
-      integer, intent(in)    :: n,iunit,irec
-      integer, intent(out)   :: ios
-      real*4,  intent(in)    :: a(n)
+      integer*8, intent(in)    :: n
+      integer,   intent(in)    :: iunit,irec
+      integer,   intent(out)   :: ios
+      real*4,    intent(in)    :: a(n)
 c
 c**********
 c*
@@ -1244,7 +1273,7 @@ c
       subroutine zaio_endian(a,n)
       implicit none
 c
-      integer,         intent(in)    :: n
+      integer*8,       intent(in)    :: n
       integer(kind=4), intent(inout) :: a(n)  ! 4-bytes
 c
 c**********

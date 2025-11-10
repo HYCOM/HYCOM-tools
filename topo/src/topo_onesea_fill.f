@@ -3,7 +3,9 @@
       implicit none
 c
       logical   larctic,lfirst
-      integer   i,ii,minsea,isea,j,jj,k,nsea
+      integer   i,ii,j,jj,k,l,nsea
+      integer*8 minsea,isea,idm8,jdm8
+      real*8    dall,dsea
       real      hmaxa,hmaxb,hmina,hminb
       character preambl(5)*79,cline*80
 c
@@ -22,6 +24,9 @@ c
       allocate( jp(    jdm) )
       allocate( ip(idm,jdm) )
       allocate( dh(idm,jdm) )
+c
+      idm8 = idm
+      jdm8 = jdm
 c
       read(5,*) minsea
 c
@@ -87,7 +92,7 @@ c
 c
 c     color fill the sea points, one color per sea.
 c
-      do k= 2,99999
+      do k= 2,999999
 c
 c       find an unfilled sea point
 c
@@ -114,71 +119,27 @@ c
 c
 c       flood-fill the sea that is connected to this point.
 c
-        call fill(ii,jj, k, ip,idm,jdm)
+        isea = 0 
+        call fill(ii,jj, k, isea, ip,idm,jdm)
+c
+        dsea = isea*100.0d0
+        dall = idm8*jdm8
+        if     (isea.le.minsea) then  !filled sea
+          write(6,'(i13,a,f8.3,a)')
+     &      isea,' point sea (',dsea/dall,'% of points) FILLED'
+          call fill_land(ii,jj, k, ip,dh,idm,jdm)
+        else
+          write(6,'(i13,a,f8.3,a)')
+     &      isea,' point sea (',dsea/dall,'% of points)'
+        endif
       enddo !k
       if     (larctic) then
         do i= 1,idm
           ii = idm-mod(i-1,idm)
           ip(i,jdm) = ip(ii,jdm-1)
+          dh(i,jdm) = dh(ii,jdm-1)
         enddo
       endif !arctic
-c
-c     how may seas?
-c
-      nsea = k-2
-      if     (nsea.eq.0) then  !all-land
-        write(6,'(/a/)')         'region is all land'
-      elseif (nsea.eq.1) then  !one-sea
-        write(6,'(/a/)')         'one connected sea only'
-      else  !multiple seas
-        write(6,'(/i6,a/)') nsea,' seas identified'
-        do k= 2,nsea+1
-          isea = 0
-          do j= 1,jdm
-            do i= 1,idm
-              if     (ip(i,j).eq.k) then
-                isea = isea + 1
-              endif
-            enddo !i
-          enddo !j
-          if     (isea.le.minsea) then  !filled sea
-            write(6,'(i9,a,f7.2,a)')
-     &        isea,' point sea (',
-     &        (isea*100.0)/real(idm*jdm),'% of points) FILLED'
-          else
-            write(6,'(i9,a,f7.2,a)')
-     &        isea,' point sea (',
-     &        (isea*100.0)/real(idm*jdm),'% of points)'
-          endif
-          if     (isea.le.minsea) then  !filled sea
-            lfirst = .true.
-            do j= 1,jdm
-              do i= 1,idm
-                if     (ip(i,j).eq.k) then
-                  if     (lfirst) then
-                    write(6,'(a,2i5)') '          at i,j =',i,j
-                    lfirst = .false.
-                  endif
-                  ip(i,j)=0     !landfill
-                  dh(i,j)=0.0   !landfill
-                endif
-              enddo !i
-            enddo !j
-          elseif (isea.lt.(idm*jdm)/3) then  !non-primary sea
-            lfirst = .true.
-            do j= 1,jdm
-              do i= 1,idm
-                if     (ip(i,j).eq.k) then
-                  if     (lfirst) then
-                    write(6,'(a,2i5)') '          at i,j =',i,j
-                    lfirst = .false.
-                  endif
-                endif
-              enddo !i
-            enddo !j
-          endif
-        enddo !k
-      endif
 c
 c --- write out the land-filled hycom topography file,
 c
@@ -189,11 +150,12 @@ c
       write(6, *)
  6100 format('min,max depth = ',2f12.5)
       end
-      recursive subroutine fill(i,j,k, ip,idm,jdm)
+      recursive subroutine fill(i,j,k, isea, ip,idm,jdm)
       implicit none
 c
-      integer i,j,k,idm,jdm
-      integer ip(idm,jdm)
+      integer   i,j,k,idm,jdm
+      integer*8 isea
+      integer   ip(idm,jdm)
 c
 c     fill this point, if necessary, and then extend search n,s,e,w
 c
@@ -203,31 +165,78 @@ c
 *         write(6,*) 'fill - i,j = ',i,j
 *         call flush(6)
         ip(i,j) = k
+        isea = isea + 1
         if     (i.ne.  1) then
-          call fill(i-1,j,  k, ip,idm,jdm)
+          call fill(i-1,j,  k, isea, ip,idm,jdm)
         else
-          call fill(idm,j,  k, ip,idm,jdm)  !must be periodic, i-1 for i=1
+          call fill(idm,j,  k, isea, ip,idm,jdm)  !must be periodic, i-1 for i=1
         endif
         if     (j.ne.  1) then
-          call fill(i,  j-1,k, ip,idm,jdm)
+          call fill(i,  j-1,k, isea, ip,idm,jdm)
         endif
         if     (i.ne.idm) then
-          call fill(i+1,j,  k, ip,idm,jdm)
+          call fill(i+1,j,  k, isea, ip,idm,jdm)
         else
-          call fill(  1,j,  k, ip,idm,jdm)  !must be periodic, i+1 for i=idm
+          call fill(  1,j,  k, isea, ip,idm,jdm)  !must be periodic, i+1 for i=idm
         endif
         if     (j.lt.jdm-1) then
-          call fill(i,  j+1,k, ip,idm,jdm)
+          call fill(i,  j+1,k, isea, ip,idm,jdm)
         elseif (j.eq.jdm-1) then
-          call fill(i,  j+1,k, ip,idm,jdm)
+          call fill(i,  j+1,k, isea, ip,idm,jdm)
           ii = idm-mod(i-1,idm)
-          call fill(ii, j+1,k, ip,idm,jdm)  !might be arctic, same point
+          call fill(ii, j+1,k, isea, ip,idm,jdm)  !might be arctic, same point
         else !j.eq.jdm
           ii = idm-mod(i-1,idm)
-          call fill(ii, j-1,k, ip,idm,jdm)  !must  be arctic, same point
+          call fill(ii, j-1,k, isea, ip,idm,jdm)  !must  be arctic, same point
         endif
       elseif (ip(i,j).ne.0 .and. ip(i,j).ne.k) then
         write(6,*) 'error in fill, point in two seas: i,j =',i,j
+        write(6,*) 'sea ',ip(i,j),', and sea ',k
+        stop
+      endif
+      end
+      recursive subroutine fill_land(i,j,k, ip,dh,idm,jdm)
+      implicit none
+c
+      integer   i,j,k,idm,jdm
+      integer   ip(idm,jdm)
+      real      dh(idm,jdm)
+c
+c     fill this point, if necessary, and then extend search n,s,e,w
+c     version that resets filled points to land
+c
+      integer ii
+c
+      if     (ip(i,j).eq.k) then
+*         write(6,*) 'fill_land - i,j = ',i,j
+*         call flush(6)
+        ip(i,j) = 0
+        dh(i,j) = 0.0
+        if     (i.ne.  1) then
+          call fill_land(i-1,j,  k, ip,dh,idm,jdm)
+        else
+          call fill_land(idm,j,  k, ip,dh,idm,jdm)  !must be periodic, i-1 for i=1
+        endif
+        if     (j.ne.  1) then
+          call fill_land(i,  j-1,k, ip,dh,idm,jdm)
+        endif
+        if     (i.ne.idm) then
+          call fill_land(i+1,j,  k, ip,dh,idm,jdm)
+        else
+          call fill_land(  1,j,  k, ip,dh,idm,jdm)  !must be periodic, i+1 for i=idm
+        endif
+        if     (j.lt.jdm-1) then
+          call fill_land(i,  j+1,k, ip,dh,idm,jdm)
+        elseif (j.eq.jdm-1) then
+          call fill_land(i,  j+1,k, ip,dh,idm,jdm)
+          ii = idm-mod(i-1,idm)
+          call fill_land(ii, j+1,k, ip,dh,idm,jdm)  !might be arctic, same point
+        else !j.eq.jdm
+          ii = idm-mod(i-1,idm)
+          call fill_land(ii, j-1,k, ip,dh,idm,jdm)  !must  be arctic, same point
+        endif
+      elseif (ip(i,j).ne.0 .and. ip(i,j).ne.k) then
+        write(6,*) 'error in fill_land, point in two seas: i,j =',i,j
         write(6,*) 'sea ',ip(i,j),', and sea ',k
         stop
       endif

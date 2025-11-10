@@ -89,8 +89,8 @@ c
       enddo
       stop
 c
- 6000 format(1h1 / 30x,'LAND/SEA MASK FOR AN',i5,'  BY',i5,' MESH.'
+ 6000 format(1h1 / 30x,'LAND/SEA MASK FOR AN',i6,' BY',i6,' MESH.'
      +           / 31x,'LAND = ./#,  OCEAN = 0-9 (x',F5.1,')' )
- 6050 format(/ / / 21x,'I =',i5,'  TO',i5,'  :' / /)
- 6100 format(4x,'J =',i5,5x,10(10a1,1x))
+ 6050 format(/ / / 21x,'I =',i6,' TO',i6,'  :' / /)
+ 6100 format(4x,'J =',i6,4x,10(10a1,1x))
       end

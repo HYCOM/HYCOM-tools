@@ -31,7 +31,7 @@ all:
 	/bin/csh Make_all.csh
 
 clean:
-	/bin/rm -f *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *dry *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *spd *cfl *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *15sec *30sec *bedmap *RTopo *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
+	/bin/rm -f *.o *.a *.mod netcdf.inc M*log *hgram *min *1d *2d *2h *ppmX *sea *oth *clip *ff *flat *fill *mask *set *shrink *sub *map *nam *sby *spd *cfl *trop *tor *rge *fy *it *noshrink *son *ude *zcells *zthin *arctic *_test *_ij *_resize *_ns *1deg  *lat *ts *ed *pe *gh *ip *75sec *15sec *30sec *bedmap *bedmap3 *RTopo *sindhu *pi *sea-b *360 *island *vrtcmprs *lon *find *mom6 *dx *tiles *ic *1st
 
 MODS = mod_xc.o mod_za.o wtime.o
 MODN = mod_xc.o mod_za.o wtime.o 
@@ -62,6 +62,9 @@ bathy_02min:     $(MODS) bathy_02min.o   interp.o zh.o
 bathy_05min:     $(MODS) bathy_05min.o   interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_05min.o   interp.o zh.o $(MODS) -o bathy_05min
 
+bathy_bedmap3:   $(MODS) bathy_bedmap3.o interp.o zh.o
+	$(LD) $(LDFLAGS) bathy_bedmap3.o interp.o zh.o $(MODN) $(EXTRANCDF) libemapfF.a -o bathy_bedmap3
+
 bathy_bedmap:    $(MODS) bathy_bedmap.o  interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_bedmap.o  interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_bedmap
 
@@ -71,6 +74,9 @@ bathy_caspi:     $(MODS) bathy_caspi.o   interp.o zh.o
 bathy_sindhu:    $(MODS) bathy_sindhu.o  interp.o zh.o
 	$(LD) $(LDFLAGS) bathy_sindhu.o  interp.o zh.o $(MODN) $(EXTRANCDF) -o bathy_sindhu
 
+
+landsea_75sec:   $(MODS) landsea_75sec.o interp.o zh.o
+	$(LD) $(LDFLAGS) landsea_75sec.o interp.o zh.o $(MODN) $(EXTRANCDF) -o landsea_75sec
 
 landsea_15sec:   $(MODS) landsea_15sec.o interp.o zh.o
 	$(LD) $(LDFLAGS) landsea_15sec.o interp.o zh.o $(MODN) $(EXTRANCDF) -o landsea_15sec
@@ -96,11 +102,11 @@ landsea_caspi:   $(MODS) landsea_caspi.o interp.o zh.o
 2d:              $(MODS) topo_2d.o         zh.o
 	$(LD) $(LDFLAGS) topo_2d.o         zh.o $(MODS) -o topo_2d
 
-cfl2spd:         $(MODG) topo_cfl2spd.o    zh.o
-	$(LD) $(LDFLAGS) topo_cfl2spd.o    zh.o $(MODS) -o topo_cfl2spd
-
 spd2cfl:         $(MODG) topo_spd2cfl.o    zh.o
 	$(LD) $(LDFLAGS) topo_spd2cfl.o    zh.o $(MODS) -o topo_spd2cfl
+
+cfl2spd:         $(MODG) topo_cfl2spd.o    zh.o
+	$(LD) $(LDFLAGS) topo_cfl2spd.o    zh.o $(MODS) -o topo_cfl2spd
 
 biharmonic:      $(MODG) topo_biharmonic.o zh.o
 	$(LD) $(LDFLAGS) topo_biharmonic.o zh.o $(MODS) -o topo_biharmonic
@@ -113,6 +119,9 @@ clip:            $(MODS) topo_clip.o       zh.o
 
 diff:            $(MODS) topo_diff.o       zh.o
 	$(LD) $(LDFLAGS) topo_diff.o       zh.o $(MODS) -o topo_diff
+
+distland:        $(MODS) topo_distland.o   zh.o
+	$(LD) $(LDFLAGS) topo_distland.o   zh.o $(MODS) -o topo_distland
 
 dry:             $(MODS) topo_dry.o        zh.o
 	$(LD) $(LDFLAGS) topo_dry.o        zh.o $(MODS) -o topo_dry
@@ -219,6 +228,9 @@ onesea-b:        $(MODS) topo_onesea-b.o   zh.o
 onesea_fill:     $(MODS) topo_onesea_fill.o zh.o
 	$(LD) $(LDFLAGS) topo_onesea_fill.o zh.o $(MODS) -o topo_onesea_fill
 
+onesea_rng:      $(MODS) topo_onesea_rng.o  zh.o
+	$(LD) $(LDFLAGS) topo_onesea_rng.o  zh.o $(MODS) -o topo_onesea_rng
+
 onesea-b_fill:   $(MODS) topo_onesea-b_fill.o zh.o
 	$(LD) $(LDFLAGS) topo_onesea-b_fill.o zh.o $(MODS) -o topo_onesea-b_fill
 
@@ -264,6 +276,9 @@ ppmX:            $(MODS) topo_ppmX.o       zh.o
 diff_ppmX:       $(MODS) topo_diff_ppmX.o  zh.o
 	$(LD) $(LDFLAGS) topo_diff_ppmX.o  zh.o $(MODS) -o topo_diff_ppmX
 
+diff_sub_ppmX:   $(MODS) topo_diff_sub_ppmX.o  zh.o
+	$(LD) $(LDFLAGS) topo_diff_sub_ppmX.o  zh.o $(MODS) -o topo_diff_sub_ppmX
+
 smallsea:        $(MODS) topo_smallsea.o   zh.o
 	$(LD) $(LDFLAGS) topo_smallsea.o   zh.o $(MODS) -o topo_smallsea
 
@@ -278,6 +293,21 @@ smooth_slope:    $(MODS) topo_smooth_slope.o zh.o
 
 subset:          $(MODS) topo_subset.o     zh.o
 	$(LD) $(LDFLAGS) topo_subset.o     zh.o $(MODS) -o topo_subset
+
+tid_land:        $(MODS) tid_land.o        zh.o
+	$(LD) $(LDFLAGS) tid_land.o        zh.o $(MODS) -o tid_land
+
+tid_mask:        $(MODS) tid_mask.o        zh.o
+	$(LD) $(LDFLAGS) tid_mask.o        zh.o $(MODS) -o tid_mask
+
+tid_mask_enc:    $(MODS) tid_mask_enc.o    zh.o
+	$(LD) $(LDFLAGS) tid_mask_enc.o    zh.o $(MODS) -o tid_mask_enc
+
+tid_merge:       $(MODS) tid_merge.o        zh.o
+	$(LD) $(LDFLAGS) tid_merge.o        zh.o $(MODS) -o tid_merge
+
+tid_sound:       $(MODS) tid_sound.o        zh.o
+	$(LD) $(LDFLAGS) tid_sound.o        zh.o $(MODS) -o tid_sound
 
 tiles:           $(MODS) topo_tiles.o      zh.o
 	$(LD) $(LDFLAGS) topo_tiles.o      zh.o $(MODS) -o topo_tiles

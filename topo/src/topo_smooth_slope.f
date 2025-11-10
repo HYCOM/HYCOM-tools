@@ -101,7 +101,7 @@ c ---         north
                 r = (dh(i,j) - dh(ii,jj)) / (dh(i,j) + dh(ii,jj))
                 if     (r.gt.r_max) then
                       if     (nsmth.lt.5) then
-                        write(6,'(a,2i5,f6.3,2f12.5)')
+                        write(6,'(a,2i6,f6.3,2f12.5)')
      &                   'N:i,j,r,dh.o,dh.n =',
      &                   ii,jj,r,dh(ii,jj),(1.0+r)/(1.0-r)*dh(ii,jj)
                       endif !debug
@@ -120,7 +120,7 @@ c ---         south
                 r = (dh(i,j) - dh(ii,jj)) / (dh(i,j) + dh(ii,jj))
                 if     (r.gt.r_max) then
                       if     (nsmth.lt.5) then
-                        write(6,'(a,2i5,f6.3,2f12.5)')
+                        write(6,'(a,2i6,f6.3,2f12.5)')
      &                   'S:i,j,r,dh.o,dh.n =',
      &                   ii,jj,r,dh(ii,jj),(1.0+r)/(1.0-r)*dh(ii,jj)
                       endif !debug
@@ -135,7 +135,7 @@ c ---         east
                 r = (dh(i,j) - dh(ii,jj)) / (dh(i,j) + dh(ii,jj))
                 if     (r.gt.r_max) then
                       if     (nsmth.lt.5) then
-                        write(6,'(a,2i5,f6.3,2f12.5)')
+                        write(6,'(a,2i6,f6.3,2f12.5)')
      &                   'E:i,j,r,dh.o,dh.n =',
      &                   ii,jj,r,dh(ii,jj),(1.0+r)/(1.0-r)*dh(ii,jj)
                       endif !debug
@@ -150,7 +150,7 @@ c ---         west
                 r = (dh(i,j) - dh(ii,jj)) / (dh(i,j) + dh(ii,jj))
                 if     (r.gt.r_max) then
                       if     (nsmth.lt.5) then
-                        write(6,'(a,2i5,f6.3,2f12.5)')
+                        write(6,'(a,2i6,f6.3,2f12.5)')
      &                   'W:i,j,r,dh.o,dh.n =',
      &                   ii,jj,r,dh(ii,jj),(1.0+r)/(1.0-r)*dh(ii,jj)
                       endif !debug

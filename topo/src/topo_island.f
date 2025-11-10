@@ -15,7 +15,7 @@ c
 c --- read in the island size cutoff
 c
       read(5,*) mxland
-      write(6,'(/a,i5/)') 'island cutoff size = ',mxland
+      write(6,'(/a,i6/)') 'island cutoff size = ',mxland
 c
       call xcspmd  !input idm,jdm
       allocate( jp(    0:jdm) )
@@ -144,7 +144,7 @@ c
             do j= 1,jdm
               do i= 1,idm
                 if     (ip(i,j).eq.k) then
-                  write(6,'(a,2i5)') '          at i,j =',i,j
+                  write(6,'(a,2i6)') '          at i,j =',i,j
                 endif
               enddo !i
             enddo !j

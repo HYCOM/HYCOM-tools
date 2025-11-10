@@ -181,7 +181,7 @@ c
       if     (larctic) then
         j=jdm
         do i= 1,idm
-          write(6,'(a,2i5,2f12.4)') 'x:',2*i-1,2*j-1,x(2*i-1,2*j-1),
+          write(6,'(a,2i6,2f12.4)') 'x:',2*i-1,2*j-1,x(2*i-1,2*j-1),
      &                                               x(2*i  ,2*j-1)
         enddo !i
         do i= 1,idm
@@ -307,16 +307,16 @@ c
 c
       write(6, *)
       do j= 1,jdm
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'j,qlat =',j,minval(qlat(:,j)),maxval(qlat(:,j))
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'j,plat =',j,minval(plat(:,j)),maxval(plat(:,j))
       enddo
       write(6, *)
       do i= 1,idm
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'i,qlon =',i,minval(qlon(i,:)),maxval(qlon(i,:))
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'i,plon =',i,minval(plon(i,:)),maxval(plon(i,:))
       enddo
 c
@@ -327,20 +327,20 @@ c
 c --- write header.
 c
       call zhopen(61, 'formatted', 'new', 0)
-      write(61,'(i5,a)')
+      write(61,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(61,'(i5,a)')
+      write(61,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(61,'(i5,a,a)')
+      write(61,'(i6,a,a)')
      &  mapflg,"    'mapflg' = map flag",
      &         " (-1=unknown,0=mercator,2=uniform,4=f-plane)"
 c
       write(6, *)
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  mapflg,"    'mapflg' = map flag (-1=unknown,0=mercator,...)"
 c
 c --- write grid arrays.
@@ -504,16 +504,16 @@ c
 c
       write(6, *)
       do j= 1,jdm
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,vy =',j,minval(vscy(:,j)),maxval(vscy(:,j)),
      &               maxval(vscy(:,j))-minval(vscy(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,vx =',j,minval(vscx(:,j)),maxval(vscx(:,j)),
      &               maxval(vscx(:,j))-minval(vscx(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,uy =',j,minval(uscy(:,j)),maxval(uscy(:,j)),
      &               maxval(uscy(:,j))-minval(uscy(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,ux =',j,minval(uscx(:,j)),maxval(uscx(:,j)),
      &               maxval(uscx(:,j))-minval(uscx(:,j))
       enddo

@@ -150,7 +150,7 @@ c
            y(2*i  ,2*j-1) = vlat(i,j)   !HYCOM 1,1 is MOM6 2,1
         enddo !i
 *       do i= 1,nxp
-*         write(6,'(a,i5,2f12.4)') 'X.ny,nyp:',i,x(i,ny),x(i,nyp)
+*         write(6,'(a,i6,2f12.4)') 'X.ny,nyp:',i,x(i,ny),x(i,nyp)
 *       enddo !i
       else
         do i= 1,nx
@@ -251,7 +251,7 @@ c
           dy(2*i  ,2*j-1) = 0.5*vscy(i,j)   !HYCOM 1,1 is MOM6 2,1
         enddo !i
 *       do i= 1,nxp
-*         write(6,'(a,i5,2f12.4)') 'X.ny,nyp:',i,x(i,ny),x(i,nyp)
+*         write(6,'(a,i6,2f12.4)') 'X.ny,nyp:',i,x(i,ny),x(i,nyp)
 *       enddo !i
       else
         do i= 1,nx 
@@ -312,7 +312,7 @@ c ---     unless we are at a pole
         enddo !i
       enddo !j
 *     do i= 1,nxp
-*       write(6,'(a,i5,2f12.4)') 'x.ny,nyp:',i,x(i,ny),x(i,nyp)
+*       write(6,'(a,i6,2f12.4)') 'x.ny,nyp:',i,x(i,ny),x(i,nyp)
 *     enddo !i
 c
 c --- write the MOM6 grid

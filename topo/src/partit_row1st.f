@@ -39,7 +39,7 @@ c
         if     (node1.eq.1) then
           node1 = node
         endif
-        write(6,'(a,2i5)') 
+        write(6,'(a,2i6)') 
      &    '      node1,node =',node1,node
 c
         k = 0
@@ -54,7 +54,7 @@ c
             endif
           enddo
           npe_node = (mpe_1+node-node1-1)/node + 1
-          write(6,'(a,4i5)') 
+          write(6,'(a,4i6)') 
      &      'j,1st,count,node =',j,mpe_1,k-mpe_1+1,npe_node
         enddo
 C     END OF PARTIT_ROW1ST

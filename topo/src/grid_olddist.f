@@ -105,16 +105,16 @@ c ---   standard mercator projection
 c
       write(6, *)
       do j= 1,jdm
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,vy =',j,minval(vscy(:,j)),maxval(vscy(:,j)),
      &               maxval(vscy(:,j))-minval(vscy(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,vx =',j,minval(vscx(:,j)),maxval(vscx(:,j)),
      &               maxval(vscx(:,j))-minval(vscx(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,uy =',j,minval(uscy(:,j)),maxval(uscy(:,j)),
      &               maxval(uscy(:,j))-minval(uscy(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,ux =',j,minval(uscx(:,j)),maxval(uscx(:,j)),
      &               maxval(uscx(:,j))-minval(uscx(:,j))
       enddo
@@ -123,20 +123,20 @@ c
 c --- write header.
 c
       call zhopnc(62, 'regional.olddist.b', 'formatted', 'new', 0)
-      write(62,'(i5,a)')
+      write(62,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(62,'(i5,a)')
+      write(62,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(62,'(i5,a,a)')
+      write(62,'(i6,a,a)')
      &  mapflg,"    'mapflg' = map flag",
      &         " (-1=unknown,0=mercator,2=uniform,4=f-plane)"
 c
       write(6, *)
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  mapflg,"    'mapflg' = map flag (-1=unknown,0=mercator,...)"
 c
 c --- write grid arrays.

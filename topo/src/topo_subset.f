@@ -96,7 +96,7 @@ c
       nsea = 0
       do kreg= 1,nreg
         read(5,*) if,il,jf,jl
-        write(6,'(a,4i5)') 'include subregion: ',if,il,jf,jl
+        write(6,'(a,4i6)') 'include subregion: ',if,il,jf,jl
         nsea = nsea + (il-if+1)*(jl-jf+1)
         do j= jf,jl
           do i= if,il
@@ -160,7 +160,7 @@ c
               if     (subreg(k)) then
                 kreg = kreg + (ilpt(k)-ispt(k)+1)*(jlpt(k)-jspt(k)+1)
                 if     (ldebug) then
-                  write(6,'(a,5i5,i10)') 'pe,if,il,jf,jl,nsea = ',
+                  write(6,'(a,5i6,i10)') 'pe,if,il,jf,jl,nsea = ',
      &                                k,ispt(k),ilpt(k),jspt(k),jlpt(k),
      &                                nsea
                 endif !ldebug
@@ -169,7 +169,7 @@ c
           enddo
         enddo
         if     (k.ne.nmpe) then
-          write(6,'(/ a,i5,a,i5 /)')
+          write(6,'(/ a,i6,a,i6 /)')
      &      'error - there are ',k,'sea-tiles, but nmpe = ',nmpe
           call zhflsh(6)
           stop

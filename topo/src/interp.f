@@ -10,8 +10,9 @@ C     THUS IF THE INPUT WIND DATA SET HAS NON-REALISTIC VALUES OVER
 C     LAND THE NUMBERS MAY BE MEANINGLESS, BUT THEY CAN STILL BE 
 C     USED AS A CHECK BETWEEN DIFFERENT MACHINES.
 C
-      INTEGER I,J
-      REAL*8  XSUM,XSUMSQ
+      INTEGER   I,J
+      INTEGER*8 IW8,JW8
+      REAL*8    XSUM,XSUMSQ,IWJW
 C
       XSUM   = 0.D0
       XSUMSQ = 0.D0
@@ -22,8 +23,11 @@ C
   111   CONTINUE
   110 CONTINUE
 C
-      XAVE =       XSUM   / (IW*JW)
-      XRMS = SQRT( XSUMSQ / (IW*JW) ) 
+      IW8  = IW
+      JW8  = JW
+      IWJW = IW8*JW8
+      XAVE =       XSUM   / IWJW
+      XRMS = SQRT( XSUMSQ / IWJW )
 C
       RETURN
 C     END OF AVERMS.
@@ -332,6 +336,55 @@ C ---         REDUCE THE EFFECT OF HIGH LAND VALUES
       RETURN
 C     END OF PATCH.
       END
+      SUBROUTINE SAMPLE(FLD,FX,FY,NDX,NX,NY, FLDI,NDXI,NXI,NYI)
+      IMPLICIT NONE
+C
+      INTEGER NDX,NX,NY, NDXI,NXI,NYI
+      REAL*4  FLD(NDX,NY),FX(NDX,NY),FY(NDX,NY)
+      REAL*4  FLDI(NDXI,NYI)
+C
+C**********
+C*
+C  1) INTERPOLATE FROM THE ARRAY FLDI TO THE ARRAY FLD, WHERE 
+C      FLD(I,J) IS AT (FX(I,J),FY(I,J)) W.R.T. THE FLDI GRID
+C      (1:NXI,1:NYI).
+C
+C     NEAREST GRID POINT IS USED.
+C
+C  2) ARGUMENT LIST:
+C       FLD     - INTERPOLATED ARRAY ON EXIT
+C       FX      - MAPPING OF 1ST DIMENSION OF FLD INTO THAT OF FLDI
+C                  FX(I,J).GE.3 .AND. FX(I,J).LE.NXI-2
+C       FY      - MAPPING OF 2ND DIMENSION OF FLD INTO THAT OF FLDI
+C                  FY(I,J).GE.3 .AND. FY(I,J).LE.NYI-2
+C       NDX     - ACTUAL 1ST DIMENSION OF FLD (.GE.NX)
+C       NX,NY   - SIZE OF FLD ARRAY
+C       FLDI    - ARRAY OF VALUES FROM WHICH TO INTERPOLATE
+C       NDXI    - ACTUAL 1ST DIMENSION OF FLDI (.GE.NXI)
+C       NXI,NYI - SIZE OF FLDI ARRAY
+C
+C  4) ALAN J. WALLCRAFT, COAPS/FSU, SEPTEMBER 2025.
+C*
+C**********
+C
+C     LOCAL VARIABLES.
+C
+      INTEGER I,II,J,JJ
+C
+*     write(6,'(a,6i6)') 'sample',NDX,NX,NY,NDXI,NXI,NYI
+      DO J= 1,NY
+        DO I= 1,NX
+          II = NINT(FX(I,J))
+          JJ = NINT(FY(I,J))
+          if     (ii.lt.-9) then  !always .false. - prevents optimization
+            write(6,'(a,4i6)') 'sample',I,J,II,JJ
+          endif
+          FLD(I,J) = FLDI(II,JJ)
+        ENDDO
+      ENDDO
+      RETURN
+C     END OF SAMPLE.
+      END
       SUBROUTINE LINEAR(FLD,FX,FY,NDX,NX,NY, FLDI,NDXI,NXI,NYI)
       IMPLICIT NONE
 C
@@ -377,12 +430,18 @@ C
       INTEGER I,II,J,JJ
       REAL*4  SI,SJ
 C
+*     write(6,'(a,6i6)') 'linear',NDX,NX,NY,NDXI,NXI,NYI
       DO J= 1,NY
         DO I= 1,NX
           II = FX(I,J)
           SI = FX(I,J) - II
           JJ = FY(I,J)
           SJ = FY(I,J) - JJ
+*         if     ((si.gt.0.02 .and. si.lt.0.99) .or.
+*    +            (sj.gt.0.02 .and. sj.lt.0.99)     ) then
+          if     (si.lt.-9.0) then  !always .false. - prevents optimization
+            write(6,'(a,4i6,2f10.6)') 'linear',I,J,II,JJ,SI,SJ
+          endif
           FLD(I,J) = (1.0-SI)*(1.0-SJ)*FLDI(II,  JJ  ) +
      +                    SI *(1.0-SJ)*FLDI(II+1,JJ  ) +
      +               (1.0-SI)*     SJ *FLDI(II,  JJ+1) +
@@ -1756,7 +1815,7 @@ c
                     exit  !i-loop
                   endif
 *                 if     (ldebug .and. mod(nup,1000).eq.1) then
-*                   write(6,'(a,2i5,f5.1,f10.3)') 
+*                   write(6,'(a,2i6,f5.1,f10.3)') 
 *    &                '   i,j,ss,a = ',i,j,ss,a1(i,j)
 *                 endif
                 endif !ss>1.5
@@ -1851,7 +1910,7 @@ c
                     exit  !i-loop
                   endif
 *                 if     (ldebug .and. mod(nup,1000).eq.1) then
-*                   write(6,'(a,2i5,f5.1,f10.3)') 
+*                   write(6,'(a,2i6,f5.1,f10.3)') 
 *    &                '   i,j,ss,a = ',i,j,ss,a1(i,j)
 *                 endif
                 endif !ss>1.5
@@ -1955,7 +2014,7 @@ c
                     exit  !i-loop
                   endif
 *                 if     (ldebug .and. mod(nup,1000).eq.1) then
-*                   write(6,'(a,2i5,f5.1,f10.3)') 
+*                   write(6,'(a,2i6,f5.1,f10.3)') 
 *    &                '   i,j,ss,a = ',i,j,ss,a1(i,j)
 *                 endif
                 endif !ss>1.5

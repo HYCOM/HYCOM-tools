@@ -172,22 +172,22 @@ c
 
         write(lp,*)
         do j= 1,ibip
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'j,blat =',j,blat(1,j),blat(ibip/2,j),blat(ibip,j)
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'j,blon =',j,blon(1,j),blon(ibip/2,j),blon(ibip,j)
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'j,bang =',j,bang(1,j)*radian,
      &                  bang(ibip/2,j)*radian,
      &                  bang(ibip,j)*radian
         enddo
         write(lp,*)
         do i= 1,ibip
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'i,blat =',i,blat(i,1),blat(i,ibip/2),blat(i,ibip)
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'i,blon =',i,blon(i,1),blon(i,ibip/2),blon(i,ibip)
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'i,bang =',i,bang(i,1)*radian,
      &                  bang(i,ibip/2)*radian,
      &                  bang(i,ibip)*radian
@@ -218,19 +218,19 @@ c
         enddo
         write(lp,*)
         do j= 1,ibip2
-          write(lp,'(a,i5,4f10.3)')
+          write(lp,'(a,i6,4f10.3)')
      &     'j,pblon =',j,
      &     pblon(1,j),pblon(idm2,j),pblon(idm2+1,j),pblon(idm,j)
-          write(lp,'(a,i5,4f10.3)')
+          write(lp,'(a,i6,4f10.3)')
      &     'j,pblat =',j,
      &     pblat(1,j),pblat(idm2,j),pblat(idm2+1,j),pblat(idm,j)
         enddo
         write(lp,*)
         do i= 1,idm
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'i,pblon =',i,
      &     pblon(i,1),pblon(i,ibip2/2),pblon(i,ibip2)
-          write(lp,'(a,i5,3f10.3)')
+          write(lp,'(a,i6,3f10.3)')
      &     'i,pblat =',i,
      &     pblat(i,1),pblat(i,ibip2/2),pblat(i,ibip2)
         enddo
@@ -424,7 +424,7 @@ c
       j = jdm+1
       if     (j.gt.jdma) then  !bipolar patch
         jb = jdma-(j-jdma)
-        write(lp,'(/a,2i5/)') 'bipolar v_top, j,jb = ',j,jb
+        write(lp,'(/a,2i6/)') 'bipolar v_top, j,jb = ',j,jb
         do i= 1,idm
           ib = idm-mod(i-1,idm)
           vlat_top(i) = vlat(ib,jb)
@@ -441,47 +441,47 @@ c
 c
       write(lp,*)
       do j= 1,jdm
-        write(lp,'(a,i5,3f10.3)')
+        write(lp,'(a,i6,3f10.3)')
      &    'j,qlat =',j,minval(qlat(:,j)),maxval(qlat(:,j)),qlat(ibip4,j)
-        write(lp,'(a,i5,3f10.3)')
+        write(lp,'(a,i6,3f10.3)')
      &    'j,plat =',j,minval(plat(:,j)),maxval(plat(:,j)),plat(ibip4,j)
       enddo
       write(lp,*)
       do i= 1,idm
-        write(lp,'(a,i5,3f10.3)')
+        write(lp,'(a,i6,3f10.3)')
      &    'i,qlon =',i,qlon(i,biplat-1),qlon(i,biplat),qlon(i,jdm)
-        write(lp,'(a,i5,3f10.3)')
+        write(lp,'(a,i6,3f10.3)')
      &    'i,plon =',i,plon(i,biplat-1),plon(i,biplat),plon(i,jdm)
-        write(lp,'(a,i5,3f10.3)')
+        write(lp,'(a,i6,3f10.3)')
      &    'i,ulon =',i,ulon(i,biplat-1),ulon(i,biplat),ulon(i,jdm)
-        write(lp,'(a,i5,3f10.3)')
+        write(lp,'(a,i6,3f10.3)')
      &    'i,vlon =',i,vlon(i,biplat-1),vlon(i,biplat),vlon(i,jdm)
       enddo
       write(lp,*)
       do i= 1,idm
-        write(lp,'(a,i5,2f10.3)')
+        write(lp,'(a,i6,2f10.3)')
      &    'i,qlon =',i,minval(qlon(i,:)),maxval(qlon(i,:))
-        write(lp,'(a,i5,2f10.3)')
+        write(lp,'(a,i6,2f10.3)')
      &    'i,plon =',i,minval(plon(i,:)),maxval(plon(i,:))
       enddo
 c
 c --- write header.
 c
       call zhopen(61, 'formatted', 'new', 0)
-      write(61,'(i5,a)')
+      write(61,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(61,'(i5,a)')
+      write(61,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(61,'(i5,a,a)')
+      write(61,'(i6,a,a)')
      &  mapflg,"    'mapflg' = map flag",
      &         " (0=mercator,10=panam,12=ulon-panam)"
 c
       write(lp,*)
-      write(lp,'(i5,a)')
+      write(lp,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(lp,'(i5,a)')
+      write(lp,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(lp,'(i5,a,a)')
+      write(lp,'(i6,a,a)')
      &  mapflg,"    'mapflg' = map flag",
      &         " (0=mercator,10=panam,12=ulon-panam)"
 c
@@ -635,16 +635,16 @@ c
 c
       write(lp,*)
       do j= 1,jdm
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,vy =',j,minval(vscy(:,j)),maxval(vscy(:,j)),
      &               maxval(vscy(:,j))-minval(vscy(:,j))
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,vx =',j,minval(vscx(:,j)),maxval(vscx(:,j)),
      &               maxval(vscx(:,j))-minval(vscx(:,j))
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,uy =',j,minval(uscy(:,j)),maxval(uscy(:,j)),
      &               maxval(uscy(:,j))-minval(uscy(:,j))
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,ux =',j,minval(uscx(:,j)),maxval(uscx(:,j)),
      &               maxval(uscx(:,j))-minval(uscx(:,j))
       enddo
@@ -762,7 +762,7 @@ c	write(*,902)
 c902	format(1x,'*',8(' '),'The following is the parameters given'
 c     &		' by user:',9(' '),h*)
 	write(*,903) ibip,jbip,bipgrd
-903	format(1x,'*    ibip=   ',i5,'     jbip= ',i5,
+903	format(1x,'*    ibip=   ',i6,'     jbip= ',i6,
      &		'     bipolar grid size=',f6.2,' *')
 	write(*,904) lat0
 904	format(1x,'*    lat0  =',f6.2,' *')

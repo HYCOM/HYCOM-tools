@@ -66,7 +66,7 @@ c
      &          ip(i+1,j  ).eq.0 .and.
      &          ip(i,  j-1).eq.0 .and.
      &          ip(i,  j+1).eq.0      ) then
-              write(6,'(a,2i5)') '1-point sea     at i,j =',i,j
+              write(6,'(a,2i6)') '1-point sea     at i,j =',i,j
               nsea = nsea + 1
             endif
             if (  ! 2-point sea (a)
@@ -77,7 +77,7 @@ c
      &          ip(i+1,j  ).eq.0 .and.
      &          ip(i-1,j+1).eq.0 .and.
      &          ip(i+1,j+1).eq.0      ) then
-              write(6,'(a,2i5)') '2-point sea (a) at i,j =',i,j
+              write(6,'(a,2i6)') '2-point sea (a) at i,j =',i,j
               nsea = nsea + 1
             endif
             if (  ! 2-point sea (b)
@@ -88,7 +88,7 @@ c
      &          ip(i+1,j-1).eq.0 .and.
      &          ip(i,  j+1).eq.0 .and.
      &          ip(i+1,j+1).eq.0      ) then
-              write(6,'(a,2i5)') '2-point sea (b) at i,j =',i,j
+              write(6,'(a,2i6)') '2-point sea (b) at i,j =',i,j
               nsea = nsea + 1
             endif
             if (  ! 3-point sea (a)
@@ -101,7 +101,7 @@ c
      &          ip(i+1,j-1).eq.0 .and.
      &          ip(i+1,j+1).eq.0 .and.
      &          ip(i+2,j  ).eq.0      ) then
-              write(6,'(a,2i5)') '3-point sea (a) at i,j =',i,j
+              write(6,'(a,2i6)') '3-point sea (a) at i,j =',i,j
               nsea = nsea + 1
             endif
             if (  ! 3-point sea (b)
@@ -114,7 +114,7 @@ c
      &          ip(i+1,j+2).eq.0 .and.
      &          ip(i+2,j  ).eq.0 .and.
      &          ip(i+2,j+1).eq.0      ) then
-              write(6,'(a,2i5)') '3-point sea (b) at i,j =',i,j
+              write(6,'(a,2i6)') '3-point sea (b) at i,j =',i,j
               nsea = nsea + 1
             endif
             if (  ! 3-point sea (c)
@@ -127,7 +127,7 @@ c
      &          ip(i+1,j  ).eq.0 .and.
      &          ip(i+1,j+2).eq.0 .and.
      &          ip(i+2,j+1).eq.0      ) then
-              write(6,'(a,2i5)') '3-point sea (c) at i,j =',i,j
+              write(6,'(a,2i6)') '3-point sea (c) at i,j =',i,j
               nsea = nsea + 1
             endif
             if (  ! 4-point sea
@@ -142,7 +142,7 @@ c
      &          ip(i+1,j+2).eq.0 .and.
      &          ip(i+2,j  ).eq.0 .and.
      &          ip(i+2,j+1).eq.0      ) then
-              write(6,'(a,2i5)') '4-point sea     at i,j =',i,j
+              write(6,'(a,2i6)') '4-point sea     at i,j =',i,j
               nsea = nsea + 1
             endif
           endif

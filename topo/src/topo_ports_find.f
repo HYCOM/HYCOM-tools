@@ -288,7 +288,7 @@ c
             enddo !j
           endif !kdpbox
         enddo  !l=1,nboxes
-        write(98,'(i5,a)') nports,
+        write(98,'(i6,a)') nports,
      &    "   'nports' = number of boundary port sections"  !should be first
 c
         write(6,*) 
@@ -327,15 +327,15 @@ c
 c
 c     write out one port to unit 98
 c
-      write(98,'(i5,a)') kdport,
+      write(98,'(i6,a)') kdport,
      &  "   'kdport' = port orientation (1=N, 2=S, 3=E, 4=W)"
-      write(98,'(i5,a)') ifport,
+      write(98,'(i6,a)') ifport,
      &  "   'ifport' = first i-index"
-      write(98,'(i5,a)') ilport,
+      write(98,'(i6,a)') ilport,
      &  "   'ilport' = last  i-index (=ifport for east/west port)"
-      write(98,'(i5,a)') jfport,
+      write(98,'(i6,a)') jfport,
      &  "   'jfport' = first j-index"
-      write(98,'(i5,a)') jlport,
+      write(98,'(i6,a)') jlport,
      &  "   'jlport' = last  j-index (=jfport for north/south port)"
       return
       end

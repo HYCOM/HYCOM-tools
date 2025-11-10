@@ -227,7 +227,7 @@ c
           ilast=min(idm,ifrst+nchar)
           write (char3,'(i3)') ilast-ifrst
           fmt(8:10)=char3
-          write(6,'(//''ip array, cols'',i5,'' --'',i5)') ifrst+1,ilast
+          write(6,'(//''ip array, cols'',i6,'' --'',i6)') ifrst+1,ilast
           write(6,fmt) -9999,(mod(i,10),i=ifrst+1,ilast)
           write(6,*) 
           do j= jdm,1,-1
@@ -296,7 +296,7 @@ c ---       assume N-S exchange is before E-W exchange.
               nmpe = nmpe + 1
               ispx(i,j) = ispt(i,j)
               iipx(i,j) = iipe(i,j)
-*             write(6,'(a,5i5,i8)') 'pe,tile,sea = ',
+*             write(6,'(a,5i6,i8)') 'pe,tile,sea = ',
 *    &          nmpe,ispt(i,j),ispt(i,j)+iipe(i,j)-1,
 *    &               jspt(  j),jspt(  j)+jjpe(  j)-1,nsea
             else
@@ -973,11 +973,11 @@ c --- load balance across mpe processors.
 c
       integer ipcum,iptot,iptgt,j,j01,j02,j1,j2,jd1,jd2,jp1,jp2
 c
-*     write(6,'(a,3i5)') 'r_split1d jdm,mpe,j0 = ',jdm,mpe,j0 
+*     write(6,'(a,3i6)') 'r_split1d jdm,mpe,j0 = ',jdm,mpe,j0 
       if     (mpe.eq.1) then
         jspt(1) = j0+1
         jjpe(1) = jdm
-*       write(6,'(a,2i5)') 'r_split1d jspt,jjpe  = ',jspt(1),jjpe(1)
+*       write(6,'(a,2i6)') 'r_split1d jspt,jjpe  = ',jspt(1),jjpe(1)
       elseif (mpe.gt.jdm) then
 c
 c ---   too few rows.
@@ -996,7 +996,7 @@ c
           ipcum = ipcum + mapsum(j)
           if     (ipcum.ge.iptgt) then
 c ---       must get here, since iptgt .le. ipcum(j=jdm)
-*           write(6,'(a,i5,2i8,2i5)') 'r_split1d j,iptgt,ipcum  =',
+*           write(6,'(a,i6,2i8,2i6)') 'r_split1d j,iptgt,ipcum  =',
 *    &                                          j,iptgt,ipcum,
 *    &                                          mapsum(j)-(ipcum-iptgt),
 *    &                                          ipcum-iptgt
@@ -1034,7 +1034,7 @@ c
           ipcum = ipcum + mapsum(j)
           if     (ipcum.ge.iptgt) then
 c ---       must get here, since iptgt .le. ipcum(j=jdm)
-*           write(6,'(a,i5,2i8,2i5)') 'r_split1d j,iptgt,ipcum  =',
+*           write(6,'(a,i6,2i8,2i6)') 'r_split1d j,iptgt,ipcum  =',
 *    &                                          j,iptgt,ipcum,
 *    &                                          mapsum(j)-(ipcum-iptgt),
 *    &                                          ipcum-iptgt

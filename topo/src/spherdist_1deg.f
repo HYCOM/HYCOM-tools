@@ -10,7 +10,7 @@ c
         lat2 = i+1
         sdy  = spherdist(lon1,lat1,lon1,lat2)
         sdx  = spherdist(lon1,lat1,lon2,lat1)
-        write(6,'(2f15.4,i5)') sdx,sdy,i
+        write(6,'(2f15.4,i6)') sdx,sdy,i
       enddo
       lon1 = 0.00d0
       lon2 = 1.00d3/sdx

@@ -5,27 +5,18 @@
 C
 C     DEFINE INPUT BATHYMETRY GRID.
 C
-C     SETUP FOR 1-minute DATA (extended 2deg across poles).
+C     SETUP FOR 500M BEDMAP3 SOUTH OF 60S
 C
-C     92S is at j=     1
-C     90S is at j=   121
-C      0S is at j=  5521
-C     90N is at j= 10921
-C     92N is at j= 11041
-C
-      INTEGER    IWI,JWI,JWI90
-      REAL*4     XFIN,YFIN,DXIN,DYIN
-      PARAMETER (IWI =21600,    JWI =11041,  JWI90=10801)
-      PARAMETER (XFIN=-180.0,   YFIN=-92.0,
-     +           DXIN=1.0/60.0, DYIN=1.0/60.0)
+      INTEGER    STATUS
+      INTEGER    IWI,JWI
+      PARAMETER (IWI =13334, JWI=13334)
 C
 C     BATHTMETRY ARRAYS.
 C
       INTEGER,   ALLOCATABLE :: IP(:,:)
       REAL*4,    ALLOCATABLE :: PLON(:,:),PLAT(:,:),XAF(:,:),YAF(:,:)
       REAL*4,    ALLOCATABLE :: DH(:,:)
-C
-      INTEGER*2, ALLOCATABLE :: IZ(:,:),IZ1(:)
+      REAL*4,    ALLOCATABLE :: BTHY(:,:)
 C
       REAL*4  YAG(JWI),WKG(JWI),
      +        PLATIJ,YFMIN,YFMAX,XAMAX,XAMIN,YAMAX,YAMIN
@@ -45,9 +36,9 @@ C
       SAVE  /NPROCS/
 C
       CHARACTER*79    CTITLE
-      REAL*4          COAST,FLAND
+      REAL*4          COAST,FLAND,MXLAND
       INTEGER         INTERP,MTYPE
-      NAMELIST/TOPOG/ CTITLE,COAST,FLAND,INTERP,MTYPE,JPR
+      NAMELIST/TOPOG/ CTITLE,COAST,FLAND,MXLAND,INTERP,MTYPE,JPR
 C
 C**********
 C*
@@ -64,19 +55,19 @@ C     NATIVE BTHY GRID SPECIFICATION, SEE (4):
 C
 C        IWI    = 1ST DIMENSION OF BTHY GRID
 C        JWI    = 2ND DIMENSION OF BTHY GRID
-C        XFIN   = LONGITUDE OF 1ST BTHY GRID POINT
-C        YFIN   = LATITUDE  OF 1ST BTHY GRID POINT
-C        DXIN   = BTHY LONGITUDINAL GRID SPACING
-C        DYIN   = BTHY LATITUDINAL  GRID SPACING
 C
 C 3)  NAMELIST INPUT:
 C
 C     /TOPOG/
 C        CTITLE - 1-LINE TITLE FOR INPUT BATHYMTERY
-C        COAST  - DEPTH OF MODEL COASTLINE (-VE TO KEEP OROGRAPHY)
-C        FLAND  - FAVOR VALUES < FLAND (DEFAULT -999999.0)
+C        COAST  - DEPTH OF MODEL COASTLINE, (-VE TO KEEP OROGRAPHY)
+C        FLAND  - FAVOR LAND: IF NEAREST POINT IS < FLAND, USE IT
+C                   DEFAULT IS -999999.0 (OFF)
+C        MXLAND - CLIP DEPTHS < MXLAND TO MXLAND
+C                   DEFAULT IS -999999.0 (OFF)
 C        INTERP - INTERPOLATION FLAG.
 C                    = 0; PIECEWISE LINEAR (DEFAULT)
+C                    = 1; SAMPLE THE NEAREST GRID POINT
 C                    =-N; AVERAGE OVER (2*N+1)x(2*N+1) GRID PATCH
 C        MTYPE  - REGION TYPE
 C                    = 0; CLOSED DOMAIN (DEFAULT)
@@ -85,7 +76,7 @@ C                    = 2; FULLY GLOBAL (ARCTIC BI-POLE PATCH)
 C
 C 4)  INPUT:
 C        ON UNIT  5:  NAMELIST /TOPOG/
-C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO OR CDF_ETOPO).
+C        NetCDF:      REGIONAL BATHYMETRY (CDF_BEDMAP)
 C     OUTPUT:
 C        ON UNIT 61:  HYCOM BATHYMETRY FOR THE SPECIFIED REGION.
 C        ON UNIT 61A: HYCOM BATHYMETRY FOR THE SPECIFIED REGION.
@@ -98,11 +89,22 @@ C
       PARAMETER (ZERO=0.0, RADIAN=57.2957795)
 C
       CHARACTER*80 CLINE
-      INTEGER I,I0,II,IJ,IWIX,J,JJ,J0,L,LENGTH,NFILL,NZERO
-      REAL*4  XFD,YFD,DXD,DYD,BLAND
-      REAL*4  XLIN,XFDX,XOV,YOU,
-     +        XMIN,XMAX,XAVE,XRMS,DHMIN,DHMAX
+      INTEGER I,II,IJ,J,JJ,L,MAXOFF,NFILL,NZERO
+      INTEGER IOUT,JOUT
+      REAL*4  XFD,YFD,DXD,DYD,BLAND,DSIGN
+      REAL*8  XLIN,XFDX,XOV,XOVI,XOVR,XAF8,
+     &                  YOU,YOUI,YOUR,YAF8
+      REAL*4  XMIN,XMAX,XAVE,XRMS,DHMIN,DHMAX
       REAL*4  HMINA,HMINB,HMAXA,HMAXB
+C
+      REAL*8  STCPRM(14)  ! Parameters for the map projection
+      REAL*4  X1, Y1      ! Grid coordinates of a reference point
+      REAL*4  XLAT1, XLON1 ! Latitude and longitude of the reference point
+      REAL*4  SCALAT, SCALON ! Latitude and longitude of the scaling point
+      REAL*4  GSIZE       ! Grid cell size at the scaling point (in km)
+      REAL*4  ORIENT      ! Orientation of the grid at the scaling point (degrees)
+      REAL*4  X, Y        ! Output grid coordinates
+      REAL*4  XLAT, XLON  ! Output latitude and longitude
 C
 C --- MODEL ARRAYS.
 C
@@ -114,16 +116,17 @@ C
       ALLOCATE(  YAF(IDM,JDM) )
       ALLOCATE(   DH(IDM,JDM) )
 C
-      ALLOCATE( BTHYI(IWI+4,JWI+4) )
+      ALLOCATE( BTHYI(IWI+4,JWI+4) )  !for compatibility with interp.f
 C
 C     NAMELIST INPUT.
 C
       CALL ZHOPEN(6, 'FORMATTED', 'UNKNOWN', 0)
 C
       CTITLE = 
-     +  'bathymetery from 1-minute ????? global dataset'  !replace
+     +  'bathymetery from 500m BEDMAP3 Antarctic dataset'  !replace
       COAST  =  5.0
       FLAND  = -999999.0
+      MXLAND = -999999.0
       INTERP =  0
       MTYPE  =  0
       JPR    =  8
@@ -192,72 +195,72 @@ C
       WRITE(61,4101) PREAMBL
       WRITE(6, 4101) PREAMBL
 C
-C     DEFINE THE GRID COORDINATES.
+C     DEFNE THE BEDMAP3 PROJECTION
+C     PLOTS TYPICALLY HAVE 0E AT THE TOP, BUT ARRAY HAS OE AT J=1 
 C
-      IF     (IWI*DXIN.GE.359.9) THEN
-        IF     (ABS(IWI * DXIN - 360.0) .GT. 0.01) THEN
-          WRITE(6,9050)
-          CALL ZHFLSH(6)
-          STOP
-        ENDIF
-        IWIX = IWI + 1
-      ELSE
-        IWIX = IWI
-      ENDIF
+      CALL GEOIDIX(STCPRM, 0)  !WGS84
+      CALL STLMBR(STCPRM, -90.0, 0.0)  !Polar Stereographic
+      X1     =   6667.5 ! Grid X-coordinate of reference point
+      Y1     =  13334.5 ! Grid Y-coordinate of reference point
+      XLAT1  =  -60.0   ! Latitude of reference point (degrees)
+      XLON1  =    0.0   ! Longitude of reference point (degrees)
+      SCALAT =  -71.0   ! Latitude of true scale (degrees)
+      SCALON =   0.0    ! Longitude of true scale (degrees)
+      GSIZE  =   0.5    ! Grid cell size at SCALAT (km)
+      ORIENT =   0.0    ! Orientation of grid Y-lines relative to SCALON meridian
+      CALL STCM1P(STCPRM, X1, Y1, XLAT1, XLON1, SCALAT, SCALON, GSIZE,
+     &            ORIENT)
 C
 C     CONVERT HYCOM LON,LAT TO TOPOGRAPHY ARRAY COORDS.
 C
-      XLIN  = XFIN + (IWIX-1)*DXIN
+      IF     (INTERP.LT.-2) THEN
+        MAXOFF = -INTERP-2
+      ELSE
+        MAXOFF = 0
+      ENDIF
+      WRITE(6,'("MAXOFF =",2I6)') MAXOFF,INTERP
+      IOUT  = IDM/10
+      JOUT  = JDM/10
       XAMIN = 2*IWI
       XAMAX = 0
-      DO J= 1,JDM
-        DO I= 1,IDM
-          XOV = MOD(PLON(I,J)+1080.0,360.0)
-          IF     (XOV.LT.XFIN) THEN
-            XOV = XOV + 360.0
-          ELSEIF (XOV.GE.XLIN) THEN
-            XOV = XOV - 360.0
-          ENDIF
-C
-          XAF(I,J) = 3.0 + (XOV - XFIN)/DXIN
-C
-          IF     (MOD(J,100).EQ.1 .OR. J.EQ.JDM) THEN
-            IF     (MOD(I,10).EQ.1 .OR. I.EQ.IDM) THEN
-              WRITE(6,'("I,J,LONV,XAF =",2I6,2F10.3)') I,J,XOV,XAF(I,J)
-            ENDIF
-          ENDIF
-          XAMIN  = MIN( XAMIN, XAF(I,J) )
-          XAMAX  = MAX( XAMAX, XAF(I,J) )
-        ENDDO
-      ENDDO
-C
-      IF     (YFIN-DYIN.LE.-90.0) THEN  ! global native grid
-        YFMIN =  YFIN + DYIN*0.0001
-        YFMAX = -YFMIN
-      ELSE  ! non-global native grid, inactivate YFMIN,YFMAX
-        YFMIN = -90.0
-        YFMAX =  90.0
-      ENDIF
       YAMIN = 2*JWI
       YAMAX = 0
-      DO I= 1,IDM
-        DO J= 1,JDM
-          PLATIJ = MIN(YFMAX,MAX(YFMIN,PLAT(I,J)))
-          YAF(I,J) = 3.0 + (PLATIJ - YFIN)/DYIN
+      DO J= 1,JDM
+        DO I= 1,IDM
+          XLON = MOD(PLON(I,J)+1080.0,360.0)
+          XLAT = PLAT(I,J)
+          CALL CLL2XY(STCPRM, XLAT, XLON, X, Y)
+          IF     ( X.LT.1.0+MAXOFF .OR.
+     &             X.GT.IWI-MAXOFF .OR.
+     &             Y.LT.1.0+MAXOFF .OR.
+     &             Y.GT.JWI-MAXOFF     ) THEN
+            XAF(I,J) = 3.D0 + MAXOFF  !land point
+            YAF(I,J) = 3.D0 + MAXOFF  !land point
+          ELSE
+            XAF(I,J) = X + 2.D0
+            YAF(I,J) = Y + 2.D0
+          ENDIF
+          IF     (XAF(I,J).LT.3.0 .OR. YAF(I,J).LT.3.0) THEN
+            WRITE(6,'("I,J,LON,XAF =",2I6,2F10.3)')
+     &        I,J,XLON,XAF(I,J)
+            WRITE(6,'("I,J,LAT,YAF =",2I6,2F10.3)')
+     &        I,J,XLAT,YAF(I,J)
+          ENDIF
 C
-          IF     (MOD(I,100).EQ.1 .OR. I.EQ.IDM) THEN
-            IF     (MOD(J,10).EQ.1 .OR. J.EQ.JDM) THEN
-              WRITE(6,'("I,J,LATU,YAF =",2I6,2F10.3)')
-     +                   I,J,PLAT(I,J),YAF(I,J)
+          IF     (MOD(J,JOUT).EQ.1 .OR. J.EQ.JDM) THEN
+            IF     (MOD(I,IOUT).EQ.1 .OR. I.EQ.IDM) THEN
+              WRITE(6,'("I,J,LON,XAF =",2I6,2F10.3)')
+     &          I,J,XLON,XAF(I,J)
+              WRITE(6,'("I,J,LAT,YAF =",2I6,2F10.3)')
+     &          I,J,XLAT,YAF(I,J)
             ENDIF
           ENDIF
-*         IF     (YAF(I,J).GE.JWI-1) THEN
-*             WRITE(6,'("I,J,LON,LAT,X,YAF =",2I6,4F10.3)')
-*    +                   I,J,PLON(I,J),PLAT(I,J),XAF(I,J),YAF(I,J)
-*         ENDIF
-C
-          YAMIN  = MIN( YAMIN, YAF(I,J) )
-          YAMAX  = MAX( YAMAX, YAF(I,J) )
+          IF     (XAF(I,J).GT.0.0) THEN
+            XAMIN  = MIN( XAMIN, XAF(I,J) )
+            XAMAX  = MAX( XAMAX, XAF(I,J) )
+            YAMIN  = MIN( YAMIN, YAF(I,J) )
+            YAMAX  = MAX( YAMAX, YAF(I,J) )
+          ENDIF
         ENDDO
       ENDDO
 C
@@ -266,8 +269,8 @@ C
 C
 C     CHECK THAT THE INTERPOLATION IS 'SAFE',
 C
-      IF     (INT(XAMIN).LT.3 .OR. INT(XAMAX).GT.IWI+2 .OR.
-     +        INT(YAMIN).LT.3 .OR. INT(YAMAX).GT.JWI+1     ) THEN
+      IF     (INT(XAMIN).LT.3 .OR. INT(XAMAX).GT.IWI+3 .OR.
+     +        INT(YAMIN).LT.3 .OR. INT(YAMAX).GT.JWI+3     ) THEN
         WRITE(6,9150)
         CALL ZHFLSH(6)
         STOP
@@ -275,158 +278,102 @@ C
 C
 C     READ THE INPUT (netCDF).
 C
+      DSIGN = -1.0  !usually input ocean depth is negative
+C
       CFILE = ' '
-      CALL GETENV('CDF_GEBCO',CFILE)
+      CALL GETENV('CDF_BEDMAP',CFILE)
       IF     (CFILE.NE.' ') THEN
-        WRITE(6,*)
-        WRITE(6,*) 'CDF_GEBCO = ',trim(CFILE)
+        WRITE(6,*) 'CDF_BEDMAP    = ',trim(CFILE)
         CALL ZHFLSH(6)
         ! open NetCDF file
         call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
         ! inquire variable ID
-        call ncheck(nf90_inq_varid(ncFID,
-     &                             'z',
-     &                             ncVID))
+        status = nf90_inq_varid(ncFID,
+     &                          'bed_sunk',
+     &                          ncVID)
+        if (status /= nf90_noerr) then
+          status = nf90_inq_varid(ncFID,
+     &                            'bed_ocean',
+     &                            ncVID)
+          if (status /= nf90_noerr) then
+            CALL ZHFLSH(6)
+            STOP
+          else
+            WRITE(6,*) 'BATHY = ','bed_ocean1'
+          endif
+        else
+          WRITE(6,*) 'BATHY = ','bed_sunk'
+        endif
 C
-        ALLOCATE( IZ1((IWI+1)*JWI90) )
-        call ncheck(nf90_get_var(ncFID,ncVID,IZ1))
-        write(6,*) 'IZ.1,1 = ',IZ1(1)
-        write(6,*) 'IZ.N,M = ',IZ1((IWI+1)*JWI90)
+        ALLOCATE( BTHY(IWI,JWI) )
+        call ncheck(nf90_get_var(ncFID,ncVID,BTHY))
 C
 C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
 C
-        I0    = 2
-        J0    = 122
         DHMIN =  1.e30
         DHMAX = -1.e30
-        DO J= 1,JWI90
-          JJ = JWI90+1-J  !1st point at 90N
+        DO J= 1,JWI
           DO I= 1,IWI
-            IJ = I+(JJ-1)*(IWI+1)
-            BTHYI(I0+I,J+J0) = -IZ1(IJ)
-            DHMIN = MIN( DHMIN, BTHYI(I0+I,J+J0) )
-            DHMAX = MAX( DHMAX, BTHYI(I0+I,J+J0) )
+            IF     (BTHY(I,JWI+1-J).LT.-9998.0) THEN
+              BTHYI(I+2,J+2) =      MXLAND
+            ELSE
+              BTHYI(I+2,J+2) = MAX( MXLAND, DSIGN*BTHY(I,JWI+1-J) )
+            ENDIF
+            DHMIN = MIN( DHMIN, BTHYI(I+2,J+2) )
+            DHMAX = MAX( DHMAX, BTHYI(I+2,J+2) )
           ENDDO !i
         ENDDO !j
-        write (6,'(/a,2f8.1/)') 'min,max depth = ',dhmin,dhmax
+        write(6,*) 'BATHY.1  ,1   = ',BTHY(     1,      1),
+     &                                BTHYI(    3,      3)
+        write(6,*) 'BATHY.N/2,1   = ',BTHY( IWI/2,      1),
+     &                                BTHYI(IWI/2+2,    3)
+        write(6,*) 'BATHY.N/2,N/2 = ',BTHY( IWI/2,  JWI/2),
+     &                                BTHYI(IWI/2+2,JWI/2+2)
+        write(6,*) 'BATHY.N/2,N   = ',BTHY( IWI/2,    JWI),
+     &                                BTHYI(IWI/2+2,  JWI+2)
+        write(6,*) 'BATHY.N  ,N   = ',BTHY(   IWI,    JWI),
+     &                                BTHYI(  IWI+2,  JWI+2)
+        write (6,*)
+        write (6,'(/a,2f12.5/)') 'min,max depth = ',dhmin,dhmax
         write (6,*) 'min,max depth = ',dhmin,dhmax
         write (6,*)
 C
-        DEALLOCATE( IZ1 )
+        DEALLOCATE( BTHY )
       ELSE
-        CFILE = ' '
-        CALL GETENV('CDF_ETOPO',CFILE)
-        IF     (CFILE.EQ.' ') THEN
-          WRITE(6,'(/a/)') 
-     &    'error - CDF_GEBCO and CDF_ETOPO are not defined'
-          CALL ZHFLSH(6)
-          STOP
-        ENDIF
-        WRITE(6,*)
-        WRITE(6,*) 'CDF_ETOPO = ',trim(CFILE)
+        WRITE(6,'(/ a /)')
+     &    'environment variable CDF_BEDMAP'//
+     &    ' must be defined'
         CALL ZHFLSH(6)
-        ! open NetCDF file
-        call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
-        ! inquire variable ID
-        call ncheck(nf90_inq_varid(ncFID,
-     &                             'z',
-     &                             ncVID))
-C
-        ALLOCATE( IZ(IWI,JWI90) )
-        call ncheck(nf90_get_var(ncFID,ncVID,IZ))
-        write(6,*) 'IZ.1,1 = ',IZ(  1,    1)
-        write(6,*) 'IZ.N,M = ',IZ(IWI,JWI90)
-C
-C       COPY INTO THE (LARGER) INTERPOLATION ARRAY.
-C
-        I0 = 2
-        J0 = 122
-        BTHYI(:,:) = -20000.0
-C
-        DHMIN =  1.e30
-        DHMAX = -1.e30
-        DO J= 1,JWI90
-          DO I= 1,IWI
-            BTHYI(I0+I,J+J0) = -IZ(I,J)
-            DHMIN = MIN( DHMIN, BTHYI(I0+I,J+J0) )
-            DHMAX = MAX( DHMAX, BTHYI(I0+I,J+J0) )
-          ENDDO !i
-        ENDDO !j
-        write (6,'(/a,2f8.1/)') 'min,max depth = ',dhmin,dhmax
-        write (6,*) 'min,max depth = ',dhmin,dhmax
-        write (6,*)
-C
-        DEALLOCATE( IZ )
+        STOP
       ENDIF
-C
-C       2-degree wrap across pole.
-C
-        DO I= 1,IWI
-          II = MOD( I-1+10801, 21600 ) + 1
-          DO J= 1,120
-            BTHYI(I0+I, J0+    1-J) = BTHYI(I0+II, J0      +J)
-            BTHYI(I0+I, J0+JWI90+J) = BTHYI(I0+II, J0+10802-J)
-          ENDDO
-        ENDDO
 C
 C       FILL IN THE PADDING AREA.
 C
-          IF     (IWIX.GT.IWI) THEN
-            DO 320 J= 3,JWI+2
-              BTHYI(IWI+3,J) = BTHYI(3,J)
-              BTHYI(IWI+4,J) = BTHYI(4,J)
-  320       CONTINUE
-          ELSE
             DO 325 J= 3,JWI+2
               BTHYI(IWI+3,J) = 2.0*BTHYI(IWI+2,J) -     BTHYI(IWI+1,J)
               BTHYI(IWI+4,J) = 3.0*BTHYI(IWI+2,J) - 2.0*BTHYI(IWI+1,J)
   325       CONTINUE
-          ENDIF
-          IF     (IWIX.GT.IWI) THEN
-            DO 330 J= 3,JWI+2
-              BTHYI(1,J) = BTHYI(IWI+1,J)
-              BTHYI(2,J) = BTHYI(IWI+2,J)
-  330       CONTINUE
-          ELSE
             DO 335 J= 3,JWI+2
               BTHYI(1,J) = 3.0*BTHYI(3,J) - 2.0*BTHYI(4,J)
               BTHYI(2,J) = 2.0*BTHYI(3,J) -     BTHYI(4,J)
   335       CONTINUE
-          ENDIF
-        IF     (INT(YAMAX).GE.JWI+1) THEN
-          IF     (IWIX.GT.IWI .AND. YFIN+JWI*DYIN.GT.90.0) THEN
-            DO 340 I= 1,IWI+4
-              II = MOD(I-3+IWI/2+IWI,IWI)+3
-              BTHYI(I,JWI+3) = BTHYI(II,JWI+2)
-              BTHYI(I,JWI+4) = BTHYI(II,JWI+1)
-  340       CONTINUE
-          ELSE
             DO 345 I= 1,IWI+4
               BTHYI(I,JWI+3) = 2.0*BTHYI(I,JWI+2) -     BTHYI(I,JWI+1)
               BTHYI(I,JWI+4) = 3.0*BTHYI(I,JWI+2) - 2.0*BTHYI(I,JWI+1)
   345       CONTINUE
-          ENDIF
-        ENDIF
-        IF     (INT(YAMIN).LE.3) THEN
-          IF     (IWIX.GT.IWI .AND. YFIN+JWI*DYIN.GT.90.0) THEN
-            DO 350 I= 1,IWI+4
-              II = MOD(I-3+IWI/2+IWI,IWI)+3
-              BTHYI(I,1) = BTHYI(II,4)
-              BTHYI(I,2) = BTHYI(II,3)
-  350       CONTINUE
-          ELSE
             DO 355 I= 1,IWI+4
               BTHYI(I,1) = 3.0*BTHYI(I,3) - 2.0*BTHYI(I,4)
               BTHYI(I,2) = 2.0*BTHYI(I,3) -     BTHYI(I,4)
   355       CONTINUE
-          ENDIF
-        ENDIF
 C
 C       INTERPOLATE FROM NATIVE TO MODEL FLUX GRIDS.
 C
         IF     (INTERP.LT.0) THEN
           CALL PATCH(DH,XAF,YAF,IDM,IDM,JDM,
      +               BTHYI,IWI+4,IWI+4,JWI+4, -INTERP,FLAND)
+        ELSEIF (INTERP.EQ.1) THEN
+          CALL SAMPLE(DH,XAF,YAF,IDM,IDM,JDM,
+     +                BTHYI,IWI+4,IWI+4,JWI+4)
         ELSE
           CALL LINEAR(DH,XAF,YAF,IDM,IDM,JDM,
      +                BTHYI,IWI+4,IWI+4,JWI+4)
@@ -439,7 +386,7 @@ C
         ENDIF
         DO J= 1,JDM
           DO I= 1,IDM
-            IF     (DH(I,J).GT.COAST) THEN
+            IF     (DH(I,J).GE.COAST) THEN
               IP(I,J) = 1
             ELSE
               IP(I,J) = 0
@@ -447,6 +394,7 @@ C
             ENDIF
           ENDDO
         ENDDO
+C
         IF     (MTYPE.EQ.0 .OR. MTYPE.EQ.1) THEN
 C
 C         NORTH BOUNDARY CLOSED.
@@ -485,33 +433,35 @@ c --- fill single-width inlets
 c
  100  continue
       nfill=0
-      do j=1,jdm-1
-        do i=1,idm
-          nzero=0
-          if (dh(i,j).gt.coast) then
-            if     (i.eq.1) then
-              if (dh(idm,j).le.coast) nzero=nzero+1  !assumed periodic
-            else
-              if (dh(i-1,j).le.coast) nzero=nzero+1
+      if     (coast.ge.0.0) THEN
+        do j=1,jdm-1
+          do i=1,idm
+            nzero=0
+            if (dh(i,j).gt.coast) then
+              if     (i.eq.1) then
+                if (dh(idm,j).le.coast) nzero=nzero+1  !assumed periodic
+              else
+                if (dh(i-1,j).le.coast) nzero=nzero+1
+              endif
+              if     (i.eq.idm) then
+                if (dh(  1,j).le.coast) nzero=nzero+1  !assumed periodic
+              else
+                if (dh(i+1,j).le.coast) nzero=nzero+1
+              endif
+              if (j.eq.  1.or. dh(i,j-1).le.coast) nzero=nzero+1
+              if (j.ne.jdm.and.dh(i,j+1).le.coast) nzero=nzero+1
+              if (nzero.ge.3) then
+                write (6,'(a,i6,a,i6,a,i1,a)') 
+     +            ' dh(',i,',',j,') set to zero (',
+     +            nzero,' land nieghbours)'
+                dh(i,j)=bland
+                ip(i,j)=0
+                nfill=nfill+1
+              endif
             endif
-            if     (i.eq.idm) then
-              if (dh(  1,j).le.coast) nzero=nzero+1  !assumed periodic
-            else
-              if (dh(i+1,j).le.coast) nzero=nzero+1
-            endif
-            if (j.eq.  1.or. dh(i,j-1).le.coast) nzero=nzero+1
-            if (j.ne.jdm.and.dh(i,j+1).le.coast) nzero=nzero+1
-            if (nzero.ge.3) then
-              write (6,'(a,i6,a,i6,a,i1,a)')
-     +          ' dh(',i,',',j,') set to zero (',
-     +          nzero,' land nieghbours)'
-              dh(i,j)=bland
-              ip(i,j)=0
-              nfill=nfill+1
-            end if
-          end if
+          enddo
         enddo
-      enddo
+      endif !coast>=0
       if (nfill.gt.0) go to 100
 C
       IF     (MTYPE.EQ.2) THEN
@@ -549,7 +499,7 @@ C
 C
  4101 FORMAT(A79)
  4102 format('min,max depth = ',2f10.3)
- 4103 format('min,max depth = ',2f12.5)
+ 4103 format('min,max depth = ',f12.8,f12.5)
  5000 FORMAT(A40)
  5500 FORMAT(6E13.6)
  6000 FORMAT(1X,A,2X,A40 //)
@@ -579,5 +529,5 @@ c
         stop
       else
         write(6,'(/a,i18/)')   'NetCDF library call returns ',status
-      end if
+      endif
       end subroutine ncheck

@@ -40,11 +40,11 @@ c
       do kreg= 1,nreg
         read(5,*) mask,if,il,jf,jl
         if     (mask.eq.1) then
-          write(6,'(a,4i5)') ' sea subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') ' sea subregion: ',if,il,jf,jl
         elseif (mask.eq.0) then
-          write(6,'(a,4i5)') 'land subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') 'land subregion: ',if,il,jf,jl
         else
-          write(6,'(a,4i5)') 'keep subregion: ',if,il,jf,jl
+          write(6,'(a,4i6)') 'keep subregion: ',if,il,jf,jl
         endif
         if     (mask.ne.2) then
           do j= jf,jl

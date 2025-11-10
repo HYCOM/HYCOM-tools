@@ -77,7 +77,9 @@ c
 c
 c --- printout the land/sea map.
 c
-      if     (hminb.le.100.0) then
+      if     (hmaxb.le.20.0) then
+        dhinc =  1.0  ! 0-9 is 0m to  9m
+      elseif (hminb.le.100.0) then
         dhinc =  10.0  ! 0-9 is 0m to  90m
       else
         dhinc = nint(0.1*hminb)*10.0
@@ -102,7 +104,8 @@ c
                 lc(i-isf) = -2
               endif
             else
-              lc(i-isf) = min( 9, nint( dh(i,j)/dhinc) )
+c             dhinc to 2*dhinc-eps maps to 0
+              lc(i-isf) = min( 9, int( dh(i,j)/dhinc - 0.01 ) )
             endif
           enddo
           n = mod(isf-((k-1)*100+1),10)
@@ -116,9 +119,9 @@ c
       enddo
       stop
 c
- 6000 format(/ / 30x,'LAND/SEA MASK FOR AN',i5,'  BY',i5,' MESH.'
-     +       /   30x,'SUBDOMAIN:  (',I5,',',I5,')x(',I5,',',I5,').',
-     +           / 40x,'LAND = ./#,  OCEAN = 0-9 (x',F5.1,')' )
- 6050 format(/ / / 21x,'I =',i5,'  TO',i5,'  :' / /)
- 6100 format(4x,'J =',i5,5x,10(10a1,1x))
+ 6000 format(/ / 30x,'LAND/SEA MASK FOR AN',I6,' BY',I6,' MESH.'
+     +       /   30x,'SUBDOMAIN:  (',I6,',',I6,')x(',I6,',',I6,').',
+     +           / 40x,'LAND = ./#,  OCEAN = 0-9 (x',F6.2,')' )
+ 6050 format(/ / / 21x,'I =',I6,' TO',I6,'  :' / /)
+ 6100 format(3x,'J =',I6,4x,10(10a1,1x))
       end

@@ -184,7 +184,7 @@ c
             ncenv = ' '
             call getenv('CDF_TITLE',ncenv)
             if     (ncenv.eq.' ') then
-              write(ncenv,'(i5,a,i5,a)') ii,' by',jj,' HYCOM region'
+              write(ncenv,'(i6,a,i6,a)') ii,' by',jj,' HYCOM region'
             endif
             call nchek("nf90_put_att-title",
      &                  nf90_put_att(ncfileID,nf90_global,

@@ -163,7 +163,7 @@ C
 C
       PREAMBL(1) = 
      +  'bathymetery from 5-minute TerrainBase global dataset'
-      WRITE(PREAMBL(2),'(A,2I5)')
+      WRITE(PREAMBL(2),'(A,2I6)')
      +        'i/jdm =',
      +       IDM,JDM
       WRITE(PREAMBL(3),'(A,4F12.5)')
@@ -205,7 +205,7 @@ C
 C
           IF     (MOD(J,100).EQ.1 .OR. J.EQ.JDM) THEN
             IF     (MOD(I,10).EQ.1 .OR. I.EQ.IDM) THEN
-              WRITE(6,'("I,J,LONV,XAF =",2I5,2F10.3)') I,J,XOV,XAF(I,J)
+              WRITE(6,'("I,J,LONV,XAF =",2I6,2F10.3)') I,J,XOV,XAF(I,J)
             ENDIF
           ENDIF
           XAMIN  = MIN( XAMIN, XAF(I,J) )
@@ -229,12 +229,12 @@ C
 C
           IF     (MOD(I,100).EQ.1 .OR. I.EQ.IDM) THEN
             IF     (MOD(J,10).EQ.1 .OR. J.EQ.JDM) THEN
-              WRITE(6,'("I,J,LATU,YAF =",2I5,2F10.3)')
+              WRITE(6,'("I,J,LATU,YAF =",2I6,2F10.3)')
      +                   I,J,PLAT(I,J),YAF(I,J)
             ENDIF
           ENDIF
 *         IF     (YAF(I,J).GE.JWI-1) THEN
-*             WRITE(6,'("I,J,LON,LAT,X,YAF =",2I5,4F10.3)')
+*             WRITE(6,'("I,J,LON,LAT,X,YAF =",2I6,4F10.3)')
 *    +                   I,J,PLON(I,J),PLAT(I,J),XAF(I,J),YAF(I,J)
 *         ENDIF
 C
@@ -398,7 +398,7 @@ c
             if (j.eq.  1.or. dh(i,j-1).le.0.0) nzero=nzero+1
             if (j.ne.jdm.and.dh(i,j+1).le.0.0) nzero=nzero+1
             if (nzero.ge.3) then
-              write (6,'(a,i5,a,i5,a,i1,a)') 
+              write (6,'(a,i6,a,i6,a,i1,a)') 
      +          ' dh(',i,',',j,') set to zero (',
      +          nzero,' land nieghbours)'
               dh(i,j)=0.0

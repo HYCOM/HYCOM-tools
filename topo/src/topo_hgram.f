@@ -95,7 +95,7 @@ c
               ilpt(k) = ispx(i,j) + iipx(i,j) - 1
               jspt(k) = jspx(  j)
               jlpt(k) = jspx(  j) + jjpx(  j) - 1
-              write(6,'(a,5i5)') 'pe,if,il,jf,jl = ',
+              write(6,'(a,5i6)') 'pe,if,il,jf,jl = ',
      &                            k,ispt(k),ilpt(k),jspt(k),jlpt(k)
 c
               nsea = sum( ip(ispt(k):ilpt(k),jspt(k):jlpt(k)) )
@@ -106,7 +106,7 @@ c
           enddo
         enddo
         if     (k.ne.nmpe) then
-          write(6,'(/ a,i5,a,i5 /)')
+          write(6,'(/ a,i6,a,i6 /)')
      &      'error - there are ',k,'sea-tiles, but nmpe = ',nmpe
           call zhflsh(6)
           stop

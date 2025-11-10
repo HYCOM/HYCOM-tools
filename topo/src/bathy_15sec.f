@@ -14,9 +14,11 @@ C      0S+7.5sec is at j= 22081
 C     90N-7.5sec is at j= 43680
 C     92N-7.5sec is at j= 44160
 C
-      INTEGER    IWI,JWI,JWI90
+      INTEGER    STATUS
+      INTEGER    IWI,JWI,JWI90,JWI66
       REAL*8     XFIN,YFIN,DXIN,DYIN
       PARAMETER (IWI =86400, JWI90=43200, JWI =JWI90+2*480)
+      PARAMETER (            JWI66=33600)
       PARAMETER (DXIN=1.D0/240.D0,        DYIN=1.D0/240.D0)
       PARAMETER (XFIN=-180.D0+0.5D0*DXIN, YFIN=-92.D0+0.5D0*DYIN)
 C
@@ -33,7 +35,7 @@ C
 C
 C     NETCDF I/O VARIABLES.
 C
-      CHARACTER*(256) CFILE
+      CHARACTER*(256) CFILE,CTID
       INTEGER         ncFID,ncVID
 C
 C     INTERPOLATION ARRAYS.
@@ -45,9 +47,9 @@ C
       SAVE  /NPROCS/
 C
       CHARACTER*79    CTITLE
-      REAL*4          COAST,FLAND
+      REAL*4          COAST,FLAND,MXLAND
       INTEGER         INTERP,MTYPE
-      NAMELIST/TOPOG/ CTITLE,COAST,FLAND,INTERP,MTYPE,JPR
+      NAMELIST/TOPOG/ CTITLE,COAST,FLAND,MXLAND,INTERP,MTYPE,JPR
 C
 C**********
 C*
@@ -74,9 +76,13 @@ C
 C     /TOPOG/
 C        CTITLE - 1-LINE TITLE FOR INPUT BATHYMTERY
 C        COAST  - DEPTH OF MODEL COASTLINE, (-VE TO KEEP OROGRAPHY)
-C        FLAND  - FAVOR VALUES < FLAND (DEFAULT -999999.0)
+C        FLAND  - FAVOR LAND: IF NEAREST POINT IS < FLAND, USE IT
+C                   DEFAULT IS -999999.0 (OFF)
+C        MXLAND - CLIP DEPTHS < MXLAND TO MXLAND
+C                   DEFAULT IS -999999.0 (OFF)
 C        INTERP - INTERPOLATION FLAG.
 C                    = 0; PIECEWISE LINEAR (DEFAULT)
+C                    = 1; SAMPLE THE NEAREST GRID POINT
 C                    =-N; AVERAGE OVER (2*N+1)x(2*N+1) GRID PATCH
 C        MTYPE  - REGION TYPE
 C                    = 0; CLOSED DOMAIN (DEFAULT)
@@ -85,7 +91,8 @@ C                    = 2; FULLY GLOBAL (ARCTIC BI-POLE PATCH)
 C
 C 4)  INPUT:
 C        ON UNIT  5:  NAMELIST /TOPOG/
-C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO).
+C        NetCDF:      GLOBAL BATHYMETRY (CDF_GEBCO or CDF_GMTED or
+C                                        CDF_GEBCO_TID).
 C     OUTPUT:
 C        ON UNIT 61:  HYCOM BATHYMETRY FOR THE SPECIFIED REGION.
 C        ON UNIT 61A: HYCOM BATHYMETRY FOR THE SPECIFIED REGION.
@@ -98,9 +105,11 @@ C
       PARAMETER (ZERO=0.0, RADIAN=57.2957795)
 C
       CHARACTER*80 CLINE
-      INTEGER I,I0,II,IJ,IWIX,J,JJ,J0,L,LENGTH,MRECL,NFILL,NZERO
-      REAL*4  XFD,YFD,DXD,DYD,BLAND
-      REAL*8  XLIN,XFDX,XOV,YOU
+      INTEGER I,I0,II,IJ,IWIX,J,JJ,J0,J56,L,LENGTH,MRECL,NFILL,NZERO
+      INTEGER IOUT,JOUT
+      REAL*4  XFD,YFD,DXD,DYD,BLAND,DSIGN
+      REAL*8  XLIN,XFDX,XOV,XOVI,XOVR,XAF8,
+     &                  YOU,YOUI,YOUR,YAF8
       REAL*4  XMIN,XMAX,XAVE,XRMS,DHMIN,DHMAX
       REAL*4  HMINA,HMINB,HMAXA,HMAXB
 C
@@ -124,6 +133,7 @@ C
      +  'bathymetery from 1-minute ????? global dataset'  !replace
       COAST  =  5.0
       FLAND  = -999999.0
+      MXLAND = -999999.0
       INTERP =  0
       MTYPE  =  0
       JPR    =  8
@@ -181,7 +191,7 @@ C
       CALL ZHOPEN(61, 'FORMATTED', 'NEW', 0)
 C
       PREAMBL(1) = CTITLE
-      WRITE(PREAMBL(2),'(A,2I5)')
+      WRITE(PREAMBL(2),'(A,2I6)')
      +        'i/jdm =',
      +       IDM,JDM
       WRITE(PREAMBL(3),'(A,4F12.5)')
@@ -207,6 +217,8 @@ C
 C
 C     CONVERT HYCOM LON,LAT TO TOPOGRAPHY ARRAY COORDS.
 C
+      IOUT  = IDM/10
+      JOUT  = JDM/10
       XLIN  = XFIN + (IWIX-1)*DXIN
       XAMIN = 2*IWI
       XAMAX = 0
@@ -219,11 +231,16 @@ C
             XOV = XOV - 360.0
           ENDIF
 C
-          XAF(I,J) = 3.0 + (XOV - XFIN)/DXIN
+          XOVR = XOV + 180.d0
+          XOVI = INT(XOVR)
+          XOVR = (XOVR - XOVI) - 0.5D0*DXIN
+          XAF8 = 3.D0 + 240.D0*XOVI + XOVR/DXIN
+          XAF(I,J) = XAF8
 C
-          IF     (MOD(J,100).EQ.1 .OR. J.EQ.JDM) THEN
-            IF     (MOD(I,10).EQ.1 .OR. I.EQ.IDM) THEN
-              WRITE(6,'("I,J,LONV,XAF =",2I5,2F10.3)') I,J,XOV,XAF(I,J)
+          IF     (MOD(J,JOUT).EQ.1 .OR. J.EQ.JDM) THEN
+            IF     (MOD(I,IOUT).EQ.1 .OR. I.EQ.IDM) THEN
+              WRITE(6,'("I,J,LONV,XAF =",2I6,2F10.3,F10.6)')
+     &          I,J,XOV,XAF(I,J),XAF8-(3.0d0+(XOV - XFIN)/DXIN)
             ENDIF
           ENDIF
           XAMIN  = MIN( XAMIN, XAF(I,J) )
@@ -242,17 +259,21 @@ C
       YAMAX = 0
       DO I= 1,IDM
         DO J= 1,JDM
-          PLATIJ = MIN(YFMAX,MAX(YFMIN,PLAT(I,J)))
-          YAF(I,J) = 3.0 + (PLATIJ - YFIN)/DYIN
+          YOU  = MIN(YFMAX,MAX(YFMIN,PLAT(I,J)))
+          YOUR = YOU + 92.d0
+          YOUI = INT(YOUR)
+          YOUR = (YOUR - YOUI) - 0.5D0*DYIN
+          YAF8 = 3.D0 + 240.D0*YOUI + YOUR/DYIN
+          YAF(I,J) = YAF8
 C
-          IF     (MOD(I,100).EQ.1 .OR. I.EQ.IDM) THEN
-            IF     (MOD(J,10).EQ.1 .OR. J.EQ.JDM) THEN
-              WRITE(6,'("I,J,LATU,YAF =",2I5,2F10.3)')
-     +                   I,J,PLAT(I,J),YAF(I,J)
+          IF     (MOD(I,IOUT).EQ.1 .OR. I.EQ.IDM) THEN
+            IF     (MOD(J,JOUT).EQ.1 .OR. J.EQ.JDM) THEN
+              WRITE(6,'("I,J,LONU,YAF =",2I6,2F10.3,F10.6)')
+     &          I,J,YOU,YAF(I,J),YAF8-(3.0d0+(YOU - YFIN)/DYIN)
             ENDIF
           ENDIF
 *         IF     (YAF(I,J).GE.JWI-1) THEN
-*             WRITE(6,'("I,J,LON,LAT,X,YAF =",2I5,4F10.3)')
+*             WRITE(6,'("I,J,LON,LAT,X,YAF =",2I6,4F10.3)')
 *    +                   I,J,PLON(I,J),PLAT(I,J),XAF(I,J),YAF(I,J)
 *         ENDIF
 C
@@ -277,19 +298,65 @@ C     READ THE INPUT (netCDF).
 C
       I0    =   2
       J0    = 482
+      DSIGN = -1.0  !usually input ocean depth is negative
 C
+      CTID  = ' '
+      CALL GETENV('CDF_GEBCO_TID',CTID)
       CFILE = ' '
       CALL GETENV('CDF_GEBCO',CFILE)
-      IF     (CFILE.NE.' ') THEN
-        WRITE(6,*)
-        WRITE(6,*) 'CDF_GEBCO = ',trim(CFILE)
+      IF     (CFILE.NE.' ' .OR. CTID.NE.' ') THEN
+        IF     (CTID.NE.' ') THEN
+          IF     (INTERP.NE.1) THEN
+            WRITE(6,*) 'ERROR',
+     &                 ' CDF_GEBCO_TID requires INTERP=1 (sample)'
+            CALL ZHFLSH(6)
+            STOP
+          ENDIF
+          WRITE(6,*) 'CDF_GEBCO_TID = ',trim(CTID)
+          CFILE = CTID
+          DSIGN = 1.0  !TID is always positive
+        ELSE
+          WRITE(6,*) 'CDF_GEBCO     = ',trim(CFILE)
+        ENDIF
         CALL ZHFLSH(6)
         ! open NetCDF file
         call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
         ! inquire variable ID
-        call ncheck(nf90_inq_varid(ncFID,
-     &                             'elevation',
-     &                             ncVID))
+        if     (ctid.ne.' ') then
+          status = nf90_inq_varid(ncFID,
+     &                            'tid',
+     &                            ncVID)
+          if (status == nf90_noerr) then
+            WRITE(6,*) 'BATHY = ','tid'
+          else
+            call ncheck(nf90_inq_varid(ncFID,
+     &                                 'tid',
+     &                                 ncVID))
+          endif
+        else !not TID
+          status = nf90_inq_varid(ncFID,
+     &                            'elevation_float',
+     &                            ncVID)
+          if (status /= nf90_noerr) then
+            status = nf90_inq_varid(ncFID,
+     &                              'elevation',
+     &                              ncVID)
+            if (status /= nf90_noerr) then
+c ---         Assume variable is z
+              WRITE(6,*) 'BATHY = ','z'
+              call ncheck(nf90_inq_varid(ncFID,
+     &                                   'z',
+     &                                   ncVID))
+            else
+              WRITE(6,*) 'BATHY = ','elevation'
+              call ncheck(nf90_inq_varid(ncFID,
+     &                                   'elevation',
+     &                                   ncVID))
+            endif
+          else
+            WRITE(6,*) 'BATHY = ','elevation_float'
+          endif
+        endif !TID:else
 C
         ALLOCATE( BTHY90(IWI,JWI90) )
         call ncheck(nf90_get_var(ncFID,ncVID,BTHY90))
@@ -302,7 +369,7 @@ C
         DHMAX = -1.e30
         DO J= 1,JWI90
           DO I= 1,IWI
-            BTHYI(I0+I,J+J0) = -BTHY90(I,J)
+            BTHYI(I0+I,J+J0) = MAX( MXLAND, DSIGN*BTHY90(I,J) )
             DHMIN = MIN( DHMIN, BTHYI(I0+I,J+J0) )
             DHMAX = MAX( DHMAX, BTHYI(I0+I,J+J0) )
           ENDDO !i
@@ -313,10 +380,67 @@ C
 C
         DEALLOCATE( BTHY90 )
       ELSE
-        WRITE(6,'(/ a /)')
-     &    'environment variable CDF_GEBCO must be defined'
-        CALL ZHFLSH(6)
-        STOP
+        CFILE = ' '
+        CALL GETENV('CDF_GMTED',CFILE)
+        IF     (CFILE.NE.' ') THEN
+          WRITE(6,*)
+          WRITE(6,*) 'CDF_GMTED = ',trim(CFILE)
+          CALL ZHFLSH(6)
+          ! open NetCDF file
+          call ncheck(nf90_open(trim(CFILE), nf90_nowrite, ncFID))
+          ! inquire variable ID
+          status = nf90_inq_varid(ncFID,
+     &                            'surface_altitude',
+     &                            ncVID)
+          if (status /= nf90_noerr) then
+            WRITE(6,*) 'ERROR',
+     &                 ' CDF_GMTED does not contain surface_altitude'
+            CALL ZHFLSH(6)
+            STOP
+          else
+            WRITE(6,*) 'BATHY = ','surface_altitude'
+          endif
+C
+          ALLOCATE( BTHY90(IWI,JWI66) )
+          call ncheck(nf90_get_var(ncFID,ncVID,BTHY90))
+          write(6,*) 'BATHY.1,    1 = ',BTHY90(    1,      1)
+          write(6,*) 'BATHY.N/2,M/2 = ',BTHY90(IWI/2,JWI66/2)
+          write(6,*) 'BATHY.N,  M   = ',BTHY90(IWI,  JWI66)
+C
+C         COPY INTO THE (LARGER) INTERPOLATION ARRAY.
+C
+          DHMIN =  1.e30
+          DHMAX = -1.e30
+          J56 = (90-56)*240
+          DO J= 1,J56
+            DO I= 1,IWI
+              BTHYI(I0+I,J+J0) = 0.0
+            ENDDO !i
+          ENDDO !j
+          DO J= J56+1,J56+JWI66
+            DO I= 1,IWI
+              BTHYI(I0+I,J+J0) = MAX( MXLAND, -BTHY90(I,J-J56) )
+              DHMIN = MIN( DHMIN, BTHYI(I0+I,J+J0) )
+              DHMAX = MAX( DHMAX, BTHYI(I0+I,J+J0) )
+            ENDDO !i
+          ENDDO !j
+          DO J= J56+JWI66+1,JWI90
+            DO I= 1,IWI
+              BTHYI(I0+I,J+J0) = 0.0
+            ENDDO !i
+          ENDDO !j
+          write (6,'(/a,2f12.5/)') 'min,max depth = ',dhmin,dhmax
+          write (6,*) 'min,max depth = ',dhmin,dhmax
+          write (6,*)
+C
+          DEALLOCATE( BTHY90 )
+        ELSE
+          WRITE(6,'(/ a /)')
+     &      'environment variable CDF_GEBCO'//
+     &      ' or CDF_GMTED must be defined'
+          CALL ZHFLSH(6)
+          STOP
+        ENDIF
       ENDIF
 C
 C       2-degree wrap across pole.
@@ -386,11 +510,17 @@ C
         IF     (INTERP.LT.0) THEN
           CALL PATCH(DH,XAF,YAF,IDM,IDM,JDM,
      +               BTHYI,IWI+4,IWI+4,JWI+4, -INTERP,FLAND)
+        ELSEIF (INTERP.EQ.1) THEN
+          CALL SAMPLE(DH,XAF,YAF,IDM,IDM,JDM,
+     +                BTHYI,IWI+4,IWI+4,JWI+4)
         ELSE
           CALL LINEAR(DH,XAF,YAF,IDM,IDM,JDM,
      +                BTHYI,IWI+4,IWI+4,JWI+4)
         ENDIF
 C
+        IF     (CTID.NE.' ') THEN
+          COAST = -99999.0
+        ENDIF
         IF     (COAST.GT.0.0) THEN
           BLAND = 0.0
         ELSE
@@ -445,33 +575,35 @@ c --- fill single-width inlets
 c
  100  continue
       nfill=0
-      do j=1,jdm-1
-        do i=1,idm
-          nzero=0
-          if (dh(i,j).gt.coast) then
-            if     (i.eq.1) then
-              if (dh(idm,j).le.coast) nzero=nzero+1  !assumed periodic
-            else
-              if (dh(i-1,j).le.coast) nzero=nzero+1
+      if     (coast.ge.0.0) THEN
+        do j=1,jdm-1
+          do i=1,idm
+            nzero=0
+            if (dh(i,j).gt.coast) then
+              if     (i.eq.1) then
+                if (dh(idm,j).le.coast) nzero=nzero+1  !assumed periodic
+              else
+                if (dh(i-1,j).le.coast) nzero=nzero+1
+              endif
+              if     (i.eq.idm) then
+                if (dh(  1,j).le.coast) nzero=nzero+1  !assumed periodic
+              else
+                if (dh(i+1,j).le.coast) nzero=nzero+1
+              endif
+              if (j.eq.  1.or. dh(i,j-1).le.coast) nzero=nzero+1
+              if (j.ne.jdm.and.dh(i,j+1).le.coast) nzero=nzero+1
+              if (nzero.ge.3) then
+                write (6,'(a,i6,a,i6,a,i1,a)') 
+     +            ' dh(',i,',',j,') set to zero (',
+     +            nzero,' land nieghbours)'
+                dh(i,j)=bland
+                ip(i,j)=0
+                nfill=nfill+1
+              endif
             endif
-            if     (i.eq.idm) then
-              if (dh(  1,j).le.coast) nzero=nzero+1  !assumed periodic
-            else
-              if (dh(i+1,j).le.coast) nzero=nzero+1
-            endif
-            if (j.eq.  1.or. dh(i,j-1).le.coast) nzero=nzero+1
-            if (j.ne.jdm.and.dh(i,j+1).le.coast) nzero=nzero+1
-            if (nzero.ge.3) then
-              write (6,'(a,i5,a,i5,a,i1,a)') 
-     +          ' dh(',i,',',j,') set to zero (',
-     +          nzero,' land nieghbours)'
-              dh(i,j)=bland
-              ip(i,j)=0
-              nfill=nfill+1
-            end if
-          end if
+          enddo
         enddo
-      enddo
+      endif !coast>=0
       if (nfill.gt.0) go to 100
 C
       IF     (MTYPE.EQ.2) THEN
@@ -539,5 +671,5 @@ c
         stop
       else
         write(6,'(/a,i18/)')   'NetCDF library call returns ',status
-      end if
+      endif
       end subroutine ncheck

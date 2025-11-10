@@ -6,6 +6,7 @@ c
       logical          lperiod
       real*8           hmaxa,hmina
       double precision pntlon,reflon,grdlon,pntlat,oldlat
+      character*80     chmin
 c
 c --- create a uniform longitude specified latitude grid definition file.
 c
@@ -103,36 +104,36 @@ c --- uniform lon grid
 c
       write(6, *)
       do j= 1,jdm
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'j,qlat =',j,minval(qlat(:,j)),maxval(qlat(:,j))
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'j,plat =',j,minval(plat(:,j)),maxval(plat(:,j))
       enddo
       write(6, *)
       do i= 1,idm
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'i,qlon =',i,minval(qlon(i,:)),maxval(qlon(i,:))
-        write(6,'(a,i5,2f10.3)')
+        write(6,'(a,i6,2f10.3)')
      &    'i,plon =',i,minval(plon(i,:)),maxval(plon(i,:))
       enddo
 c
 c --- write header.
 c
       call zhopen(61, 'formatted', 'new', 0)
-      write(61,'(i5,a)')
+      write(61,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(61,'(i5,a)')
+      write(61,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(61,'(i5,a,a)')
+      write(61,'(i6,a,a)')
      &  mapflg,"    'mapflg' = map flag",
      &         " (-1=unknown,0=mercator,2=uniform,4=f-plane)"
 c
       write(6, *)
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  idm,   "    'idm   ' = longitudinal array size"
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  jdm,   "    'jdm   ' = latitudinal  array size"
-      write(6,'(i5,a)')
+      write(6,'(i6,a)')
      &  mapflg,"    'mapflg' = map flag (-1=unknown,0=mercator,...)"
 c
 c --- write grid arrays.
@@ -258,7 +259,13 @@ c
         enddo
       endif
 c
-      hmina = 100.0 !100m minimum grid spacing
+      chmin = ' '
+      call getenv('GRID_MIN',chmin)
+      if     (chmin.ne.' ') then
+        read(chmin,*) hmina
+      else
+        hmina = 100.0 !100m minimum grid spacing
+      endif
       do j= 1,jdm
         do i= 1,1
           pscx(i,j) = max(pscx(2,j),hmina)
@@ -285,16 +292,16 @@ c ---   grid spacing only depends on j.
 c
       write(6, *)
       do j= 1,jdm
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,vy =',j,minval(vscy(:,j)),maxval(vscy(:,j)),
      &               maxval(vscy(:,j))-minval(vscy(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,vx =',j,minval(vscx(:,j)),maxval(vscx(:,j)),
      &               maxval(vscx(:,j))-minval(vscx(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,uy =',j,minval(uscy(:,j)),maxval(uscy(:,j)),
      &               maxval(uscy(:,j))-minval(uscy(:,j))
-        write(6,'(a,i5,3f10.2)')
+        write(6,'(a,i6,3f10.2)')
      &    'j,ux =',j,minval(uscx(:,j)),maxval(uscx(:,j)),
      &               maxval(uscx(:,j))-minval(uscx(:,j))
       enddo

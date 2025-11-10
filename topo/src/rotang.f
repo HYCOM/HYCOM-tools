@@ -148,7 +148,7 @@ c
               endif
             endif
 *           if     (max(lat1,lat2).gt.87.0) then
-*             write(6,'(a,2i5,4f8.2,f9.2)')
+*             write(6,'(a,2i6,4f8.2,f9.2)')
 *    &          'grdrot = ',i,j,lon1,lat1,lon2,lat2,grdrot(i,j)*rad2deg
 *           endif
          enddo
@@ -322,7 +322,7 @@ c
               endif
             endif
 *           if     (max(lat1,lat2).gt.87.0) then
-*             write(6,'(a,2i5,4f8.2,f9.2)')
+*             write(6,'(a,2i6,4f8.2,f9.2)')
 *    &          'grdrot = ',i,j,lon1,lat1,lon2,lat2,grdrot(i,j)*rad2deg
 *           endif
          enddo
@@ -479,7 +479,7 @@ c
               endif
             endif
 *           if     (max(lat1,lat2).gt.87.0) then
-*             write(6,'(a,2i5,4f8.2,f9.2)')
+*             write(6,'(a,2i6,4f8.2,f9.2)')
 *    &          'grdrot = ',i,j,lon1,lat1,lon2,lat2,grdrot(i,j)*rad2deg
 *           endif
          enddo

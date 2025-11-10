@@ -226,16 +226,16 @@ c
 c
       write(lp,*)
       do j= 1,jdm
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,vy =',j,minval(vscy(:,j)),maxval(vscy(:,j)),
      &               maxval(vscy(:,j))-minval(vscy(:,j))
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,vx =',j,minval(vscx(:,j)),maxval(vscx(:,j)),
      &               maxval(vscx(:,j))-minval(vscx(:,j))
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,uy =',j,minval(uscy(:,j)),maxval(uscy(:,j)),
      &               maxval(uscy(:,j))-minval(uscy(:,j))
-        write(lp,'(a,i5,3f10.2)')
+        write(lp,'(a,i6,3f10.2)')
      &    'j,ux =',j,minval(uscx(:,j)),maxval(uscx(:,j)),
      &               maxval(uscx(:,j))-minval(uscx(:,j))
       enddo

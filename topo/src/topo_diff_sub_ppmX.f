@@ -1,4 +1,4 @@
-      PROGRAM TOP_DIFF_PPMX
+      PROGRAM TOP_DIFF_SUB_PPMX
       use mod_za  ! HYCOM array I/O interface
       implicit none
 c
@@ -12,32 +12,44 @@ c
 c
       logical   lexist
       integer   i,j
-      integer*8 idm8,jdm8,ksub
+      integer*8 i1,j1,idm8,jdm8,ksub
 c
-c --- This program reads in two standard HYCOM depth files, and 
-c --- and writes out the a 24-bit PPM image file with the differences
-c --- marked.
+c --- This program reads in two standard HYCOM depth files, 
+c --- subregions them and writes out a 24-bit PPM image file
+c --- of the subregion with the differences marked.
 c
 c --- the subsample factor, ksub, is read from stdin
+c --- the subregion, i1,j1,idms,jdms, is read from stdin
 c
       character*1, allocatable :: ib(:)
       integer,     allocatable :: iop(:,:)
+      real,        allocatable :: depths_in(:,:)
       real,        allocatable :: depths_a(:,:),depths_b(:,:)
 c
-      read(5,*) ksub
-      write(6,'(a,i3)') 'ksub =',ksub
+      read(5,*) ksub,i1,j1,idm8,jdm8
+      write(6,'(a, i8)') 'ksub      =',ksub
+      write(6,'(a,2i8)') 'i1,  j1   =',i1,  j1
+      write(6,'(a,2i8)') 'idms,jdms =',idm8,jdm8
+      write(6,'(a,2i8)') 'iend,jend =',i1+idm8-1,j1+jdm8-1
       call zhflsh(6)
 c
       call xcspmd  !input idm,jdm
       call zaiost
 c
-      idm8 = idm
-      jdm8 = jdm
+      if     (i1.lt.1 .or. i1+idm8-1.gt.idm .or.
+     &        j1.lt.1 .or. j1+jdm8-1.gt.jdm     ) then
+        write(6,'(/ a / a,2i8 /)')
+     &    'error - subregion outside full region',
+     &    '        idm,jdm = ',idm,jdm
+        call zhflsh(6)
+        stop
+      endif
 c
-      allocate( ib(    19+3*((idm8+ksub-1)/ksub)*((jdm8+ksub-1)/ksub)) )
-      allocate( iop(     idm,    jdm) )
-      allocate( depths_a(idm,    jdm) )
-      allocate( depths_b(idm,    jdm) )
+      allocate( ib( 19+3*((idm8+ksub-1)/ksub)*((jdm8+ksub-1)/ksub)) )
+      allocate(       iop(idm,jdm)  )
+      allocate( depths_in(idm,jdm)  )
+      allocate( depths_a(idm8,jdm8) )
+      allocate( depths_b(idm8,jdm8) )
       ib(:) = char(0)
 c
 c --- acquire 1st basin depths from unit 51.
@@ -52,7 +64,7 @@ c
       read (cline(i+1:),*)   hminb,hmaxb
 c
       call zaiopn('old', 51)
-      call zaiord(depths_a,iop,.false., hmina,hmaxa, 51)
+      call zaiord(depths_in,iop,.false., hmina,hmaxa, 51)
       call zaiocl(51)
 c
       if     (abs(hmina-hminb).gt.abs(hminb)*1.e-4 .or.
@@ -65,6 +77,8 @@ c
         stop
       endif
 c
+      depths_a(:,:) = depths_in(i1:i1+idm8-1,j1:j1+jdm8-1)
+c
       call zhopen(61, 'formatted', 'old', 0)
       read (61,'(a79)') preambl
       read (61,'(a)')   cline
@@ -75,7 +89,7 @@ c
       read (cline(i+1:),*)   hminb,hmaxb
 c
       call zaiopn('old', 61)
-      call zaiord(depths_b,iop,.false., hmina,hmaxa, 61)
+      call zaiord(depths_in,iop,.false., hmina,hmaxa, 61)
       call zaiocl(61)
 c
       if     (abs(hmina-hminb).gt.abs(hminb)*1.e-4 .or.
@@ -88,10 +102,12 @@ c
         stop
       endif
 c
+      depths_b(:,:) = depths_in(i1:i1+idm8-1,j1:j1+jdm8-1)
+c
 c --- zero land
 c
-      do j= 1,jdm
-        do i= 1,idm
+      do j= 1,jdm8
+        do i= 1,idm8
           if     (depths_a(i,j).gt.2.0**99) then
             depths_a(i,j) = 0.0
           endif
@@ -130,7 +146,7 @@ C
 C
       CALL TOPIMG(IB(NC-3*((IDM8+KSUB-1)/KSUB)*
      &                    ((JDM8+KSUB-1)/KSUB)+1),char(PPMPAL),
-     &            DEPTHS_A,DEPTHS_B,IDM,JDM, KSUB)
+     &            DEPTHS_A,DEPTHS_B,IDM8,JDM8, KSUB)
 C
 C     OUTPUT AS PPM IMAGE FILE.
 C
@@ -263,11 +279,17 @@ C
             IB(2,(I+KSUB-1)/KSUB,JB+1-(J+KSUB-1)/KSUB) = IP(2,49)
             IB(3,(I+KSUB-1)/KSUB,JB+1-(J+KSUB-1)/KSUB) = IP(3,49)
             N1 = N1 + 1
+            IF     (KSUB.EQ.1 .AND. MOD(N1,MIN(IH,JH)).EQ.1) THEN
+              WRITE(6,'(a,2i8,f10.2)') 'LAND 1:',I,J,HD2(I,J)
+            ENDIF
           ELSEIF (M2.GT.M1) THEN  !M2 more land (Magenta)
             IB(1,(I+KSUB-1)/KSUB,JB+1-(J+KSUB-1)/KSUB) = IP(1,50)
             IB(2,(I+KSUB-1)/KSUB,JB+1-(J+KSUB-1)/KSUB) = IP(2,50)
             IB(3,(I+KSUB-1)/KSUB,JB+1-(J+KSUB-1)/KSUB) = IP(3,50)
             N2 = N2 + 1
+            IF     (KSUB.EQ.1 .AND. MOD(N2,MIN(IH,JH)).EQ.1) THEN
+              WRITE(6,'(a,2i8,f10.2)') 'LAND 2:',I,J,HD1(I,J)
+            ENDIF
           ELSE  !both ocean (grayscale)
             II = MIN(248, 100 + NINT((HD1(I,J)      )*D2) )
             IB(1,(I+KSUB-1)/KSUB,JB+1-(J+KSUB-1)/KSUB) = IP(1,II)
