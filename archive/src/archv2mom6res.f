@@ -14,6 +14,7 @@ c
       character*256    flnm_i,flnm_o,filename
       logical          larctic,lsymetr
       integer          i,ia,irec,j,k,ntq,mtq,nto,mto,ndim
+      integer          itest,jtest
       integer          yrflag,ibads,ibadl
       real             dayout,q,misval
       double precision time3(3)
@@ -26,7 +27,6 @@ c
 
       real, parameter :: flag = 2.0**100
       real, allocatable, dimension (:,:)   :: f_nc
-
 
       logical   lhycom
       data      lhycom/.true. /
@@ -63,9 +63,11 @@ c --- 'flnm_o'  = name of MOM6 restart single file (output)
 c --- 'flnm_rt' = name of MOM6 restart temp  input
 c --- 'flnm_ru' = name of MOM6 restart u-vel input
 c --- 'flnm_rv' = name of MOM6 restart v-vel input
-! --- 'idm   ' = longitudinal array size
-! --- 'jdm   ' = latitudinal  array size
-! --- 'kdm   ' = number of layers
+c --- 'idm   ' = longitudinal array size
+c --- 'jdm   ' = latitudinal  array size
+c --- 'itest ' = longitudinal sampled test point (optional, default 0)
+c --- 'jtest ' = latitudinal  sampled test point (optional, default 0)
+c --- 'kdm   ' = number of layers
       read (*,'(a)') flnm_i
       write (lp,'(2a)') '    input file: ',trim(flnm_i)
       call flush(lp)
@@ -80,7 +82,16 @@ c --- 'flnm_rv' = name of MOM6 restart v-vel input
       call flush(lp)
       call blkini(ii,  'idm   ')
       call blkini(jj,  'jdm   ')
-      call blkini(kk,  'kdm   ')
+      call blkini2(i,j,  'itest ','kdm   ')  !read itest  or kdm
+      if (j.eq.1) then !itest
+        itest = i
+        call blkini(jtest ,'jtest ')
+        call blkini(kk,    'kdm   ')
+      else !kdm
+        itest = 0
+        jtest = 0
+        kk    = i
+      endif
       if     (ii.ne.idm .or. jj.ne.jdm) then
           write(lp,*)
           write(lp,*) 'error - wrong idm or jdm should be:',
@@ -120,10 +131,10 @@ c
         endif !lsymetr:else
       else !.not.larctic
         if (lsymetr) then
-          nto=idm-1
-          mto=jdm-1
-          ntq=idm
-          mtq=jdm
+          nto=idm
+          mto=jdm
+          ntq=idm+1
+          mtq=jdm+1
         else
           nto=idm
           mto=jdm
@@ -189,7 +200,9 @@ c
       call flush(lp)
       call bigrid(depths)
       call flush(lp)
-
+      if     (min(itest,jtest).gt.0) then
+        write(lp,*) 'depth  = ',depths(itest,jtest),ip(itest,jtest)
+      endif
 c
 c --- check that bathymetry is consistent with this archive.
 c --- only possible with hycom .[ab] file input.
@@ -319,12 +332,23 @@ c
       allocate( field(ntq,mto) ); field = 0.
       do k= 1,kk
         f_nc(:,:) = u(:,:,k)
-C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                    maxval(f_nc(:,:))
-C
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                             f_nc(itest,jtest),
+     &                                      maxval(f_nc(:,:))
+        else
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                      maxval(f_nc(:,:))
+        endif
         call h2m_u(f_nc,idm,jdm,1,misval, field,ntq,mto,lsymetr,larctic)
-        write(lp,*) 'convert   u_mom  = ',minval(field(:,:)),
-     &                                    maxval(field(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert   u_mom  = ',minval(field(:,:)),
+     &                                             field(itest,jtest),
+     &                                      maxval(field(:,:))
+        else
+          write(lp,*) 'convert   u_mom  = ',minval(field(:,:)),
+     &                                      maxval(field(:,:))
+        endif
         u_mom(:,:,k,1)=field(:,:)
       enddo !k
       deallocate(  f_nc )
@@ -336,11 +360,23 @@ c
       allocate( field(nto,mtq) ); field = 0.
       do k= 1,kk
         f_nc(:,:) = v(:,:,k)
-C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                   maxval(f_nc(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                             f_nc(itest,jtest),
+     &                                      maxval(f_nc(:,:))
+        else
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                      maxval(f_nc(:,:))
+        endif
         call h2m_v(f_nc,idm,jdm,1,misval, field,nto,mtq,lsymetr,larctic)
-        write(lp,*) 'convert   v_mom  = ',minval(field(:,:)),
-     &                                    maxval(field(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert   v_mom  = ',minval(field(:,:)),
+     &                                             field(itest,jtest),
+     &                                      maxval(field(:,:))
+        else
+          write(lp,*) 'convert   v_mom  = ',minval(field(:,:)),
+     &                                      maxval(field(:,:))
+        endif
         v_mom(:,:,k,1)=field(:,:)
       enddo !k
       deallocate(  f_nc )
@@ -352,11 +388,23 @@ c
       allocate( field(nto,mto) ); field = 0.
       do k= 1,kk
         f_nc(:,:) = temp(:,:,k)
-C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                   maxval(f_nc(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                             f_nc(itest,jtest),
+     &                                      maxval(f_nc(:,:))
+        else
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                      maxval(f_nc(:,:))
+        endif
         call h2m_p(f_nc,idm,jdm,1,misval, field,nto,mto,lsymetr,larctic)
-        write(lp,*) 'convert   t_mom  = ',minval(field(:,:)),
-     &                                    maxval(field(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert   t_mom  = ',minval(field(:,:)),
+     &                                             field(itest,jtest),
+     &                                      maxval(field(:,:))
+        else
+          write(lp,*) 'convert   t_mom  = ',minval(field(:,:)),
+     &                                      maxval(field(:,:))
+        endif
         temp_mom(:,:,k,1)=field(:,:)
       enddo !k
 
@@ -365,11 +413,23 @@ c ---   Salinity
 c
       do k= 1,kk
         f_nc(:,:) = saln(:,:,k)
-C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                   maxval(f_nc(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                             f_nc(itest,jtest),
+     &                                      maxval(f_nc(:,:))
+        else
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                      maxval(f_nc(:,:))
+        endif
         call h2m_p(f_nc,idm,jdm,1,misval, field,nto,mto,lsymetr,larctic)
-        write(lp,*) 'convert   s_mom  = ',minval(field(:,:)),
-     &                                    maxval(field(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert   s_mom  = ',minval(field(:,:)),
+     &                                             field(itest,jtest),
+     &                                      maxval(field(:,:))
+        else
+          write(lp,*) 'convert   s_mom  = ',minval(field(:,:)),
+     &                                      maxval(field(:,:))
+        endif
         saln_mom(:,:,k,1)=field(:,:)
       enddo !k
 
@@ -378,11 +438,23 @@ c ---   h
 c
       do k= 1,kk
         f_nc(:,:) = dp(:,:,k)
-C        write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
-C     &                                   maxval(f_nc(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                             f_nc(itest,jtest),
+     &                                      maxval(f_nc(:,:))
+        else
+          write(lp,*) 'convert    fldi  = ',minval(f_nc(:,:)),
+     &                                      maxval(f_nc(:,:))
+        endif
         call h2m_p(f_nc,idm,jdm,1,misval, field,nto,mto,lsymetr,larctic)
-        write(lp,*) 'convert   h_mom  = ',minval(field(:,:)),
-     &                                    maxval(field(:,:))
+        if     (min(itest,jtest).gt.0) then
+          write(lp,*) 'convert   h_mom  = ',minval(field(:,:)),
+     &                                             field(itest,jtest),
+     &                                      maxval(field(:,:))
+        else
+          write(lp,*) 'convert   h_mom  = ',minval(field(:,:)),
+     &                                      maxval(field(:,:))
+        endif
         h_mom(:,:,k,1)=field(:,:)
       enddo !k
 
