@@ -14,22 +14,28 @@ c --- in montg and steric ssh in steric.
 c
 c --- MOM6_STERIC is for legacy cases, use MOM6_BPANOM instead.
 c
-c --- if environment variable MOM6_BPANOM is an .a file, MOM6 input must
+c --- if environment variable MOM6_BPANOMH is an .a file, MOM6 input must
 c --- contain col_height and bottom pressure (pbo) and the HYCOM output
 c --- archive file will contain ssh minus bottom pressure anomaly 
-c --- in montg.
+c --- in montg.  Older versions use environment variable MOM6_BPANOM 
+c --- which supports a less accurate bottom pressure anomaly calculation.
 c
 c --- MOM6_STERIC and MOM6_BPANOM can both exist if they refer to the 
 c --- same file, for montg=ssh-bpa and steric output.
+c
+c --- this version always reads in the SSH field, often in addition to
+c --- col_height and bottom pressure (pbo)
 c
       integer, parameter :: mxtrcr=99
 c
       character*256    flnm_o,
      &                 flnm_t,flnm_s,flnm_r,flnm_p,flnm_e,
      &                 name_t,name_s,name_r,name_p,name_e,
-     &                 name_b,name_o,name_n,name_m,
+     &                               name_ri,name_r2,
+     &                               name_pb,name_hb,
+     &                 name_o,name_n,name_m,name_ms,
      &                 flnm_k,flnm_u,flnm_v,
-     &                 name_k,name_u,name_v,
+     &                 name_k,name_u,name_v,name_ub,name_vb,
      &                 flnm_tr,
      &                 name_tr(mxtrcr),
      &                 flnm_c,
@@ -38,14 +44,14 @@ c
       character*14     c_ydh
 c
       logical          larctic,lsymetr
-      logical          lsteric,lbpa,
-     &                 icegln,trcout,lgprime,lsig2,lsigw,ldenrd
+      logical          lsteric,lbpa,lbpah,lubt,
+     &                 icegln,trcout,lgprime,lsig2,lsigw,ldenrd2,ldenrdi
       integer          i,im1,ip1,ierr,icrec,irec,j,jja,jm1,jp1,jerr,k,l
       integer          mro,nvo
       integer          artype,iexpt,iversn,yrflag,itest,jtest
       integer          jday,ihour,iyear
       integer          ltracr,itracr,ltracu,ltracv,ktr
-      real             onem,qoneta,tmljmp,thbase,
+      real             onem,qoneta,tmljmp,thbase,thoset,
      &                 errmax,errbot,errdep,errssh,
      &                 denij
       double precision time3(3),pij,bpij
@@ -54,8 +60,9 @@ c
       real             smn1,smx1,smn2,smx2,smn3,smx3,
      &                 rho1,rho2,utotp,vtotp
 c
-      real, allocatable :: p(:,:,:),pu(:,:,:),pv(:,:,:),
-     &                     scp2(:,:),plat(:,:),den_mn(:,:),ssh_mn(:,:)
+      real, allocatable :: p(:,:,:),pu(:,:,:),pv(:,:,:),is3d(:,:,:),
+     &                     scp2(:,:),plat(:,:),hbt(:,:),pbt(:,:),
+     &                     den_mn(:,:),ssh_mn(:,:),hbt_mn(:,:)
 c
 c --- spval  = hycom data void marker, 2^100 or about 1.2676506e30
       real, parameter :: spval=2.0**100
@@ -78,20 +85,37 @@ c
       call getenv('MOM6_STERIC',flnm_b)
       lsteric   = flnm_b.ne.' '
       flnm_r = ' '
-      call getenv('MOM6_BPANOM', flnm_r)
-      lbpa   = flnm_r.ne.' '
-      if     (lbpa) then
+      call getenv('MOM6_BPANOMH', flnm_r)
+      lbpah  = flnm_r.ne.' '
+      if     (lbpah) then
         if     (lsteric .and. flnm_b.ne.flnm_r) then
           write(lp,*) 
-          write(lp,*) 'MOM6_STERIC and MOM6_BPANOM not equal'
-          write(lp,*) 'MOM6_STERIC = ',trim(flnm_b)
-          write(lp,*) 'MOM6_BPANOM = ',trim(flnm_r)
+          write(lp,*) 'MOM6_STERIC and MOM6_BPANOMH not equal'
+          write(lp,*) 'MOM6_STERIC  = ',trim(flnm_b)
+          write(lp,*) 'MOM6_BPANOMH = ',trim(flnm_r)
           write(lp,*) 
           call zhflsh(lp)
           stop
         endif
         flnm_b = flnm_r
-      endif
+        lbpa   = .true.
+      else
+        flnm_r = ' '
+        call getenv('MOM6_BPANOM', flnm_r)
+        lbpa   = flnm_r.ne.' '
+        if     (lbpa) then
+          if     (lsteric .and. flnm_b.ne.flnm_r) then
+            write(lp,*) 
+            write(lp,*) 'MOM6_STERIC and MOM6_BPANOM not equal'
+            write(lp,*) 'MOM6_STERIC = ',trim(flnm_b)
+            write(lp,*) 'MOM6_BPANOM = ',trim(flnm_r)
+            write(lp,*) 
+            call zhflsh(lp)
+            stop
+          endif
+          flnm_b = flnm_r
+        endif
+      endif  !lbpah:else
 c
 c --- 'flnm_X' ends in ".nc" for a single netCDF file, or
 c ---                  ".nc.DDDD-EEEE" for subregion netCDF files
@@ -104,23 +128,31 @@ c --- 'flnm_r' = name of mom6  dens file  (enter SAME to use flnm_s,
 c ---                                      enter SIG2 to use HYCOM eq.state,
 c ---                                      enter SIGW to use MOM6  eq.state)
 c --- 'name_r' = name of mom6  dens field (either sigma-2 or in-situ,
+c ---                                      enter BOTH   to read both,
 c ---                                      enter thbase for SIG2   case,
 c ---                                      ignored      for SIGW   case,
 c ---                                      ignored      for gprime case)
+c --- if BOTH: 'name_r2' = name of mom6 sigma2  dens field or NONE
+c ---          'name_ri' = name of mom6 in-situ dens field
 c --- 'flnm_p' = name of mom6  h    file  (enter SAME to use flnm_s)
-c --- 'name_p' = name of mom6  h    field
+c --- 'name_p' = name of mom6  h    field ('name_r'=BOTH signals h is mass)
 c --- 'flnm_e' = name of mom6  ssh  file  (enter SAME to use flnm_p,
 c ---                                      used for ssh, Qnet and P-E)
-c --- 'name_e' = name of mom6  ssh  field (lsteric/lbpa: hbt field)
-c ---                                     (enter ZERO for zero field)
-c --- 'name_b' = name of mom6  pbt  field (lsteric/lbpa only)
+c --- 'name_e' = name of mom6  ssh  field (enter ZERO for zero field)
+c ---                                     (enter CALC to calculate)
+c --- 'name_hb'= name of mom6  hbt  field (lsteric/lbpa only)
+c ---                                     (enter CALC to calculate)
+c --- 'name_pb'= name of mom6  pbt  field (lsteric/lbpa only)
 c ---                                     (enter CALC to calculate)
 c --- 'name_o' = name of mom6  obl  field (enter NONE to use dpmixl)
 c --- 'name_n' = name of mom6  Qnet field (enter ZERO for zero field)
+c --- 'name_ms'= name of mom6  Sflx field (OPTIONAL, must be 'Sflx')
 c --- 'name_m' = name of mom6  P-E  field (enter ZERO for zero field)
 c --- 'flnm_u' = name of mom6  u    file  (enter SAME to use flnm_e)
+c --- 'name_ub'= name of mom6  ubt  field (OPTIONAL, must be 'ubt')
 c --- 'name_u' = name of mom6  u    field (enter ZERO for zero field)
 c --- 'flnm_v' = name of mom6  v    file  (enter SAME to use flnm_u)
+c --- 'name_vb'= name of mom6  vbt  field (OPTIONAL, must be 'vbt')
 c --- 'name_v' = name of mom6  v    field (enter ZERO for zero field)
 c --- 'flnm_k' = name of mom6  ke   file  (enter SAME to use flnm_v, and
 c ---                                      enter NONE if no ke, i.e. snapshot)
@@ -204,10 +236,11 @@ c
       if (flnm_r.eq.'SAME') then
           flnm_r = flnm_s
       endif
-      lsig2  = trim(flnm_r) .eq. 'SIG2'
-      lsigw  = trim(flnm_r) .eq. 'SIGW'
-      ldenrd = .not.(lgprime .or. lsig2 .or. lsigw)
-      if     (ldenrd) then  !usual case?
+      lsig2   = trim(flnm_r) .eq. 'SIG2'
+      lsigw   = trim(flnm_r) .eq. 'SIGW'
+      ldenrd2 = .not.(lgprime .or. lsig2 .or. lsigw)
+      ldenrdi = .false.
+      if     (ldenrd2) then  !usual case?
         i = len_trim(flnm_r)
         if     (flnm_r(i-2:i).eq.'.nc') then
           write (lp,'(2a)') ' input MOM6  dens file: ',trim(flnm_r)
@@ -218,8 +251,22 @@ c
         endif
         call flush(lp)
         read (*,'(a)') name_r
-        write (lp,'(2a)') ' input MOM6  dens field: ',trim(name_r)
-        call flush(lp)
+        if     (trim(name_r) .eq. 'BOTH') then
+          ldenrdi = .true.
+          read (*,'(a)') name_r2
+          write (lp,'(2a)') ' input MOM6 dens2 field: ',trim(name_r2)
+          read (*,'(a)') name_ri
+          write (lp,'(2a)') ' input MOM6 densi field: ',trim(name_ri)
+          call flush(lp)
+          if     (trim(name_r2) .eq. 'NONE') then
+            name_r = name_ri
+          else
+            name_r = name_r2
+          endif
+        else
+          write (lp,'(2a)') ' input MOM6  dens field: ',trim(name_r)
+          call flush(lp)
+        endif
         sigver = 0    !we will read in potential (or in-situ) density
       elseif (lsig2) then  
         read (*,'(a)') name_r
@@ -267,13 +314,22 @@ c
       call flush(lp)
       if     (lsteric .or. lbpa) then
         read (*,'(a)') name_e
-        write (lp,'(2a)') ' input MOM6  hbt  field: ',trim(name_e)
-        read (*,'(a)') name_b
-        write (lp,'(2a)') ' input MOM6  pbt  field: ',trim(name_b)
-        if     (trim(name_b) .eq. 'CALC' .or.
-     &          trim(name_e) .eq. 'CALC'     ) then
-          if     (trim(name_b) .ne. 'CALC' .or.
-     &            trim(name_e) .ne. 'CALC'     ) then
+        if     (trim(name_e) .eq. 'hbt' .or.
+     &          trim(name_e) .eq. 'CALC'    ) then
+c         support older scripts
+          name_e  = 'CALC'
+          name_hb = name_e
+        else
+          read (*,'(a)') name_hb
+        endif
+        write (lp,'(2a)') ' input MOM6  ssh  field: ',trim(name_e)
+        write (lp,'(2a)') ' input MOM6  hbt  field: ',trim(name_hb)
+        read (*,'(a)') name_pb
+        write (lp,'(2a)') ' input MOM6  pbt  field: ',trim(name_pb)
+        if     (trim(name_pb) .eq. 'CALC' .or.
+     &          trim(name_hb) .eq. 'CALC'     ) then
+          if     (trim(name_pb) .ne. 'CALC' .or.
+     &            trim(name_hb) .ne. 'CALC'     ) then
             write(lp,*) 
             write(lp,*) 'error - hbt and pbt must both be CALC'
             write(lp,*) 
@@ -284,7 +340,8 @@ c
       else
         read (*,'(a)') name_e
         write (lp,'(2a)') ' input MOM6  ssh  field: ',trim(name_e)
-        name_b = ''
+        name_hb = ''
+        name_pb = ''
       endif
       call flush(lp)
       read (*,'(a)') name_o
@@ -293,7 +350,15 @@ c
       read (*,'(a)') name_n
       write (lp,'(2a)') ' input MOM6  Qnet field: ',trim(name_n)
       call flush(lp)
-      read (*,'(a)') name_m
+      read (*,'(a)') name_ms
+      if     (name_ms(1:4).eq.'Sflx') then
+        read (*,'(a)') name_m
+      else
+        name_m  = name_ms
+        name_ms = 'ZERO'
+      endif
+      write (lp,'(2a)') ' input MOM6  Sflx field: ',trim(name_ms)
+      call flush(lp)
       write (lp,'(2a)') ' input MOM6  P-E  field: ',trim(name_m)
       call flush(lp)
 c
@@ -311,6 +376,13 @@ c
       endif
       call flush(lp)
       read (*,'(a)') name_u
+      lubt = name_u(1:3).eq.'ubt'
+      if     (lubt) then
+        name_ub = name_u
+        write (lp,'(2a)') ' input MOM6  ub   field: ',trim(name_ub)
+        call flush(lp)
+        read (*,'(a)') name_u
+      endif
       write (lp,'(2a)') ' input MOM6  u    field: ',trim(name_u)
       call flush(lp)
 c
@@ -327,6 +399,11 @@ c
      &                                                flnm_v(i-3:i)
       endif
       call flush(lp)
+      if     (lubt) then
+        read (*,'(a)') name_vb
+        write (lp,'(2a)') ' input MOM6  vb   field: ',trim(name_vb)
+        call flush(lp)
+      endif
       read (*,'(a)') name_v
       write (lp,'(2a)') ' input MOM6  v    field: ',trim(name_v)
       call flush(lp)
@@ -478,9 +555,19 @@ c
       allocate( scp2(ii,jj), plat(ii,jj) )
       call rd_scp2(ii,jj,scp2,plat, surflx)  !surflx is workspace
 c
-      if     (lsteric .or. lbpa) then
+      if     (lbpah) then
+c
+c ---    ssh_mn and den_mn and hbt_mn
+c
+        allocate( hbt(ii,jj), pbt(ii,jj) )
+c
+        allocate( hbt_mn(ii,jj), den_mn(ii,jj), ssh_mn(ii,jj) )
+        call rd_steric4(ii,jj,ssh_mn,den_mn,hbt_mn, flnm_b)
+      elseif (lsteric .or. lbpa) then
 c
 c ---    ssh_mn and den_mn
+c
+        allocate( hbt(ii,jj), pbt(ii,jj) )
 c
         allocate( den_mn(ii,jj), ssh_mn(ii,jj) )
         call rd_steric(ii,jj,ssh_mn,den_mn, flnm_b)
@@ -530,7 +617,7 @@ c
         endif
         call m2h_p(s_nc,nto,mto,kk, saln,idm,jdm,lsymetr,larctic)
 c
-        if     (ldenrd) then
+        if     (ldenrd2) then
           if     (flnm_r.ne.flnm_s) then
             irec = 0  ! use time to select the record
           endif
@@ -541,11 +628,12 @@ c
      &                   name_r,flnm_r)
           call zhflsh(lp)
           call m2h_p(s_nc,nto,mto,kk, th3d,idm,jdm,lsymetr,larctic)
+          thoset = 1000.0 + thbase
           do j= 1,jj
             do i= 1,ii
               if     (ip(i,j).eq.1) then
                 do k= 1,kk
-                  th3d(i,j,k) = th3d(i,j,k) - 1000.0
+                  th3d(i,j,k) = th3d(i,j,k) - thoset
                 enddo !k
               else
                 th3d(i,j,:) = spval
@@ -553,8 +641,28 @@ c
             enddo !i
           enddo !j
           sigver = 0
-          thbase = 0.0
-        endif !ldenrd
+        endif !ldenrd2
+c
+        if     (ldenrdi) then
+          allocate( is3d(ii,jj,kk) )
+          if     (flnm_r.ne.flnm_s) then
+            irec = 0  ! use time to select the record
+          endif
+          s_nc(:,:,:) = 1.0e20
+          call rd_out3nc(nto,mto,kk,irec,
+     &                   s_nc,
+     &                   time3,  !HYCOM time
+     &                   name_ri,flnm_r)
+          call zhflsh(lp)
+          call m2h_p(s_nc,nto,mto,kk, is3d,idm,jdm,lsymetr,larctic)
+          do j= 1,jj
+            do i= 1,ii
+              if     (ip(i,j).eq.0) then
+                is3d(i,j,:) = spval
+              endif
+            enddo !i
+          enddo !j
+        endif !ldenrdi
 c
         if     (flnm_p.ne.flnm_t) then
           irec = 0  ! use time to select the record
@@ -570,6 +678,15 @@ c
         if     (flnm_u.ne.flnm_t) then
           irec = 0  ! use time to select the record
         endif
+        if     (lubt) then
+          f_nc(:,:) = 1.0e20
+          call rd_out2nc(nto,mto,irec,
+     &                   f_nc,
+     &                   time3,  !HYCOM time
+     &                   name_ub,flnm_u)
+          call zhflsh(lp)
+          call m2h_p(f_nc,nto,mto,1, ubaro,idm,jdm,lsymetr,larctic)
+        endif
         if     (trim(name_u) .eq. 'ZERO') then
           s_nc(:,:,:) = 0.0
         else
@@ -584,6 +701,15 @@ c
 c
         if     (flnm_v.ne.flnm_t) then
           irec = 0  ! use time to select the record
+        endif
+        if     (lubt) then
+          f_nc(:,:) = 1.0e20
+          call rd_out2nc(nto,mto,irec,
+     &                   f_nc,
+     &                   time3,  !HYCOM time
+     &                   name_vb,flnm_v)
+          call zhflsh(lp)
+          call m2h_p(f_nc,nto,mto,1, vbaro,idm,jdm,lsymetr,larctic)
         endif
         if     (trim(name_v) .eq. 'ZERO') then
           v_nc(:,:,:) = 0.0
@@ -703,7 +829,7 @@ c
         endif
         if     (trim(name_e) .eq. 'ZERO' .or.
      &          trim(name_e) .eq. 'CALC'     ) then
-          f_nc(:,:) =  0.0  !CALC recalculated below
+          f_nc(:,:) =  0.0
         else
           f_nc(:,:) = 1.0e20
           call rd_out2nc(nto,mto,irec,
@@ -715,14 +841,23 @@ c
         call m2h_p(f_nc,nto,mto,1, srfht,idm,jdm,lsymetr,larctic)  !ssh or hbt
 c
         if     (lsteric .or. lbpa) then
-          if     (trim(name_b) .ne. 'CALC') then
+          if     (trim(name_hb) .ne. 'CALC') then
             f_nc(:,:) = 1.0e20
             call rd_out2nc(nto,mto,irec,
      &                     f_nc,
      &                     time3,  !HYCOM time
-     &                     name_b,flnm_e)
+     &                     name_hb,flnm_e)
             call zhflsh(lp)
-            call m2h_p(f_nc,nto,mto,1, steric,idm,jdm,lsymetr,larctic)  !pbt
+            call m2h_p(f_nc,nto,mto,1, hbt,idm,jdm,lsymetr,larctic)
+          endif !.not.CALC
+          if     (trim(name_pb) .ne. 'CALC') then
+            f_nc(:,:) = 1.0e20
+            call rd_out2nc(nto,mto,irec,
+     &                     f_nc,
+     &                     time3,  !HYCOM time
+     &                     name_pb,flnm_e)
+            call zhflsh(lp)
+            call m2h_p(f_nc,nto,mto,1, pbt,idm,jdm,lsymetr,larctic)
           endif !.not.CALC
         endif
 c
@@ -749,6 +884,18 @@ c
           call zhflsh(lp)
         endif
         call m2h_p(f_nc,nto,mto,1, surflx,idm,jdm,lsymetr,larctic)
+c
+        if     (trim(name_ms) .eq. 'ZERO') then
+          f_nc(:,:) =  0.0
+        else
+          f_nc(:,:) = 1.0e20
+          call rd_out2nc(nto,mto,irec,
+     &                   f_nc,
+     &                   time3,  !HYCOM time
+     &                   name_ms,flnm_e)
+          call zhflsh(lp)
+        endif
+        call m2h_p(f_nc,nto,mto,1, salflx,idm,jdm,lsymetr,larctic)
 c
         if     (trim(name_m) .eq. 'ZERO') then
           f_nc(:,:) =  0.0
@@ -800,45 +947,61 @@ c
           if     (ip(i,j).eq.1) then
             pij      = 0.0d0
             p(i,j,1) = pij
-            do k= 1,kk
-              pij        = pij + dp(i,j,k)
-              p(i,j,k+1) = pij
-            enddo !k
-            montg(i,j) = p(i,j,kk+1)-depths(i,j)  !ssh?
+            if     (ldenrdi) then
+c ---         assume that dp is kg m-2
+              do k= 1,kk
+                dp(i,j,k)  = dp(i,j,k)/is3d(i,j,k)
+                pij        = pij + dp(i,j,k)
+                p(i,j,k+1) = pij
+              enddo !k
+            else
+              do k= 1,kk
+                pij        = pij + dp(i,j,k)
+                p(i,j,k+1) = pij
+              enddo !k
+            endif
             if     (lsteric .or. lbpa) then
 c ---         convert hbt and pbt to ssh and steric ssh (m)
 c ---         in addition replace montg with (lsteric) bottom pressure 
 c ---         anomaly (m) or (lbpa) ssh minus bottom pressure anomaly (m)
 c ---         both assume that ssh_mn and den_mn are entirely steric
 c
-              if     (trim(name_b) .eq. 'CALC') then
+              if     (trim(name_pb) .eq. 'CALC') then
                 bpij = 0.0d0
                 do k= 1,kk
-                  bpij = bpij + dp(i,j,k)*(th3d(i,j,k) + 1000.d0)
+                  bpij = bpij + dp(i,j,k)*(th3d(i,j,k) + 1000.d0 )
                 enddo !k
-                steric(i,j) = bpij*9.8  !bpa
-                 srfht(i,j) = pij       !hbt
+                   pbt(i,j) = bpij*9.8
+                   hbt(i,j) = pij
               endif !CALC
 c
-              montg(i,j) = steric(i,j)/(9.8*den_mn(i,j)) -  !bpa=pbt/(g*rho)-h.mn
+              if     (lbpah) then
+                montg(i,j) = pbt(i,j)/(9.8*den_mn(i,j)) -  !bpa=pbt/(g*rho)-h.mn
+     &                       hbt_mn(i,j)
+              else
+                montg(i,j) = pbt(i,j)/(9.8*den_mn(i,j)) -  !bpa=pbt/(g*rho)-h.mn
      &                       (depths(i,j) + ssh_mn(i,j))
-                   denij = steric(i,j)/(9.8* srfht(i,j))    !den=pbt/(g*hbt)
+              endif
+              denij = pbt(i,j)/(9.8*hbt(i,j))  !den=pbt/(g*hbt)
 *
                   if     (i.eq.itest .and. j.eq.jtest) then
                     write(lp,'(a,2i5,3g19.8)')
      &                'i,j,_mn  = ',i,j,ssh_mn(i,j),den_mn(i,j),
      &                                              depths(i,j)
                     write(lp,'(a,2i5,3g19.8)')
-     &                'i,j,hbt  = ',i,j,steric(i,j),denij,
-     &                                   srfht(i,j)
+     &                'i,j,hbt  = ',i,j,hbt(i,j),denij,pbt(i,j)
                   endif !debug
 *
 c ---         steric is always calculted but only output if lsteric=true
               steric(i,j) =               ssh_mn(i,j) -         !sssh=ssh.mn-
      &                      (denij      - den_mn(i,j))*         !den.a*h.mn/den
-     &                     (depths(i,j) + ssh_mn(i,j))/denij    !      
-               srfht(i,j) =  srfht(i,j) - depths(i,j)           ! ssh=hbt-D
+     &                     (depths(i,j) + ssh_mn(i,j))/denij
 c
+              if     (trim(name_e) .eq. 'CALC') then
+                srfht(i,j) =  hbt(i,j) - depths(i,j)            ! ssh=hbt-D
+              endif
+c
+c ---         montg is currently bpa, convert to sss-bpa?
               if     (lbpa) then
                 montg(i,j) = srfht(i,j) - montg(i,j)            ! mtg=ssh-bpa
               endif !lbpa
@@ -852,6 +1015,10 @@ c
      &                'i,j, ssh = ',i,j, srfht(i,j),montg(i,j)
                   endif !debug
 *
+              oneta(i,j) = hbt(i,j)/depths(i,j)
+            else  !.not.(lsteric .or. lbpa)
+              oneta(i,j) = p(i,j,kk+1)/depths(i,j)
+              montg(i,j) = p(i,j,kk+1)-depths(i,j)  !ssh?
             endif
             if     (abs(p(i,j,kk+1)-(srfht(i,j)+depths(i,j))).gt.
      &                                                 errmax    ) then
@@ -866,7 +1033,7 @@ c
               ierr   = i
               jerr   = j
             endif
-            qoneta     = depths(i,j)/p(i,j,kk+1)
+            qoneta = 1.0/oneta(i,j)
 *
             if     (j.eq.jtest .and. i.eq.itest) then
               write(lp,'(a,2i5,3x,3f13.5)')
@@ -882,7 +1049,7 @@ c
             steric(i,j)   = steric(i,j) *onem*1.e-3
              montg(i,j)   =  montg(i,j) *onem*1.e-3
               dpbl(i,j)   =   dpbl(i,j) *onem
-            salflx(i,j)   =  -pmne(i,j) *saln(i,j,1)  !psu m/s kg/m^3 into ocean
+            salflx(i,j)   = salflx(i,j) *1000.0
             if     (flnm_k.ne.'NONE') then
                kemix(i,j) = ke(i,j,1)
               kebaro(i,j) = 0.0
@@ -892,7 +1059,6 @@ c
              montg(i,j)   = spval
              srfht(i,j)   = spval
             steric(i,j)   = spval
-            salflx(i,j)   = spval
             if     (flnm_k.ne.'NONE') then
                kemix(i,j) = spval
               kebaro(i,j) = spval
@@ -987,21 +1153,6 @@ c
       do k= 1,kk
         theta(k) = 1.0+k*0.1  ! to indicate no isopycnal layers
       enddo !k
-c
-      do j= 1,jj
-        do i= 1,ii
-          if     (iu(i,j).eq.1) then
-             ubaro(i,j)   = u(i,j,1)*(pu(i,j,2)-pu(i,j,1))
-          else
-             ubaro(i,j)   = 0.0
-          endif
-          if     (iv(i,j).eq.1) then
-             vbaro(i,j)   = v(i,j,1)*(pv(i,j,2)-pv(i,j,1))
-          else
-             vbaro(i,j)   = 0.0
-          endif
-        enddo !i
-      enddo !j
 *
       do j= 1,jj
         do i= 1,ii
@@ -1033,34 +1184,44 @@ c
         do i= 1,ii
 c ---     convert to ubaro + u.prime (if necessary)
           if     (iu(i,j).eq.1) then
-            do k= 2,kk
-              ubaro(i,j)   = ubaro(i,j) +
-     &                       u(i,j,k)*(pu(i,j,k+1)-pu(i,j,k))
-            enddo !k
-            ubaro(i,j) = ubaro(i,j)/pu(i,j,kk+1)
+            if     (.not.lubt) then
+              k=1
+                ubaro(i,j)   = u(i,j,1)*(pu(i,j,  2)-pu(i,j,1))
+              do k= 2,kk
+                ubaro(i,j)   = ubaro(i,j) +
+     &                         u(i,j,k)*(pu(i,j,k+1)-pu(i,j,k))
+              enddo !k
+              ubaro(i,j) = ubaro(i,j)/pu(i,j,kk+1)
+            endif !.not.lubt
             if     (flnm_k.eq.'NONE') then
               do k= 1,kk
                 u(i,j,k) = u(i,j,k) - ubaro(i,j)
               enddo !k
             endif !snapshot
           else
+            ubaro(i,j) = spval
             do k= 1,kk
               u(i,j,k) = spval
             enddo !k
           endif
 c ---     convert to vbaro + v.prime (if necessary)
           if     (iv(i,j).eq.1) then
-            do k= 2,kk
-              vbaro(i,j)   = vbaro(i,j) +
-     &                       v(i,j,k)*(pv(i,j,k+1)-pv(i,j,k))
-            enddo !k
-            vbaro(i,j) = vbaro(i,j)/pv(i,j,kk+1)
+            if     (.not.lubt) then
+              k=1
+                vbaro(i,j)   = v(i,j,1)*(pv(i,j,  2)-pv(i,j,1))
+              do k= 2,kk
+                vbaro(i,j)   = vbaro(i,j) +
+     &                         v(i,j,k)*(pv(i,j,k+1)-pv(i,j,k))
+              enddo !k
+              vbaro(i,j) = vbaro(i,j)/pv(i,j,kk+1)
+            endif !.not.lubt
             if     (flnm_k.eq.'NONE') then
               do k= 1,kk
                 v(i,j,k) = v(i,j,k) - vbaro(i,j)
               enddo !k
             endif !snapshot
           else
+            vbaro(i,j) = spval
             do k= 1,kk
               v(i,j,k) = spval
             enddo !k
@@ -1272,11 +1433,13 @@ c
 c
       sum1 =  0.d0
       sum2 =  0.d0
+      sum3 =  0.d0
       do j= 1,jja
         do i= 1,ii
           if     (ip(i,j).eq.1) then
             sum1 = sum1 + scp2(i,j)*surflx(i,j)
             sum2 = sum2 + scp2(i,j)*salflx(i,j)/saln(i,j,1)
+            sum3 = sum3 + scp2(i,j)*  pmne(i,j)
           endif !ip
         enddo !i
       enddo !j
@@ -1290,13 +1453,17 @@ c
      &  sum1/area
       call flush(lp)
       write (11, '(i9,a,
-     &    '' mean WFLUX (mm/wk):'',f8.2)')
+     &    '' mean WFLUX (mm/wk):'',f8.2,
+     &                   '' sss:'',f8.2)')
      &  nstep,c_ydh,
-     &  -(sum2*1.0D-3*7.0D0*8.64D7)/area  !P-E in mm/week
+     &   (sum3*1.0D-3*7.0D0*8.64D7)/area, !P-E in mm/week
+     &  -(sum2*1.0D-3*7.0D0*8.64D7)/area  !SSS relax in mm/week
       write (lp, '(i9,a,
-     &    '' mean WFLUX (mm/wk):'',f8.2)')
+     &    '' mean WFLUX (mm/wk):'',f8.2,
+     &                   '' sss:'',f8.2)')
      &  nstep,c_ydh,
-     &  -(sum2*1.0D-3*7.0D0*8.64D7)/area  !P-E in mm/week
+     &   (sum3*1.0D-3*7.0D0*8.64D7)/area, !P-E in mm/week
+     &  -(sum2*1.0D-3*7.0D0*8.64D7)/area  !SSS relax in mm/week
       call flush(lp)
 c
       if     (flnm_c.ne.'NONE') then  !sea ice

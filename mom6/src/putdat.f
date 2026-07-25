@@ -100,10 +100,21 @@ c
         call flush( lp)
       endif
 c
+      call zaiowr(oneta, ip,.true., xmin,xmax, nop, .false.)
+      write (nop,117) 'oneta   ',nstep,time(3),0,coord,xmin,xmax
+      call flush(nop)
+      write ( lp,117) 'oneta   ',nstep,time(3),0,coord,xmin,xmax
+      call flush( lp)
+c
       call zaiowr(surflx,ip,.true., xmin,xmax, nop, .false.)
       write (nop,117) 'surflx  ',nstep,time(3),0,coord,xmin,xmax
       call flush(nop)
       write ( lp,117) 'surflx  ',nstep,time(3),0,coord,xmin,xmax
+      call flush( lp)
+      call zaiowr(pmne,  ip,.true., xmin,xmax, nop, .false.)
+      write (nop,117) 'wtrflx  ',nstep,time(3),0,coord,xmin,xmax
+      call flush(nop)
+      write ( lp,117) 'wtrflx  ',nstep,time(3),0,coord,xmin,xmax
       call flush( lp)
       call zaiowr(salflx,ip,.true., xmin,xmax, nop, .false.)
       write (nop,117) 'salflx  ',nstep,time(3),0,coord,xmin,xmax

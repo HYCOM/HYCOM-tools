@@ -50,7 +50,7 @@ c
      &   ubaro,vbaro, montg,srfht,steric,dpbl,dpmixl,
      &   tmix,smix,thmix,umix,vmix,
      &   surflx,salflx,pmne,
-     &   depths,
+     &   oneta,depths,
      &   covice,thkice,temice,
      &   kebaro,kemix,       
      &   ttrend,strend,emnp, !never allocated
@@ -121,6 +121,7 @@ c
       allocate( temice(ii,jj) )
       allocate( kebaro(ii,jj) )
       allocate(  kemix(ii,jj) )
+      allocate(  oneta(ii,jj) )
 c
       allocate( depths(0:ii,0:jj) )
       allocate(    ip0(0:ii,0:jj) )

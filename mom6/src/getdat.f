@@ -1343,6 +1343,122 @@ c
         write(lp,'(/ a / a,1p2e14.6 /)')
      &    'error - range not consistent with SSH:',
      &    'min,max = ',hminb,hmaxb
+        call flush(lp)
+        stop
+      endif !error
+c
+      close(unit=9)
+      call zaiocl(9)
+      end
+
+      subroutine rd_steric4(n,m,ssh_mn,den_mn,hbt_mn, flnm)
+      use mod_mom6  ! HYCOM mom6 array interface
+      use mod_za    ! HYCOM array I/O interface
+      implicit none
+c
+      integer       n,m
+      real          ssh_mn(n,m),den_mn(n,m),hbt_mn(n,m)
+      character*256 flnm
+c
+c  subroutine to read file for steric SSH
+c       n,m    = total horizontal grid dimensions.
+c       ssh_mn = mean (steric) SSH (m)
+c       den_mn = mean in-situ density (kg/m^3)
+c       hbt_mn = mean water column height (m)
+c       flnm   = filename
+c
+c --- file order is consistent with HYCOM relax_ssh file
+c ---   den_mn (for HYCOM this would be sigma2 - thbase)
+c ---   ssh_mn 
+c ---   hbt_mn (for HYCOM this would be depth)
+c
+      character cline*240
+      character preambl(5)*79
+      real      hmina,hmaxa,hminb,hmaxb
+      integer   i,j,ios
+c
+      open (unit=9,file=flnm(1:len_trim(flnm)-2)//'.b',
+     &      form='formatted',status='old',action='read')
+      call zaiopf(flnm,'old', 9)
+c
+c --- den_mn
+c
+      read (9, '(a)')   cline
+      write(lp,'(a)')   trim(cline)
+      call flush(lp)
+      i = index(cline,':')
+      read (cline(i+1:),*)   hminb,hmaxb
+      call zaiord(den_mn,ip,.false., hmina,hmaxa, 9)
+      if     (abs(hmina-hminb).gt.max(abs(hmina),
+     &                                abs(hminb))*1.e-4 .or.
+     &        abs(hmaxa-hmaxb).gt.max(abs(hmaxa),
+     &                                abs(hmaxb))*1.e-4     ) then
+        write(lp,'(/ a / a,1p3e14.6 / a,1p3e14.6 /)')
+     &    'error - .a and .b files not consistent:',
+     &    '.a,.b min = ',hmina,hminb,hmina-hminb,
+     &    '.a,.b max = ',hmaxa,hmaxb,hmaxa-hmaxb
+        call flush(lp)
+        stop
+      elseif (hminb.lt.950.0 .or. hmaxb.gt.1100.0) then  !sanity check
+        write(lp,'(/ a / a,1p2e14.6 /)')
+     &    'error - range not consistent with in-situ density:',
+     &    'min,max = ',hminb,hmaxb
+        call flush(lp)
+        stop
+      endif !error
+c
+c --- ssh_mn
+c
+      read (9, '(a)')   cline
+      write(lp,'(a)')   trim(cline)
+      write(lp,'(a)')   " "
+      call flush(lp)
+      i = index(cline,':')
+      read (cline(i+1:),*)   hminb,hmaxb
+      call zaiord(ssh_mn,ip,.false., hmina,hmaxa, 9)
+      if     (abs(hmina-hminb).gt.max(abs(hmina),
+     &                                abs(hminb))*1.e-4 .or.
+     &        abs(hmaxa-hmaxb).gt.max(abs(hmaxa),
+     &                                abs(hmaxb))*1.e-4     ) then
+        write(lp,'(/ a / a,1p3e14.6 / a,1p3e14.6 /)')
+     &    'error - .a and .b files not consistent:',
+     &    '.a,.b min = ',hmina,hminb,hmina-hminb,
+     &    '.a,.b max = ',hmaxa,hmaxb,hmaxa-hmaxb
+        call flush(lp)
+        stop
+      elseif (hminb.lt.-5.0 .or. hmaxb.gt.5.0) then  !sanity check
+        write(lp,'(/ a / a,1p2e14.6 /)')
+     &    'error - range not consistent with SSH:',
+     &    'min,max = ',hminb,hmaxb
+        call flush(lp)
+        stop
+      endif !error
+c
+c --- hbt_mn
+c
+      read (9, '(a)')   cline
+      write(lp,'(a)')   trim(cline)
+      write(lp,'(a)')   " "
+      call flush(lp)
+      i = index(cline,':')
+      read (cline(i+1:),*)   hminb,hmaxb
+      call zaiord(hbt_mn,ip,.false., hmina,hmaxa, 9)
+      if     (abs(hmina-hminb).gt.max(abs(hmina),
+     &                                abs(hminb))*1.e-4 .or.
+     &        abs(hmaxa-hmaxb).gt.max(abs(hmaxa),
+     &                                abs(hmaxb))*1.e-4     ) then
+        write(lp,'(/ a / a,1p3e14.6 / a,1p3e14.6 /)')
+     &    'error - .a and .b files not consistent:',
+     &    '.a,.b min = ',hmina,hminb,hmina-hminb,
+     &    '.a,.b max = ',hmaxa,hmaxb,hmaxa-hmaxb
+        call flush(lp)
+        stop
+      elseif (hminb.lt.0.1 .or. hmaxb.gt.12000.0) then  !sanity check
+        write(lp,'(/ a / a,1p2e14.6 /)')
+     &    'error - range not consistent with hbt:',
+     &    'min,max = ',hminb,hmaxb
+        call flush(lp)
+        stop
       endif !error
 c
       close(unit=9)
