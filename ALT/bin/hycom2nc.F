@@ -1,7 +1,8 @@
       PROGRAM HYCOM2NC
       IMPLICIT NONE
 C
-C  hycom2nc - Usage:  hycom2nc file.a idm jdm kdm [jdma [spval]] file.nc
+C  hycom2nc - Usage:  hycom2nc file.a idm jdm kdm idma jdma scl off [spval]] file.nc
+C                     hycom2nc file.a idm jdm kdm [jdma [spval]] file.nc
 C
 C                 creates a netDCF file containing the arrays in file.a
 C
@@ -10,22 +11,26 @@ C                 kdm layers from each time, or if kdm is
 C                 0 (the default) the arrays represent the same
 C                 field over time.
 C
+C                 if spval is present replace HYCOM data_void with spval
 C                 if jdma is present, output (1:idm,1:jdma)
-C                 if jdma and spval are present replace HYCOM
-C                 data_void with spval
+C                 if idma jdma are present, output (1:idma,1:jdma)
+C                 if scl off are present, output scl*array+off
 C
 C                 NetCDF environment variables:
-C                    CDF_TITLE  title
-C                    CDF_INST   institution
-C                    CDF_CNAME  field name (short, no spaces)
-C                    CDF_PNAME  plot  name (longer,   spaces)
-C                    CDF_SNAME  field standard name
-C                    CDF_UNAME  field units
-C                    CDF_DAY1   first day (-1.0 no time axis)
-C                    CDF_DAYI   increment between fields in days
-C                    CDF_YEAR   type of year (0=360,1=366,2=366Jan1,3=actual)
-C                    CDF_ZFILE  filename, containing list of z-levels
-C                    CDF_DFILE  filename, containing list of days
+C                    CDF_DEFLATE deflation level
+C                    CDF_TITLE   global: title
+C                    CDF_SUMMARY global: summary
+C                    CDF_COMMENT global: comment
+C                    CDF_INST    global: institution
+C                    CDF_CNAME   field name (short, no spaces)
+C                    CDF_PNAME   plot  name (longer,   spaces)
+C                    CDF_SNAME   field standard name
+C                    CDF_UNAME   field units
+C                    CDF_DAY1    first day (-1.0 no time axis)
+C                    CDF_DAYI    increment between fields in days
+C                    CDF_YEAR    type of year (0=360,1=366,2=366Jan1,3=actual)
+C                    CDF_ZFILE   filename, containing list of z-levels
+C                    CDF_DFILE   filename, containing list of days
 C
 C  The netCDF axis dimensions are generic.
 C  Use ALL/archive/src/field2ncdf to get lon,lat in netCDF output file.
@@ -49,8 +54,9 @@ C
       CHARACTER*240 CARG
 C
       LOGICAL       LSPVAL
-      INTEGER       IDM,JDM,JDMA,KDM,NPAD
-      REAL*4        SPVAL
+      INTEGER       IDM,JDM,IDMA,JDMA,KDM,NPAD
+      INTEGER*8     IDM8,JDM8
+      REAL*4        SCL,OFF,SPVAL
       CHARACTER*6   CVARIN
       CHARACTER*240 CFILE,CFILEN
 C
@@ -58,7 +64,10 @@ C     READ ARGUMENTS.
 C
       NARG = IARGC()
 C
-      IF     (NARG.EQ.7) THEN
+C  hycom2nc - Usage:  hycom2nc file.a idm jdm kdm idma jdma scl off [spval]] file.nc
+      SCL = 1.0
+      OFF = 0.0
+      IF     (NARG.EQ.10) THEN
         CALL GETARG(1,CFILE)
         CALL GETARG(2,CARG)
         READ(CARG,*) IDM
@@ -66,6 +75,45 @@ C
         READ(CARG,*) JDM
         CALL GETARG(4,CARG)
         READ(CARG,*) KDM
+        CALL GETARG(5,CARG)
+        READ(CARG,*) IDMA
+        CALL GETARG(6,CARG)
+        READ(CARG,*) JDMA
+        CALL GETARG(7,CARG)
+        READ(CARG,*) SCL
+        CALL GETARG(8,CARG)
+        READ(CARG,*) OFF
+        LSPVAL = .TRUE.
+        CALL GETARG(9,CARG)
+        READ(CARG,*) SPVAL
+        CALL GETARG(10,CFILEN)
+      ELSEIF (NARG.EQ.9) THEN
+        CALL GETARG(1,CFILE)
+        CALL GETARG(2,CARG)
+        READ(CARG,*) IDM
+        CALL GETARG(3,CARG)
+        READ(CARG,*) JDM
+        CALL GETARG(4,CARG)
+        READ(CARG,*) KDM
+        CALL GETARG(5,CARG)
+        READ(CARG,*) IDMA
+        CALL GETARG(6,CARG)
+        READ(CARG,*) JDMA
+        CALL GETARG(7,CARG)
+        READ(CARG,*) SCL
+        CALL GETARG(8,CARG)
+        READ(CARG,*) OFF
+        LSPVAL = .FALSE.
+        CALL GETARG(9,CFILEN)
+      ELSEIF (NARG.EQ.7) THEN
+        CALL GETARG(1,CFILE)
+        CALL GETARG(2,CARG)
+        READ(CARG,*) IDM
+        CALL GETARG(3,CARG)
+        READ(CARG,*) JDM
+        CALL GETARG(4,CARG)
+        READ(CARG,*) KDM
+        IDMA   = IDM
         CALL GETARG(5,CARG)
         READ(CARG,*) JDMA
         LSPVAL = .TRUE.
@@ -80,6 +128,7 @@ C
         READ(CARG,*) JDM
         CALL GETARG(4,CARG)
         READ(CARG,*) KDM
+        IDMA   = IDM
         CALL GETARG(5,CARG)
         READ(CARG,*) JDMA
         LSPVAL = .FALSE.
@@ -92,10 +141,14 @@ C
         READ(CARG,*) JDM
         CALL GETARG(4,CARG)
         READ(CARG,*) KDM
+        IDMA   = IDM
         JDMA   = JDM
         LSPVAL = .FALSE.
         CALL GETARG(5,CFILEN)
       ELSEIF (NARG.EQ.1) THEN  !hycom2nc -help
+        WRITE(6,*) 
+     &   'Usage:  hycom2nc file.a idm jdm kdm'//
+     &   ' idma jdma scl off [spval] file.nc'
         WRITE(6,*) 
      &   'Usage:  hycom2nc file.a idm jdm kdm [jdma [spval]] file.nc'
         WRITE(6,*) 
@@ -109,30 +162,39 @@ C
      &        '   field over time.'
         WRITE(6,*) 
         WRITE(6,*) 
+     &        '   if spval is present'//
+     &        ' replace HYCOM data_void with spval'
+        WRITE(6,*) 
      &        '   if jdma is present, output (1:idm,1:jdma)'
         WRITE(6,*) 
-     &        '   if jdma and spval are present replace HYCOM'
+     &        '   if idma jdma are present, output (1:idma,1:jdma)'
         WRITE(6,*) 
-     &        '   data_void with spval'
+     &        '   if scl off are present, output scl*array+off'
         WRITE(6,*) 
         WRITE(6,*) 
      &        '   NetCDF environment variables:'
         WRITE(6,*) 
-     &        '      CDF_TITLE  title'
+     &        '      CDF_DEFLATE deflation level'
         WRITE(6,*) 
-     &        '      CDF_INST   institution'
+     &        '      CDF_TITLE   global: title'
         WRITE(6,*) 
-     &        '      CDF_CNAME  field name (short, no spaces)'
+     &        '      CDF_SUMMARY global: summary'
         WRITE(6,*) 
-     &        '      CDF_PNAME  plot  name (longer,   spaces)'
+     &        '      CDF_COMMENT global: comment'
         WRITE(6,*) 
-     &        '      CDF_SNAME  field standard name'
+     &        '      CDF_INST    global: institution'
         WRITE(6,*) 
-     &        '      CDF_UNAME  field units'
+     &        '      CDF_CNAME   field name (short, no spaces)'
         WRITE(6,*) 
-     &        '      CDF_DAY1   first day (-1.0 no time axis)'
+     &        '      CDF_PNAME   plot  name (longer,   spaces)'
         WRITE(6,*) 
-     &        '      CDF_DAYI   increment between fields in days'
+     &        '      CDF_SNAME   field standard name'
+        WRITE(6,*) 
+     &        '      CDF_UNAME   field units'
+        WRITE(6,*) 
+     &        '      CDF_DAY1    first day (-1.0 no time axis)'
+        WRITE(6,*) 
+     &        '      CDF_DAYI    increment between fields in days'
         WRITE(6,*) 
      &  '      CDF_YEAR   type of year (0=360,1=366,2=366Jan1,3=actual)'
         WRITE(6,*) 
@@ -149,11 +211,16 @@ C
         CALL EXIT(1)
       ELSE
         WRITE(6,*) 
+     &   'Usage:  hycom2nc file.a idm jdm kdm'//
+     &   ' idma jdma scl off [spval] file.nc'
+        WRITE(6,*) 
      &   'Usage:  hycom2nc file.a idm jdm kdm [jdma [spval]] file.nc'
         CALL EXIT(1)
       ENDIF
 C
-      NPAD = 4096 - MOD(IDM*JDM,4096)
+      IDM8 = IDM
+      JDM8 = JDM
+      NPAD = 4096 - MOD(IDM8*JDM8,4096)
       IF     (NPAD.EQ.4096) THEN
         NPAD = 0
       ENDIF
@@ -161,23 +228,23 @@ C
       ALLOCATE( A(IDM,JDM), STAT=IOS )
       IF     (IOS.NE.0) THEN
         WRITE(6,*) 'Error in hycom2nc: could not allocate ',
-     +             IDM*JDM,' words for A'
+     +             IDM8*JDM8,' words for A'
         CALL EXIT(2)
       ENDIF
 C
-      CALL H2NC(A,IDM,JDM,KDM,JDMA,PAD,NPAD,
-     +          LSPVAL,SPVAL, CFILE,CFILEN)
+      CALL H2NC(A,IDM,JDM,KDM,IDMA,JDMA,PAD,NPAD,
+     +          SCl,OFF, LSPVAL,SPVAL, CFILE,CFILEN)
       CALL EXIT(0)
  5000 FORMAT(I4)
       END
-      SUBROUTINE H2NC(A,IDM,JDM,KDM,JDMA,PAD,NPAD,
-     +                LSPVAL,SPVAL, CFILE,CFILEN)
+      SUBROUTINE H2NC(A,IDM,JDM,KDM,IDMA,JDMA,PAD,NPAD,
+     +                SCl,OFF, LSPVAL,SPVAL, CFILE,CFILEN)
       IMPLICIT NONE
 C
       CHARACTER*240 CFILE,CFILEN
       LOGICAL       LSPVAL
-      INTEGER       IDM,JDM,JDMA,KDM,NPAD
-      REAL*4        SPVAL
+      INTEGER       IDM,JDM,IDMA,JDMA,KDM,NPAD
+      REAL*4        SCL,OFF,SPVAL
       REAL*4        A(IDM,JDM),PAD(NPAD)
 C
 C     MOST OF WORK IS DONE HERE.
@@ -191,7 +258,8 @@ C
 #endif
       CHARACTER*240 CNAMES,CFILES
       CHARACTER*18  CASN
-      INTEGER       I,IC,IF,IL,IZ,IP,IQ,J,JC,JF,JL,JZ,IOS,K,NRECL
+      INTEGER       I,IC,IF,IL,IZ,IP,IQ,J,JC,JF,JL,JZ,IOS,K
+      INTEGER*8     NRECL,IDM8,JDM8
 #ifdef CRAY
       INTEGER*8     IU8,IOS8
 #endif
@@ -239,7 +307,9 @@ C
       DO K= 1,HUGE(K)/2  !safe limit
           READ(11,REC=K,IOSTAT=IOS) A
 #ifdef ENDIAN_IO
-          CALL ENDIAN_SWAP(A,IDM*JDM)
+          IDM8 = IDM 
+          JDM8 = JDM 
+          CALL ENDIAN_SWAP8(A,IDM8*JDM8)
 #endif
           IF     (K.EQ.1 .AND. IOS.NE.0) THEN
             WRITE(6,*) 'can''t read ',TRIM(CFILE)
@@ -249,9 +319,19 @@ C
             EXIT
           ENDIF
 c
+        IF     (SCL.NE.1.0 .OR. OFF.NE.0.0) THEN
+          DO J= 1,JDMA
+            DO I= 1,IDMA
+              IF     (A(I,J).NE.HSPVAL) THEN
+                A(I,J) = SCL*A(I,J) + OFF
+              ENDIF
+            ENDDO !i
+          ENDDO !j
+        ENDIF
+C
         IF     (LSPVAL) THEN
-          DO J= 1,JDM
-            DO I= 1,IDM
+          DO J= 1,JDMA
+            DO I= 1,IDMA
               IF     (A(I,J).EQ.HSPVAL) THEN
                 A(I,J) = SPVAL
               ENDIF
@@ -261,34 +341,37 @@ c
           SPVAL = HSPVAL
         ENDIF
 c
-        CALL HOROUT(A,IDM,JDMA,KDM,SPVAL,CFILE,CFILEN)
+        CALL HOROUT(A,IDM,IDMA,JDMA,KDM,SPVAL,CFILE,CFILEN)
 C
       ENDDO !k
       RETURN
       END
 
-      subroutine horout(array,ii,jj,kk,spval,cfile,ncfile)
+      subroutine horout(array,iix,ii,jj,kk,spval,cfile,ncfile)
       use netcdf   ! NetCDF fortran 90 interface
       implicit none
 c
-      integer       ii,jj,kk
+      integer       iix,ii,jj,kk
       real          spval
-      real          array(ii,jj)
+      real          array(iix,jj)
       character*(*) cfile,ncfile
 c
 c     NetCDF environment variables:
-c       CDF_TITLE title
-c       CDF_INST  institution
-c       CDF_CNAME field name (short, no spaces)
-c       CDF_PNAME plot  name (longer,   spaces)
-c       CDF_SNAME field standard name
-c       CDF_UNAME field units
-c       CDF_NLAY  number of layers (default 0)
-c       CDF_DAY1  first day
-c       CDF_DAYI  increment between fields in days
-c       CDF_YEAR  type of year (HYCOM yrflag: 0=360,1=366,2=366Jan1,3=actual)
-c       CDF_ZFILE filename, containing list of z-levels
-c       CDF_DFILE filename, containing list of days
+C       CDF_DEFLATE deflation level
+c       CDF_TITLE   global: title
+c       CDF_SUMMARY global: summary
+c       CDF_COMMENT global: comment
+c       CDF_INST    global: institution
+c       CDF_CNAME   field name (short, no spaces)
+c       CDF_PNAME   plot  name (longer,   spaces)
+c       CDF_SNAME   field standard name
+c       CDF_UNAME   field units
+c       CDF_NLAY    number of layers (default 0)
+c       CDF_DAY1    first day
+c       CDF_DAYI    increment between fields in days
+c       CDF_YEAR    type of year (HYCOM yrflag: 0=360,1=366,2=366Jan1,3=actual)
+c       CDF_ZFILE   filename, containing list of z-levels
+c       CDF_DFILE   filename, containing list of days
 c
 c     This routine needs version 3.5 of the NetCDF library, from: 
 c     http://www.unidata.ucar.edu/packages/netcdf/
@@ -299,7 +382,7 @@ c
       integer          :: pLatDimID,pLonDimID,LayDimID,
      &                    pLatVarID,pLonVarID,LayVarID
       integer          :: MTDimID,MTVarID,datVarID
-      character*240    :: ncenv
+      character*4096   :: ncenv
       character*240    :: name,namec,names,units
 c
       logical          :: lopen,lexist
@@ -310,6 +393,7 @@ c
       double precision :: time,year,wday1,wdayi,date
       real             :: fill_value
 c
+      integer          :: deflate    = 0 ! saved below
       integer          :: kk_rec     = 0 ! saved below
       integer          :: mt_rec     = 0 ! saved below
 c
@@ -323,6 +407,15 @@ c
 c
         kk_rec = 1
         mt_rec = 1
+c
+        ncenv = ' '
+        call getenv('CDF_DEFLATE',ncenv)
+        if     (ncenv.eq.' ') then
+          deflate = 0
+        else
+          read(ncenv,*) deflate
+        endif
+        write(6,'(a,i6)') 'horout - deflate =',jj
 c
         namec = ' '
         call getenv('CDF_CNAME',namec)
@@ -349,9 +442,9 @@ c
         write(6,'(2a)') 'horout - names=',trim(names)
         write(6,'(2a)') 'horout - units=',trim(units)
 c
-        write(6,'(a,i4)') 'horout - ii   =',jj
-        write(6,'(a,i4)') 'horout - jj   =',jj
-        write(6,'(a,i4)') 'horout - kk   =',kk
+        write(6,'(a,i6)') 'horout - ii   =',jj
+        write(6,'(a,i6)') 'horout - jj   =',jj
+        write(6,'(a,i6)') 'horout - kk   =',kk
 c
         if     (kk.gt.0) then
           ncenv = ' '
@@ -417,7 +510,7 @@ c
         write(6,6300) kk_rec,mt_rec,time,date
 c
         fill_value = spval
-        call ncrange(array,ii,jj,1, fill_value, hmin,hmax)
+        call ncrange(array,iix,ii,jj,1, fill_value, hmin,hmax)
 c
         inquire(file= ncfile, exist=lexist)
         if (lexist) then
@@ -461,6 +554,22 @@ c
      &                  nf90_put_att(ncfileID,nf90_global,
      &                               "title",
      &                               trim(ncenv)))
+            ncenv = ' '
+            call getenv('CDF_SUMMARY',ncenv)
+            if     (ncenv.ne.' ') then
+              call nchek("nf90_put_att-summary",
+     &                    nf90_put_att(ncfileID,nf90_global,
+     &                                 "summary",
+     &                                 trim(ncenv)))
+            endif
+            ncenv = ' '
+            call getenv('CDF_COMMENT',ncenv)
+            if     (ncenv.ne.' ') then
+              call nchek("nf90_put_att-comment",
+     &                    nf90_put_att(ncfileID,nf90_global,
+     &                                 "comment",
+     &                                 trim(ncenv)))
+            endif
             ncenv = ' '
             call getenv('CDF_INST',ncenv)
             if     (ncenv.ne.' ') then
@@ -533,7 +642,7 @@ c
               call nchek("nf90_put_att-calendar",
      &                    nf90_put_att(ncfileID,MTVarID,
      &                                 "calendar",
-     &                                 "standard"))
+     &                                 "gregorian"))
             else
               call nchek("nf90_put_att-long_name",
      &                    nf90_put_att(ncfileID,MTVarID,
@@ -664,6 +773,12 @@ c
      &                nf90_put_att(ncfileID,varID,
      &                             "valid_range",
      &                             (/hmin, hmax/)))
+         if     (deflate.gt.0) then
+           call nchek("nf90_def_var_deflate",
+     &                 nf90_def_var_deflate(ncfileID,VarID,
+     &                                      shuffle=1,deflate=1,
+     &                                      deflate_level=deflate))
+          endif
           ! leave def mode
           call nchek("nf90_enddef",
      &                nf90_enddef(ncfileID))
@@ -696,10 +811,10 @@ c
           ! write to model variable
           if     (kk.le.0) then
             call nchek("nf90_put_var-array",
-     &                  nf90_put_var(ncfileID,varID,array(:,:)))
+     &                  nf90_put_var(ncfileID,varID,array(1:ii,1:jj)))
           else
             call nchek("nf90_put_var-array",
-     &                  nf90_put_var(ncfileID,varID,array(:,:)))
+     &                  nf90_put_var(ncfileID,varID,array(1:ii,1:jj)))
           endif
           ! close NetCDF file
           call nchek("nf90_close",
@@ -745,26 +860,26 @@ c
       endif
       if     (kk.le.0) then
         call nchek("nf90_put_var-array",
-     &              nf90_put_var(ncfileID,varID,array(:,:),
+     &              nf90_put_var(ncfileID,varID,array(1:ii,1:jj),
      &                           start=(/1,1,mt_rec/)))
       else
         call nchek("nf90_put_var-array",
-     &              nf90_put_var(ncfileID,varID,array(:,:),
+     &              nf90_put_var(ncfileID,varID,array(1:ii,1:jj),
      &                           start=(/1,1,kk_rec,mt_rec/)))
       endif
       else
       if     (kk.le.0) then
         call nchek("nf90_put_var-array",
-     &              nf90_put_var(ncfileID,varID,array(:,:),
+     &              nf90_put_var(ncfileID,varID,array(1:ii,1:jj),
      &                           start=(/1,1/)))
       else
         call nchek("nf90_put_var-array",
-     &              nf90_put_var(ncfileID,varID,array(:,:),
+     &              nf90_put_var(ncfileID,varID,array(1:ii,1:jj),
      &                           start=(/1,1,kk_rec/)))
       endif
       endif !time axis
       !update valid_range
-      call ncrange(array,ii,jj,1, fill_value, hmin,hmax)
+      call ncrange(array,iix,ii,jj,1, fill_value, hmin,hmax)
       call nchek("nf90_get_att-valid_range",
      &            nf90_get_att(ncfileID,varID,
      &                         "valid_range",
@@ -801,18 +916,18 @@ c
       endif
 
       if (status /= nf90_noerr) then
-        write(6,'(/a)')   'error in profout - from NetCDF library'
+        write(6,'(/a)')   'error in horout - from NetCDF library'
         write(6,'(a/)')   trim(cnf90)
         write(6,'(a/)')   trim(nf90_strerror(status))
         stop
       end if
       end subroutine nchek
 
-      subroutine ncrange(h,ii,jj,kk, fill_value, hmin,hmax)
+      subroutine ncrange(h,iix,ii,jj,kk, fill_value, hmin,hmax)
       implicit none
 c
-      integer, intent(in ) :: ii,jj,kk
-      real,    intent(in ) :: h(ii,jj,kk),fill_value
+      integer, intent(in ) :: iix,ii,jj,kk
+      real,    intent(in ) :: h(iix,jj,kk),fill_value
       real,    intent(out) :: hmin,hmax
 c
 c     return range of array, ignoring fill_value
